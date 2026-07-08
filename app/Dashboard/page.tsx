@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
 import {
@@ -50,8 +51,8 @@ const quotations: Quotation[] = [
 ];
 
 const navItems = [
-  { label: "Dashboard",  icon: <DashboardIcon />,  href: "#", active: true  },
-  { label: "Quotations", icon: <QuotationsIcon />, href: "#", active: false },
+  { label: "Dashboard",  icon: <DashboardIcon />,  href: "/Dashboard", active: true  },
+  { label: "Quotations", icon: <QuotationsIcon />, href: "/Quotations", active: false },
   { label: "Customers",  icon: <CustomersIcon />,  href: "#", active: false },
   { label: "Projects",   icon: <ProjectsIcon />,   href: "#", active: false },
   { label: "Materials",  icon: <MaterialsIcon />,  href: "#", active: false },
@@ -282,21 +283,20 @@ export default function Dashboard() {
                   key={item.label}
                   variant="default"
                   size="sm"
-                  className="w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 h-auto font-semibold shadow-md shadow-primary/25"
+                  className="w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 h-auto font-semibold shadow-md shadow-primary/25 bg-primary text-white"
                 >
                   {item.icon}
                   {item.label}
                 </Button>
               ) : (
-                <Button
+                <Link
                   key={item.label}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 h-auto text-muted-foreground hover:text-primary hover:bg-accent font-medium"
+                  href={item.href}
+                  className="flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent font-medium transition-all"
                 >
                   {item.icon}
                   {item.label}
-                </Button>
+                </Link>
               )
             )}
           </nav>
