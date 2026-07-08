@@ -58,11 +58,11 @@ const initialQuotations: Quotation[] = [
 ];
 
 const navItems = [
-  { label: "Dashboard",  icon: <DashboardIcon />,  href: "/Dashboard", active: false },
+  { label: "Dashboard", icon: <DashboardIcon />, href: "/Dashboard", active: false },
   { label: "Quotations", icon: <QuotationsIcon />, href: "/Quotations", active: true },
-  { label: "Materials",  icon: <MaterialsIcon />,  href: "#", active: false },
-  { label: "Reports",    icon: <ReportsIcon />,    href: "#", active: false },
-  { label: "Settings",   icon: <SettingsIcon />,   href: "#", active: false },
+  { label: "Materials", icon: <MaterialsIcon />, href: "#", active: false },
+  { label: "Reports", icon: <ReportsIcon />, href: "#", active: false },
+  { label: "Settings", icon: <SettingsIcon />, href: "#", active: false },
 ];
 
 // ── Status Badge ───────────────────────────────────────────────────────────────
@@ -230,13 +230,13 @@ export default function QuotationsPage() {
             MAIN CONTENT
         ═══════════════════════════════════════════════════════════════════ */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          
+
           {/* ── Top bar ─────────────────────────────────────────────────── */}
           <header className="flex items-center justify-between px-7 py-4 bg-white border-b border-border gap-4 flex-shrink-0">
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <Link href="/Dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                 <span className="text-primary font-medium">Quotations</span>
               </div>
               <h1 className="text-2xl font-bold text-foreground leading-tight">Quotations</h1>
@@ -269,7 +269,7 @@ export default function QuotationsPage() {
           {/* ── Filter & Sort Bar and Table ─────────────────────────────── */}
           <ScrollArea className="flex-1">
             <div className="px-7 py-6 space-y-6">
-              
+
               {/* Filter and Sort Container */}
               <Card className="rounded-2xl border-border shadow-sm p-4 bg-white">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -296,11 +296,10 @@ export default function QuotationsPage() {
                         <button
                           key={status}
                           onClick={() => setStatusFilter(status)}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                            statusFilter === status
-                              ? "bg-white text-primary shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${statusFilter === status
+                            ? "bg-white text-primary shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                            }`}
                         >
                           {status.charAt(0).toUpperCase() + status.slice(1)}
                         </button>
@@ -311,7 +310,7 @@ export default function QuotationsPage() {
                   {/* Right Controls: Sort Select */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Sort By:</span>
-                    <Select value={sortBy} onValueChange={setSortBy}>
+                    <Select value={sortBy} onValueChange={(value) => { if (value) setSortBy(value); }}>
                       <SelectTrigger className="w-[180px] rounded-xl border-border bg-white focus:ring-primary/25 h-10 text-sm">
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
