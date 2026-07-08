@@ -709,6 +709,14 @@ export default function PlanitLogin() {
   const activeRole = ROLES.find((r) => r.id === role) ?? ROLES[0];
   const ActiveIcon = activeRole.icon;
 
+
+ const [username, setUsername] = useState("");
+const [password, setPassword] = useState("");
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState("");
+
+
+
   // Toggle dark class on the html element for Tailwind global dark mode variant sync
   const toggleTheme = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
@@ -719,10 +727,48 @@ export default function PlanitLogin() {
     }
   };
 
-  const handleSubmit = (e: { preventDefault: () => void; }) => {
-    e.preventDefault();
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  setLoading(true);
+  setError("");
+
+  try {
+    const response = await fetch(
+      "https://omnibackend.zyvionixsolutions.com/api/v1/auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      body: JSON.stringify({
+  username,
+  password,
+  role: role.toUpperCase(), // STAFF, ADMIN, SUPERADMIN
+}),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Login failed");
+    }
+
+    // Save token
+    localStorage.setItem("token", data.token);
+
+    // Save user details
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    // Redirect
     router.push("/Dashboard");
-  };
+  } catch (err: any) {
+    setError(err.message || "Something went wrong");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 transition-colors duration-300 bg-background">
@@ -861,13 +907,15 @@ export default function PlanitLogin() {
               <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-primary-foreground/80">
-                    Your email
+                    User Name
                   </label>
                   <div className="flex items-center gap-2 rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 px-3.5 h-12 backdrop-blur-sm transition-colors focus-within:border-primary-foreground focus-within:ring-2 focus-within:ring-primary-foreground/25">
                     <Mail className="h-4 w-4 shrink-0 text-primary-foreground/60" />
                     <input
-                      type="email"
-                      placeholder="Enter your email"
+                      type="text"
+                      placeholder="Enter your user name"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                       required
                       className="w-full bg-transparent text-sm text-primary-foreground outline-none placeholder:text-primary-foreground/40"
                     />
@@ -883,6 +931,8 @@ export default function PlanitLogin() {
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       required
                       className="w-full bg-transparent text-sm text-primary-foreground outline-none placeholder:text-primary-foreground/40"
                     />
@@ -912,13 +962,22 @@ export default function PlanitLogin() {
                   </a>
                 </div> */}
 
-                <button
-                  type="submit"
-                  className="mt-1 flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-primary-foreground text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:opacity-90 group"
-                >
-                  Sign in as {activeRole.label}
-                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </button>
+{error && (
+  <div className="rounded-lg border border-red-500 bg-red-500/20 p-3 text-sm text-red-100">
+    {error}
+  </div>
+)}
+
+           <button
+  type="submit"
+  disabled={loading}
+  className="mt-1 flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-primary-foreground text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:opacity-90 disabled:opacity-50"
+>
+  {loading ? "Signing In..." : `Sign in as ${activeRole.label}`}
+  {!loading && (
+    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+  )}
+</button>
               </form>
 
               <p className="mt-6 text-center text-[11px] text-primary-foreground/50">
