@@ -21,9 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -57,14 +55,6 @@ const initialQuotations: Quotation[] = [
   { id: "QT-2026-00109", date: "2026-06-10", client: "Max Retail", project: "Showroom Wiring", value: 18500, status: "Draft" },
 ];
 
-const navItems = [
-  { label: "Dashboard", icon: <DashboardIcon />, href: "/Dashboard", active: false },
-  { label: "Quotations", icon: <QuotationsIcon />, href: "/Quotations", active: true },
-  { label: "Materials", icon: <MaterialsIcon />, href: "#", active: false },
-  { label: "Reports", icon: <ReportsIcon />, href: "#", active: false },
-  { label: "Settings", icon: <SettingsIcon />, href: "#", active: false },
-];
-
 // ── Status Badge ───────────────────────────────────────────────────────────────
 function QuoteStatusBadge({ status }: { status: QuoteStatus }) {
   if (status === "Sent") {
@@ -96,21 +86,6 @@ function QuoteStatusBadge({ status }: { status: QuoteStatus }) {
 }
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────────
-function DashboardIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>;
-}
-function QuotationsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
-}
-function MaterialsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>;
-}
-function ReportsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /><line x1="2" y1="20" x2="22" y2="20" /></svg>;
-}
-function SettingsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
-}
 function SearchIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
 }
@@ -122,13 +97,6 @@ function PencilIcon() {
 }
 function TrashIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>;
-}
-function BoltIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
-    </svg>
-  );
 }
 
 const formatINR = (value: number) => {
@@ -184,91 +152,18 @@ export default function QuotationsPage() {
   }, [search, statusFilter, sortBy]);
 
   return (
-    <div className="min-h-screen bg-[#f8f7ff] flex overflow-hidden">
-      <div className="w-full flex overflow-hidden">
-        {/* ═══════════════════════════════════════════════════════════════════
-            SIDEBAR
-        ═══════════════════════════════════════════════════════════════════ */}
-        <aside className="w-[190px] flex-shrink-0 bg-white border-r border-border flex flex-col py-7 px-4">
-          <div className="flex items-center gap-2.5 mb-8 px-1">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-primary/30">
-              <BoltIcon />
-            </div>
-            <div className="leading-tight">
-              <p className="text-sm font-bold text-foreground">Zyvionix</p>
-              <p className="text-xs font-semibold text-primary">solutions</p>
-            </div>
-          </div>
+    <div className="flex flex-col min-h-[calc(100vh-68px)]">
+      <div className="px-7 py-6 space-y-6 flex-1">
 
-          <nav className="flex flex-col gap-0.5 flex-1">
-            {navItems.map((item) =>
-              item.active ? (
-                <Button
-                  key={item.label}
-                  variant="default"
-                  size="sm"
-                  className="w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 h-auto font-semibold shadow-md shadow-primary/25 bg-primary text-white"
-                >
-                  {item.icon}
-                  {item.label}
-                </Button>
-              ) : (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent font-medium transition-all"
-                >
-                  {item.icon}
-                  {item.label}
-                </Link>
-              )
-            )}
-          </nav>
-        </aside>
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            MAIN CONTENT
-        ═══════════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
-          {/* ── Top bar ─────────────────────────────────────────────────── */}
-          <header className="flex items-center justify-between px-7 py-4 bg-white border-b border-border gap-4 flex-shrink-0">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                <Link href="/Dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
-                <span className="text-primary font-medium">Quotations</span>
-              </div>
-              <h1 className="text-2xl font-bold text-foreground leading-tight">Quotations</h1>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* User info */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Welcome Back,</p>
-                  <p className="text-sm font-bold text-foreground leading-none">Akshith!</p>
-                </div>
-                <Avatar className="w-9 h-9 border-2 border-primary/20">
-                  <AvatarFallback className="bg-gradient-to-br from-[#a5a0f5] to-primary text-white text-sm font-bold">
-                    A
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              {/* Add Quotation Button - TOP RIGHT */}
-              <Link href="/Quotations/new">
-                <Button className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all">
-                  <PlusIcon />
-                  Add Quotation
-                </Button>
-              </Link>
-            </div>
-          </header>
-
-          {/* ── Filter & Sort Bar and Table ─────────────────────────────── */}
-          <ScrollArea className="flex-1">
-            <div className="px-7 py-6 space-y-6">
+        {/* Add Quotation button */}
+        <div className="flex justify-end">
+          <Link href="/Quotations/new">
+            <Button className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all">
+              <PlusIcon />
+              Add Quotation
+            </Button>
+          </Link>
+        </div>
 
               {/* Filter and Sort Container */}
               <Card className="rounded-2xl border-border shadow-sm p-4 bg-white">
@@ -435,16 +330,13 @@ export default function QuotationsPage() {
                   </Table>
                 </CardContent>
               </Card>
-            </div>
-          </ScrollArea>
-
-          {/* Footer */}
-          <Separator />
-          <footer className="text-center py-3.5 text-xs text-muted-foreground flex-shrink-0 bg-white">
-            Zyvionix Solutions © 2026. All Rights Reserved.
-          </footer>
-        </div>
       </div>
+
+      {/* Footer */}
+      <Separator />
+      <footer className="text-center py-3.5 text-xs text-muted-foreground flex-shrink-0 bg-white">
+        Zyvionix Solutions © 2026. All Rights Reserved.
+      </footer>
     </div>
   );
 }

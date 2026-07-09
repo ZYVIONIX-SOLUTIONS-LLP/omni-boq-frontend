@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 // ── shadcn components ──────────────────────────────────────────────────────────
 import {
@@ -21,9 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type QuoteStatus = "Sent" | "Approved" | "Draft" | "Expired";
@@ -48,16 +45,6 @@ const quotations: Quotation[] = [
   { id: 7, date: "2024-06-25", client: "ABC Corp", project: "Retail Store Wiring", value: "$25,000", status: "Approved" },
   { id: 8, date: "2024-06-25", client: "ABC Corp", project: "Retail Store Wiring", value: "$25,000", status: "Sent" },
   { id: 9, date: "2024-06-25", client: "ABC Corp", project: "Retail Store Wiring", value: "$25,000", status: "Approved" },
-];
-
-const navItems = [
-  { label: "Dashboard",  icon: <DashboardIcon />,  href: "/Dashboard", active: true  },
-  { label: "Quotations", icon: <QuotationsIcon />, href: "/Quotations", active: false },
-  { label: "Customers",  icon: <CustomersIcon />,  href: "#", active: false },
-  { label: "Projects",   icon: <ProjectsIcon />,   href: "#", active: false },
-  { label: "Materials",  icon: <MaterialsIcon />,  href: "#", active: false },
-  { label: "Reports",    icon: <ReportsIcon />,    href: "#", active: false },
-  { label: "Settings",   icon: <SettingsIcon />,   href: "#", active: false },
 ];
 
 // ── Status Badge ───────────────────────────────────────────────────────────────
@@ -204,45 +191,14 @@ function ClipboardIllustration() {
 }
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────────
-function DashboardIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>;
-}
-function QuotationsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
-}
-function CustomersIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
-}
-function ProjectsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>;
-}
-function MaterialsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>;
-}
-function ReportsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /><line x1="2" y1="20" x2="22" y2="20" /></svg>;
-}
-function SettingsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
-}
 function SearchIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
-}
-function BellIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
 }
 function PencilIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
 }
 function MoreHorizIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg>;
-}
-function BoltIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
-    </svg>
-  );
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
@@ -257,104 +213,23 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-white flex overflow-hidden">
-      {/* ── Outer shell ──────────────────────────────────────────────────── */}
-      <div className="w-full flex overflow-hidden">
-        {/* ═══════════════════════════════════════════════════════════════════
-            SIDEBAR
-        ═══════════════════════════════════════════════════════════════════ */}
-        <aside className="w-[190px] flex-shrink-0 bg-white border-r border-border flex flex-col py-7 px-4">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5 mb-8 px-1">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-primary/30">
-              <BoltIcon />
-            </div>
-            <div className="leading-tight">
-              <p className="text-sm font-bold text-foreground">Zyvionix</p>
-              <p className="text-xs font-semibold text-primary">solutions</p>
-            </div>
-          </div>
+    <div className="flex flex-col min-h-[calc(100vh-68px)]">
+      <div className="px-7 py-5 space-y-5 flex-1">
 
-          {/* Nav */}
-          <nav className="flex flex-col gap-0.5 flex-1">
-            {navItems.map((item) =>
-              item.active ? (
-                <Button
-                  key={item.label}
-                  variant="default"
-                  size="sm"
-                  className="w-full justify-start gap-2.5 rounded-xl px-3 py-2.5 h-auto font-semibold shadow-md shadow-primary/25 bg-primary text-white"
-                >
-                  {item.icon}
-                  {item.label}
-                </Button>
-              ) : (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent font-medium transition-all"
-                >
-                  {item.icon}
-                  {item.label}
-                </Link>
-              )
-            )}
-          </nav>
-        </aside>
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            MAIN CONTENT
-        ═══════════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
-          {/* ── Top bar ─────────────────────────────────────────────────── */}
-          <header className="flex items-center justify-between px-7 py-4 border-b border-border gap-4 flex-shrink-0">
-            <h1 className="text-2xl font-bold text-foreground flex-shrink-0">Dashboard</h1>
-
-            {/* Search Input (shadcn) */}
-            <div className="relative flex-1 max-w-xs">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                <SearchIcon />
-              </span>
-              <Input
-                id="dashboard-search"
-                type="text"
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-xl bg-muted/50 border-border focus-visible:ring-primary/30"
-              />
-            </div>
-
-            {/* User info */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="text-right hidden sm:block">
-                <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Welcome Back,</p>
-                <p className="text-sm font-bold text-foreground leading-none">Akshith!</p>
-              </div>
-
-              {/* Avatar (shadcn) */}
-              <Avatar className="w-9 h-9 border-2 border-primary/20">
-                <AvatarFallback className="bg-gradient-to-br from-[#a5a0f5] to-primary text-white text-sm font-bold">
-                  A
-                </AvatarFallback>
-              </Avatar>
-
-              {/* Bell button (shadcn) */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="w-9 h-9 rounded-full border-border text-muted-foreground hover:text-primary hover:border-primary/40"
-                aria-label="Notifications"
-              >
-                <BellIcon />
-              </Button>
-            </div>
-          </header>
-
-          {/* ── Scrollable body ─────────────────────────────────────────── */}
-          <ScrollArea className="flex-1">
-            <div className="px-7 py-5 space-y-5">
+        {/* Search */}
+        <div className="relative max-w-xs">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <SearchIcon />
+          </span>
+          <Input
+            id="dashboard-search"
+            type="text"
+            placeholder="Search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 rounded-xl bg-muted/50 border-border focus-visible:ring-primary/30"
+          />
+        </div>
 
               {/* ── Stat Cards (shadcn Card) ─────────────────────────── */}
               <div className="grid grid-cols-4 gap-4">
@@ -574,16 +449,13 @@ export default function Dashboard() {
                   </Card>
                 </div>
               </div>
-            </div>
-          </ScrollArea>
-
-          {/* Footer */}
-          <Separator />
-          <footer className="text-center py-3 text-xs text-muted-foreground flex-shrink-0">
-            Zyvionix Solutions © 2026. All Rights Reserved.
-          </footer>
-        </div>
       </div>
+
+      {/* Footer */}
+      <Separator />
+      <footer className="text-center py-3 text-xs text-muted-foreground flex-shrink-0">
+        Zyvionix Solutions © 2026. All Rights Reserved.
+      </footer>
     </div>
   );
 }

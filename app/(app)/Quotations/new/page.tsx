@@ -327,54 +327,6 @@ function EditableNumber({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR
-// ─────────────────────────────────────────────────────────────────────────────
-function Sidebar() {
-  return (
-    <aside className="w-[200px] flex-shrink-0 bg-white border-r border-border flex flex-col h-screen sticky top-0">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow shadow-primary/30 flex-shrink-0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white"/></svg>
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-foreground leading-none">Zyvionix</p>
-          <p className="text-[10px] text-primary font-semibold leading-none mt-0.5">Technologies</p>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <ScrollArea className="flex-1 py-3">
-        <nav className="px-3 space-y-0.5">
-          {NAV.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
-                item.active
-                  ? "bg-primary text-white shadow shadow-primary/30"
-                  : "text-muted-foreground hover:text-primary hover:bg-accent"
-              }`}
-            >
-              <span className={item.active ? "text-white" : ""}>{ICONS[item.icon]}</span>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </ScrollArea>
-
-      {/* Need help */}
-      <div className="px-4 py-4 border-t border-border">
-        <div className="bg-primary/5 rounded-xl p-3">
-          <p className="text-[11px] font-bold text-foreground">Need Help?</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">We&apos;re here to help you</p>
-          <Button size="sm" className="w-full mt-2 h-7 text-[11px] rounded-lg">Contact Support</Button>
-        </div>
-      </div>
-    </aside>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
@@ -499,14 +451,12 @@ export default function NewQuotationPage() {
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#f8f7ff]">
-      <Sidebar />
-
+    <div className="min-h-[calc(100vh-68px)] bg-[#f8f7ff]">
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex flex-col min-w-0">
 
         {/* ── Page Header ─────────────────────────────────────────────────── */}
-        <div className="bg-white border-b border-border px-6 py-4 sticky top-0 z-30">
+        <div className="bg-white border-b border-border px-6 py-4 sticky top-[68px] z-10">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
             <a href="/Dashboard" className="hover:text-primary transition-colors">Dashboard</a>

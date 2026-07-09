@@ -803,19 +803,13 @@ export default function PlanitLogin() {
     setError("");
 
     try {
-      const data = await login({
+      // login() persists user + access/refresh tokens to localStorage
+      await login({
         username,
         password,
         role: role.toUpperCase() as "STAFF" | "ADMIN" | "SUPERADMIN",
       });
 
-      // Save token
-      localStorage.setItem("token", data.token);
-
-      // Save user details
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Redirect
       router.push("/Dashboard");
     } catch (err: any) {
       setError(err.message || "Something went wrong");
