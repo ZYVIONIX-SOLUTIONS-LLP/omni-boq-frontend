@@ -75,6 +75,7 @@ export interface ListMaterialsParams {
     search?: string;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    category?: MaterialCategory;
 }
 
 export function listMaterials(
@@ -86,6 +87,7 @@ export function listMaterials(
     if (params.search) query.set("search", params.search);
     if (params.sortBy) query.set("sortBy", params.sortBy);
     if (params.sortOrder) query.set("sortOrder", params.sortOrder);
+    if (params.category) query.set("category", params.category);
 
     const qs = query.toString();
     return apiFetchPaged<Material>(`/materials${qs ? `?${qs}` : ""}`);
