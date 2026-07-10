@@ -23,7 +23,6 @@ import {
   WiringType,
   wiringTypeLabel,
 } from "@/app/lib/api/activities";
-import { categoryLabel } from "@/app/lib/api/materials";
 import ActivityFormDialog from "./activity-form-dialog";
 
 function SegmentBadge({ segment }: { segment?: string | null }) {
@@ -114,7 +113,7 @@ function ActivityCard({
                 <tr key={req.id ?? i} className="border-t border-border/50">
                   <td className="py-1.5 pr-2">
                     <Badge className="bg-muted text-muted-foreground border-0 rounded-full px-2 text-[10px] font-semibold whitespace-nowrap">
-                      {categoryLabel(req.category)}
+                      {req.category?.name ?? "—"}
                     </Badge>
                   </td>
                   <td className="py-1.5 pr-2 text-foreground">{req.description}</td>

@@ -24,32 +24,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageMeta } from "@/app/lib/api/client";
-import {
-  categoryLabel,
-  deleteMaterial,
-  listMaterials,
-  Material,
-} from "@/app/lib/api/materials";
+import { deleteMaterial, listMaterials, Material } from "@/app/lib/api/materials";
 import MaterialFormDialog from "./material-form-dialog";
 
 const PAGE_SIZE = 10;
 
-function CategoryBadge({ category }: { category: Material["category"] }) {
-  const styles: Record<string, string> = {
-    WIRE: "bg-[#6c63ff]/15 text-[#6c63ff]",
-    SWITCH: "bg-amber-100 text-amber-700",
-    SOCKET: "bg-emerald-100 text-emerald-700",
-    METAL_BOX: "bg-slate-200 text-slate-700",
-    PVC_BOX: "bg-sky-100 text-sky-700",
-    COVER_FRAME: "bg-pink-100 text-pink-700",
-    PVC_CONDUIT: "bg-cyan-100 text-cyan-700",
-    FAN_REGULATOR: "bg-orange-100 text-orange-700",
-  };
+// Stable-ish color per category name (hash into a fixed palette)
+const BADGE_PALETTE = [
+  "bg-[#6c63ff]/15 text-[#6c63ff]",
+  "bg-amber-100 text-amber-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-slate-200 text-slate-700",
+  "bg-sky-100 text-sky-700",
+  "bg-pink-100 text-pink-700",
+  "bg-cyan-100 text-cyan-700",
+  "bg-orange-100 text-orange-700",
+];
+function CategoryBadge({ name }: { name?: string | null }) {
+  if (!name) return <span className="text-muted-foreground">—</span>;
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash + name.charCodeAt(i)) % BADGE_PALETTE.length;
   return (
     <Badge
-      className={`${styles[category] ?? "bg-gray-100 text-gray-700"} border-0 font-semibold rounded-full px-3 whitespace-nowrap`}
+      className={`${BADGE_PALETTE[hash]} border-0 font-semibold rounded-full px-3 whitespace-nowrap`}
     >
-      {categoryLabel(category)}
+      {name}
     </Badge>
   );
 }
@@ -220,9 +219,9 @@ export default function MaterialsPage() {
                     {m.name}
                   </TableCell>
                   <TableCell>
-                    <CategoryBadge category={m.category} />
+                    <CategoryBadge name={m.category?.name} />
                   </TableCell>
-                  <TableCell className="text-sm">{m.brand || "—"}</TableCell>
+                  <TableCell className="text-sm">{m.brand?.name || "—"}</TableCell>
                   <TableCell className="text-sm">{m.series || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{specSummary(m)}</TableCell>
                   <TableCell className="text-sm">{m.unit}</TableCell>

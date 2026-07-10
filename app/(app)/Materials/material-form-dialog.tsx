@@ -19,17 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import EntityCombo from "@/components/ui/entity-combo";
 import {
-  categoryLabel,
   createMaterial,
   Material,
-  MATERIAL_CATEGORIES,
-  MaterialCategory,
   MaterialPayload,
   UNITS,
   UnitOfMeasure,
   updateMaterial,
 } from "@/app/lib/api/materials";
+import { Category, createCategory, listCategories } from "@/app/lib/api/categories";
+import { Brand, createBrand, listBrands } from "@/app/lib/api/brands";
 
 interface MaterialFormDialogProps {
   open: boolean;
@@ -40,10 +40,10 @@ interface MaterialFormDialogProps {
 }
 
 interface FormState {
-  category: MaterialCategory;
+  categoryId: string;
   code: string;
   name: string;
-  brand: string;
+  brandId: string;
   series: string;
   insulationType: string;
   sizeSqmm: string;
@@ -61,10 +61,10 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  category: "WIRE",
+  categoryId: "",
   code: "",
   name: "",
-  brand: "",
+  brandId: "",
   series: "",
   insulationType: "",
   sizeSqmm: "",
@@ -83,10 +83,10 @@ const EMPTY_FORM: FormState = {
 
 function materialToForm(material: Material): FormState {
   return {
-    category: material.category,
+    categoryId: material.categoryId ?? "",
     code: material.code ?? "",
     name: material.name ?? "",
-    brand: material.brand ?? "",
+    brandId: material.brandId ?? "",
     series: material.series ?? "",
     insulationType: material.insulationType ?? "",
     sizeSqmm: material.sizeSqmm != null ? String(material.sizeSqmm) : "",
@@ -112,11 +112,11 @@ function formToPayload(form: FormState): MaterialPayload {
     value.trim() && !Number.isNaN(Number(value)) ? Number(value) : undefined;
 
   return {
-    category: form.category,
+    categoryId: form.categoryId,
     code: form.code.trim(),
     name: form.name.trim(),
     unit: form.unit,
-    brand: str(form.brand),
+    brandId: form.brandId || undefined,
     series: str(form.series),
     insulationType: str(form.insulationType),
     sizeSqmm: num(form.sizeSqmm),
@@ -161,6 +161,8 @@ export default function MaterialFormDialog({
 }: MaterialFormDialogProps) {
   const isEdit = Boolean(material);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -168,8 +170,17 @@ export default function MaterialFormDialog({
     if (open) {
       setForm(material ? materialToForm(material) : EMPTY_FORM);
       setError("");
+      Promise.all([listCategories(), listBrands()])
+        .then(([c, b]) => {
+          setCategories(c.items);
+          setBrands(b.items);
+        })
+        .catch(() => {});
     }
   }, [open, material]);
+
+  const selectedCategoryName = categories.find((c) => c.id === form.categoryId)?.name ?? "";
+  const isWire = selectedCategoryName.toLowerCase() === "wire";
 
   const set = (key: keyof FormState) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -181,6 +192,10 @@ export default function MaterialFormDialog({
   });
 
   const handleSubmit = async () => {
+    if (!form.categoryId) {
+      setError("Please select a category");
+      return;
+    }
     if (!form.code.trim() || !form.name.trim()) {
       setError("Code and Name are required");
       return;
@@ -222,21 +237,17 @@ export default function MaterialFormDialog({
           {/* ── Basic details ── */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Field label="Category" required>
-              <Select
-                value={form.category}
-                onValueChange={(v) => v && set("category")(v)}
-              >
-                <SelectTrigger className="rounded-xl border-border h-9 w-full">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border">
-                  {MATERIAL_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {categoryLabel(c)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <EntityCombo
+                value={form.categoryId}
+                options={categories}
+                placeholder="Category"
+                onChange={(id) => set("categoryId")(id)}
+                onCreate={async (name) => {
+                  const created = await createCategory(name);
+                  setCategories((prev) => [...prev, created]);
+                  return created;
+                }}
+              />
             </Field>
             <Field label="Code" required>
               <Input placeholder="e.g. PLB-FRLSH-1.5" {...inputProps("code")} />
@@ -264,7 +275,17 @@ export default function MaterialFormDialog({
               </Field>
             </div>
             <Field label="Brand">
-              <Input placeholder="e.g. Polycab" {...inputProps("brand")} />
+              <EntityCombo
+                value={form.brandId}
+                options={brands}
+                placeholder="Brand"
+                onChange={(id) => set("brandId")(id)}
+                onCreate={async (name) => {
+                  const created = await createBrand(name);
+                  setBrands((prev) => [...prev, created]);
+                  return created;
+                }}
+              />
             </Field>
             <Field label="Series">
               <Input placeholder="e.g. FRLS-H" {...inputProps("series")} />
@@ -292,8 +313,8 @@ export default function MaterialFormDialog({
             </div>
           </div>
 
-          {/* ── Wire attributes (WIRE only) ── */}
-          {form.category === "WIRE" && (
+          {/* ── Wire attributes (Wire category only) ── */}
+          {isWire && (
             <div>
               <p className="text-xs font-bold text-foreground mb-2">Wire Attributes</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import EntityCombo from "@/components/ui/entity-combo";
 import {
   Activity,
   ActivityPayload,
@@ -29,23 +30,18 @@ import {
   updateActivity,
   WiringType,
 } from "@/app/lib/api/activities";
-import {
-  categoryLabel,
-  MATERIAL_CATEGORIES,
-  MaterialCategory,
-  UNITS,
-  UnitOfMeasure,
-} from "@/app/lib/api/materials";
+import { UNITS, UnitOfMeasure } from "@/app/lib/api/materials";
+import { Category, createCategory, listCategories } from "@/app/lib/api/categories";
 
 interface RequirementRow {
-  category: MaterialCategory;
+  categoryId: string;
   description: string;
   unit: UnitOfMeasure;
   quantity: string;
 }
 
 const EMPTY_ROW: RequirementRow = {
-  category: "WIRE",
+  categoryId: "",
   description: "",
   unit: "MTR",
   quantity: "",
@@ -71,18 +67,22 @@ export default function ActivityFormDialog({
   const [segment, setSegment] = useState<ProjectSegment>("RESIDENTIAL");
   const [description, setDescription] = useState("");
   const [rows, setRows] = useState<RequirementRow[]>([{ ...EMPTY_ROW }]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
+    listCategories()
+      .then((c) => setCategories(c.items))
+      .catch(() => {});
     if (activity) {
       setName(activity.name);
       setSegment((activity.segment as ProjectSegment) ?? "RESIDENTIAL");
       setDescription(activity.description ?? "");
       setRows(
         activity.requirements.map((req) => ({
-          category: req.category,
+          categoryId: req.categoryId,
           description: req.description,
           unit: req.unit as UnitOfMeasure,
           quantity: String(Number(req.quantity)),
@@ -109,9 +109,11 @@ export default function ActivityFormDialog({
       setError("Activity name is required");
       return;
     }
-    const validRows = rows.filter((r) => r.description.trim() && Number(r.quantity) > 0);
+    const validRows = rows.filter(
+      (r) => r.categoryId && r.description.trim() && Number(r.quantity) > 0
+    );
     if (validRows.length === 0) {
-      setError("Add at least one material requirement with a quantity");
+      setError("Add at least one material requirement (category, name and quantity)");
       return;
     }
 
@@ -122,7 +124,7 @@ export default function ActivityFormDialog({
       unit: wiringType === "POINT_WIRING" ? "POINT" : "CIRCUIT",
       description: description.trim() || undefined,
       requirements: validRows.map((r) => ({
-        category: r.category,
+        categoryId: r.categoryId,
         description: r.description.trim(),
         unit: r.unit,
         quantity: Number(r.quantity),
@@ -222,16 +224,16 @@ export default function ActivityFormDialog({
                   className="grid grid-cols-[130px_minmax(0,1fr)_80px_70px_32px] gap-2 items-center"
                 >
                   <Select
-                    value={row.category}
-                    onValueChange={(v) => v && updateRow(index, { category: v as MaterialCategory })}
+                    value={row.categoryId}
+                    onValueChange={(v) => v && updateRow(index, { categoryId: v })}
                   >
                     <SelectTrigger className="rounded-xl border-border h-9 text-xs w-full">
-                      <SelectValue />
+                      <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-border">
-                      {MATERIAL_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {categoryLabel(c)}
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

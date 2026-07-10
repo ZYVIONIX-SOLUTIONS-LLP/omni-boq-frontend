@@ -1,34 +1,24 @@
-import { apiFetch, apiFetchPaged, PageMeta } from "./client";
-
-export const MATERIAL_CATEGORIES = [
-    "WIRE",
-    "SWITCH",
-    "SOCKET",
-    "METAL_BOX",
-    "PVC_BOX",
-    "COVER_FRAME",
-    "PVC_CONDUIT",
-    "FAN_REGULATOR",
-] as const;
-export type MaterialCategory = (typeof MATERIAL_CATEGORIES)[number];
-
-/** "METAL_BOX" -> "Metal Box" */
-export function categoryLabel(category: string): string {
-    return category
-        .split("_")
-        .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-        .join(" ");
-}
+import { delay, loadCollection, paginate, saveCollection, uid, PageMeta } from "../local/store";
+import { SEED_MATERIALS, STORAGE_KEYS } from "../local/seed-data";
+import { listCategories } from "./categories";
+import { listBrands } from "./brands";
 
 export const UNITS = ["NOS", "MTR", "SQFT", "SET", "ROLL", "KG", "LTR", "LOT"] as const;
 export type UnitOfMeasure = (typeof UNITS)[number];
 
+export interface NamedRef {
+    id: string;
+    name: string;
+}
+
 export interface Material {
     id: string;
-    category: MaterialCategory;
+    categoryId: string;
+    category?: NamedRef | null;
     code: string;
     name: string;
-    brand?: string | null;
+    brandId?: string | null;
+    brand?: NamedRef | null;
     series?: string | null;
     insulationType?: string | null;
     sizeSqmm?: string | number | null;
@@ -49,10 +39,10 @@ export interface Material {
 }
 
 export interface MaterialPayload {
-    category: MaterialCategory;
+    categoryId: string;
     code: string;
     name: string;
-    brand?: string;
+    brandId?: string;
     series?: string;
     insulationType?: string;
     sizeSqmm?: number;
@@ -75,41 +65,90 @@ export interface ListMaterialsParams {
     search?: string;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
-    category?: MaterialCategory;
+    categoryId?: string;
+}
+
+function all(): Material[] {
+    return loadCollection<Material>(STORAGE_KEYS.materials, SEED_MATERIALS as unknown as Material[]);
+}
+function persist(items: Material[]) {
+    saveCollection(STORAGE_KEYS.materials, items);
+}
+
+// Resolve category/brand { id, name } from the current local collections
+async function resolveRefs(categoryId: string, brandId?: string | null) {
+    const [cats, brands] = await Promise.all([listCategories(), listBrands()]);
+    const category = cats.items.find((c) => c.id === categoryId) ?? null;
+    const brand = brandId ? brands.items.find((b) => b.id === brandId) ?? null : null;
+    return {
+        category: category ? { id: category.id, name: category.name } : null,
+        brand: brand ? { id: brand.id, name: brand.name } : null,
+    };
 }
 
 export function listMaterials(
     params: ListMaterialsParams = {}
 ): Promise<{ items: Material[]; meta: PageMeta }> {
-    const query = new URLSearchParams();
-    if (params.page) query.set("page", String(params.page));
-    if (params.limit) query.set("limit", String(params.limit));
-    if (params.search) query.set("search", params.search);
-    if (params.sortBy) query.set("sortBy", params.sortBy);
-    if (params.sortOrder) query.set("sortOrder", params.sortOrder);
-    if (params.category) query.set("category", params.category);
-
-    const qs = query.toString();
-    return apiFetchPaged<Material>(`/materials${qs ? `?${qs}` : ""}`);
+    let items = all();
+    if (params.categoryId) items = items.filter((m) => m.categoryId === params.categoryId);
+    if (params.search) {
+        const q = params.search.toLowerCase();
+        items = items.filter(
+            (m) =>
+                m.code.toLowerCase().includes(q) ||
+                m.name.toLowerCase().includes(q) ||
+                (m.series ?? "").toLowerCase().includes(q) ||
+                (m.brand?.name ?? "").toLowerCase().includes(q) ||
+                (m.category?.name ?? "").toLowerCase().includes(q)
+        );
+    }
+    items = [...items].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return delay(paginate(items, params.page ?? 1, params.limit ?? 20));
 }
 
-export function createMaterial(payload: MaterialPayload): Promise<Material> {
-    return apiFetch<Material>("/materials", {
-        method: "POST",
-        body: JSON.stringify(payload),
-    });
+export async function createMaterial(payload: MaterialPayload): Promise<Material> {
+    const items = all();
+    if (items.some((m) => m.code.toLowerCase() === payload.code.toLowerCase())) {
+        throw new Error(`A material with code "${payload.code}" already exists`);
+    }
+    const refs = await resolveRefs(payload.categoryId, payload.brandId);
+    const now = new Date().toISOString();
+    const created: Material = {
+        id: uid("mat"),
+        ...payload,
+        brandId: payload.brandId ?? null,
+        unitPrice: payload.unitPrice ?? 0,
+        category: refs.category,
+        brand: refs.brand,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+    } as Material;
+    persist([created, ...items]);
+    return delay(created);
 }
 
-export function updateMaterial(
-    id: string,
-    payload: Partial<MaterialPayload>
-): Promise<Material> {
-    return apiFetch<Material>(`/materials/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-    });
+export async function updateMaterial(id: string, payload: Partial<MaterialPayload>): Promise<Material> {
+    const items = all();
+    const existing = items.find((m) => m.id === id);
+    if (!existing) throw new Error("Material not found");
+    const categoryId = payload.categoryId ?? existing.categoryId;
+    const brandId = payload.brandId ?? existing.brandId;
+    const refs = await resolveRefs(categoryId, brandId);
+    const updated: Material = {
+        ...existing,
+        ...payload,
+        categoryId,
+        brandId: brandId ?? null,
+        category: refs.category,
+        brand: refs.brand,
+        updatedAt: new Date().toISOString(),
+    } as Material;
+    persist(items.map((m) => (m.id === id ? updated : m)));
+    return delay(updated);
 }
 
 export function deleteMaterial(id: string): Promise<void> {
-    return apiFetch<void>(`/materials/${id}`, { method: "DELETE" });
+    persist(all().filter((m) => m.id !== id));
+    return delay(undefined);
 }

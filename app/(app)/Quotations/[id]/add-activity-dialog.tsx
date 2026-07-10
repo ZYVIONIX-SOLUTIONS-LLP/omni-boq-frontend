@@ -27,7 +27,7 @@ import {
   listActivities,
   WiringType,
 } from "@/app/lib/api/activities";
-import { categoryLabel, listMaterials, Material } from "@/app/lib/api/materials";
+import { listMaterials, Material } from "@/app/lib/api/materials";
 import { addQuotationItem, Quotation } from "@/app/lib/api/quotations";
 
 interface AddActivityDialogProps {
@@ -88,12 +88,14 @@ export default function AddActivityDialog({
     setSelected(activity);
     setError("");
 
-    const neededCats = Array.from(new Set(activity.requirements.map((r) => r.category)));
+    const neededCats = Array.from(new Set(activity.requirements.map((r) => r.categoryId)));
     const missing = neededCats.filter((c) => !materialsByCat[c]);
     let catMap = materialsByCat;
     if (missing.length) {
       const fetched = await Promise.all(
-        missing.map((c) => listMaterials({ category: c, limit: 100 }).then((r) => [c, r.items] as const))
+        missing.map((categoryId) =>
+          listMaterials({ categoryId, limit: 100 }).then((r) => [categoryId, r.items] as const)
+        )
       );
       catMap = { ...materialsByCat, ...Object.fromEntries(fetched) };
       setMaterialsByCat(catMap);
@@ -102,7 +104,7 @@ export default function AddActivityDialog({
     // Pre-select the first available material per requirement (estimator can change)
     setPicks(
       activity.requirements.map((req) => {
-        const options = catMap[req.category] ?? [];
+        const options = catMap[req.categoryId] ?? [];
         const first = options[0];
         return {
           ...req,
@@ -117,7 +119,7 @@ export default function AddActivityDialog({
     setPicks((prev) =>
       prev.map((p, i) => {
         if (i !== index) return p;
-        const options = materialsByCat[p.category] ?? [];
+        const options = materialsByCat[p.categoryId] ?? [];
         const mat = options.find((m) => m.id === materialId);
         return { ...p, materialId, materialPrice: mat ? Number(mat.unitPrice) : 0 };
       })
@@ -248,19 +250,20 @@ export default function AddActivityDialog({
                 </thead>
                 <tbody>
                   {picks.map((pick, index) => {
-                    const options = materialsByCat[pick.category] ?? [];
+                    const options = materialsByCat[pick.categoryId] ?? [];
+                    const catName = pick.category?.name ?? "Category";
                     const lineTotal = Number(pick.quantity) * pick.materialPrice;
                     return (
                       <tr key={index} className="border-t border-border/60">
                         <td className="px-3 py-2">
                           <Badge className="bg-muted text-muted-foreground border-0 rounded-full px-2 text-[10px] font-semibold whitespace-nowrap mb-0.5">
-                            {categoryLabel(pick.category)}
+                            {catName}
                           </Badge>
                           <p className="text-foreground">{pick.description}</p>
                         </td>
                         <td className="px-3 py-2">
                           {options.length === 0 ? (
-                            <span className="text-red-500">No {categoryLabel(pick.category)} in catalog</span>
+                            <span className="text-red-500">No {catName} in catalog</span>
                           ) : (
                             <Select
                               value={pick.materialId}
@@ -272,7 +275,7 @@ export default function AddActivityDialog({
                               <SelectContent className="rounded-xl border-border">
                                 {options.map((m) => (
                                   <SelectItem key={m.id} value={m.id}>
-                                    {[m.brand, m.name].filter(Boolean).join(" — ")}
+                                    {[m.brand?.name, m.name].filter(Boolean).join(" — ")}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

@@ -1,5 +1,6 @@
-import { apiFetch } from "./client";
-import { AuthUser, clearAuth, getRefreshToken, saveAuth } from "../auth-storage";
+import { AuthUser, clearAuth, saveAuth } from "../auth-storage";
+import { delay } from "../local/store";
+import { SEED_USERS } from "../local/seed-data";
 
 export interface LoginPayload {
     username: string;
@@ -18,33 +19,35 @@ export interface LoginResponse {
     tokens: AuthTokens;
 }
 
-/** Logs in and persists user + tokens to localStorage. */
+/** Local login: validate against the seeded demo users, persist a mock session. */
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
-    const data = await apiFetch<LoginResponse>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify(payload),
-        auth: false,
-    });
-
-    saveAuth(data.user, data.tokens.accessToken, data.tokens.refreshToken);
-    return data;
-}
-
-/** Revokes the refresh token server-side and clears local auth state. */
-export async function logout(): Promise<void> {
-    const refreshToken = getRefreshToken();
-
-    if (refreshToken) {
-        try {
-            await apiFetch<void>("/auth/logout", {
-                method: "POST",
-                body: JSON.stringify({ refreshToken }),
-                auth: false,
-            });
-        } catch {
-            // Even if the server call fails (expired/revoked already), still log out locally.
-        }
+    const user = SEED_USERS.find(
+        (u) => u.username.toLowerCase() === payload.username.toLowerCase()
+    );
+    if (!user || user.password !== payload.password) {
+        throw new Error("Invalid credentials");
+    }
+    if (user.role !== payload.role) {
+        throw new Error(`This account is not authorized to log in as ${payload.role}`);
     }
 
+    const authUser: AuthUser = {
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roles: [user.role],
+    };
+    const tokens: AuthTokens = {
+        accessToken: `local-access-${user.id}`,
+        refreshToken: `local-refresh-${user.id}`,
+        expiresIn: "15m",
+    };
+    saveAuth(authUser, tokens.accessToken, tokens.refreshToken);
+    return delay({ user: authUser, tokens });
+}
+
+export async function logout(): Promise<void> {
     clearAuth();
+    return delay(undefined);
 }
