@@ -213,7 +213,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-68px)]">
+    <div className="flex flex-col min-h-[calc(100vh-3rem)]">
       <div className="px-7 py-5 space-y-5 flex-1">
 
         {/* Search */}

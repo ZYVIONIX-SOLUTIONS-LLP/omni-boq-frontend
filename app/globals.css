@@ -46,6 +46,17 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Excel-clone spreadsheet palette (ported component under components/spreadsheet) */
+  --color-excel-green: #217346;
+  --color-excel-green-dark: #185c37;
+  --color-excel-toolbar: #f3f2f1;
+  --color-excel-border: #d0d7de;
+  --color-excel-gridline: #e2e3e3;
+  --color-excel-selection: #0f6cbd;
+  --color-excel-selection-fill: rgba(15, 108, 189, 0.1);
+  --color-excel-header: #f8f9fa;
+  --color-excel-header-active: #caead8;
 }
 
 :root {
@@ -133,4 +144,31 @@
   html {
     @apply font-sans;
   }
+}
+
+/* ── Ported from components/spreadsheet (excel-clone) — scoped, does not
+   touch html/body/#root sizing since that container's height is controlled
+   by the page that embeds <Spreadsheet />. ── */
+.excel-scroll::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+.excel-scroll::-webkit-scrollbar-track {
+  background: #f3f2f1;
+}
+.excel-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border: 3px solid #f3f2f1;
+  border-radius: 7px;
+}
+.excel-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+.excel-scroll::-webkit-scrollbar-corner {
+  background: #f3f2f1;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }

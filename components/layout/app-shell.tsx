@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { AuthUser, getUser, isLoggedIn } from "@/app/lib/auth-storage";
 import { logout } from "@/app/lib/api/auth";
 
 const SIDEBAR_WIDTH = 190;
-const NAVBAR_HEIGHT = 68;
+const SIDEBAR_WIDTH_COLLAPSED = 64;
+const SIDEBAR_COLLAPSE_KEY = "omni.sidebarCollapsed";
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────────
 function BoltIcon() {
@@ -31,10 +32,10 @@ function QuotationsIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
 }
 function ActivitiesIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>;
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>;
 }
-function SettingsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
+function UsersIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
 }
 
 const NAV_ITEMS = [
@@ -42,7 +43,7 @@ const NAV_ITEMS = [
   { label: "Materials", href: "/Materials", icon: <MaterialsIcon /> },
   { label: "Activities", href: "/Activities", icon: <ActivitiesIcon /> },
   { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
-  { label: "Settings", href: "/Settings", icon: <SettingsIcon /> },
+  { label: "Users", href: "/Users", icon: <UsersIcon /> },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -51,6 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checked, setChecked] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -58,8 +60,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     setUser(getUser());
+    setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1");
     setChecked(true);
   }, [router]);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(SIDEBAR_COLLAPSE_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -67,99 +78,128 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/Login");
   };
 
+  // Filter visible nav links based on role
+  const visibleNavItems = useMemo(() => {
+    if (!user) return [];
+    const role = user.roles && user.roles[0] ? user.roles[0] : "";
+    if (role === "SUPERADMIN") {
+      return NAV_ITEMS;
+    }
+    if (role === "ADMIN") {
+      return NAV_ITEMS.filter((item) => item.label !== "Materials" && item.label !== "Activities");
+    }
+    // STAFF
+    return NAV_ITEMS.filter((item) => item.label !== "Materials" && item.label !== "Activities" && item.label !== "Users");
+  }, [user]);
+
+  const activeItem =
+    visibleNavItems.find((item) => pathname.startsWith(item.href)) ?? visibleNavItems[0] ?? NAV_ITEMS[0];
+
+  const displayName = user ? user.firstName || user.username : "";
+  const initial = (displayName[0] ?? "U").toUpperCase();
+
   // Avoid flashing protected content before the auth check runs
   if (!checked) {
     return <div className="min-h-screen bg-[#f8f7ff]" />;
   }
 
-  const activeItem =
-    NAV_ITEMS.find((item) => pathname.startsWith(item.href)) ?? NAV_ITEMS[0];
-  const displayName = user ? user.firstName || user.username : "";
-  const initial = (displayName[0] ?? "U").toUpperCase();
+  const sidebarWidth = collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH;
 
   return (
     <div className="min-h-screen bg-[#f8f7ff]">
       {/* ═══ FIXED SIDEBAR ═══ */}
       <aside
-        className="fixed left-0 top-0 z-30 h-screen bg-white border-r border-border flex flex-col py-7 px-4"
-        style={{ width: SIDEBAR_WIDTH }}
+        className="fixed left-0 top-0 z-30 h-screen bg-white border-r border-border flex flex-col py-5 transition-[width] duration-200"
+        style={{ width: sidebarWidth }}
       >
-        {/* Brand */}
-        <div className="flex items-center gap-2.5 mb-8 px-1">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-primary/30">
-            <BoltIcon />
+        {/* Brand + collapse toggle */}
+        <div className={`flex items-center mb-6 px-4 ${collapsed ? "flex-col gap-2" : "justify-between gap-2"}`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-primary/30">
+              <BoltIcon />
+            </div>
+            {!collapsed && (
+              <div className="leading-tight min-w-0">
+                <p className="text-sm font-bold text-foreground truncate">Zyvionix</p>
+                <p className="text-xs font-semibold text-primary truncate">solutions</p>
+              </div>
+            )}
           </div>
-          <div className="leading-tight">
-            <p className="text-sm font-bold text-foreground">Zyvionix</p>
-            <p className="text-xs font-semibold text-primary">solutions</p>
-          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleCollapsed}
+            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent flex-shrink-0"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
         </div>
 
         {/* Nav */}
-        <nav className="flex flex-col gap-0.5 flex-1">
-          {NAV_ITEMS.map((item) => {
+        <nav className="flex flex-col gap-0.5 flex-1 px-3">
+          {visibleNavItems.map((item) => {
             const isActive = item.href === activeItem.href;
             return (
               <Link
                 key={item.label}
                 href={item.href}
+                title={collapsed ? item.label : undefined}
                 className={
-                  isActive
-                    ? "flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm font-semibold bg-primary text-white shadow-md shadow-primary/25 transition-all"
-                    : "flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent font-medium transition-all"
+                  (isActive
+                    ? "bg-primary text-white shadow-md shadow-primary/25 font-semibold"
+                    : "text-muted-foreground hover:text-primary hover:bg-accent font-medium") +
+                  ` flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm transition-all ${
+                    collapsed ? "justify-center" : ""
+                  }`
                 }
               >
                 {item.icon}
-                {item.label}
+                {!collapsed && item.label}
               </Link>
             );
           })}
         </nav>
-      </aside>
 
-      {/* ═══ FIXED NAVBAR ═══ */}
-      <header
-        className="fixed top-0 right-0 z-20 flex items-center justify-between px-7 bg-white border-b border-border gap-4"
-        style={{ left: SIDEBAR_WIDTH, height: NAVBAR_HEIGHT }}
-      >
-        <h1 className="text-2xl font-bold text-foreground leading-tight">
-          {activeItem.label}
-        </h1>
-
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="text-right hidden sm:block">
-            <p className="text-[11px] text-muted-foreground leading-none mb-0.5">
-              Welcome back,
-            </p>
-            <p className="text-sm font-bold text-foreground leading-none">
-              {displayName}!
-            </p>
+        {/* User profile + logout */}
+        <div className={`border-t border-border pt-4 px-3 flex ${collapsed ? "flex-col items-center gap-2" : "items-center gap-2.5"}`}>
+          <div className={`flex items-center gap-2.5 min-w-0 ${collapsed ? "" : "flex-1"}`}>
+            <Avatar className="w-9 h-9 border border-border shadow-sm flex-shrink-0">
+              <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="leading-tight min-w-0">
+                <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Welcome back,</p>
+                <p className="text-sm font-bold text-foreground leading-none truncate">{displayName}!</p>
+              </div>
+            )}
           </div>
-
-          <Avatar className="w-9 h-9 border-2 border-primary/20">
-            <AvatarFallback className="bg-gradient-to-br from-[#a5a0f5] to-primary text-white text-sm font-bold">
-              {initial}
-            </AvatarFallback>
-          </Avatar>
 
           <Button
             variant="outline"
             size="icon"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="w-9 h-9 rounded-full border-border text-muted-foreground hover:text-red-500 hover:border-red-300"
+            className="rounded-xl border-border h-9 w-9 text-muted-foreground hover:text-red-500 hover:bg-red-50/50 flex-shrink-0"
             aria-label="Logout"
             title="Logout"
           >
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
-      </header>
+      </aside>
 
-      {/* ═══ CONTENT ═══ */}
+      {/* ═══ CONTENT AREA ═══ */}
       <main
-        className="min-h-screen"
-        style={{ paddingLeft: SIDEBAR_WIDTH, paddingTop: NAVBAR_HEIGHT }}
+        className="min-h-screen py-6 transition-[padding] duration-200"
+        style={{
+          paddingLeft: `calc(${sidebarWidth}px + 1.75rem)`,
+          paddingRight: "1.75rem",
+        }}
       >
         {children}
       </main>

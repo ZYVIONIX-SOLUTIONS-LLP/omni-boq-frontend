@@ -1,6 +1,15 @@
-import { AuthUser, clearAuth, saveAuth } from "../auth-storage";
-import { delay } from "../local/store";
-import { SEED_USERS } from "../local/seed-data";
+import { AuthUser, clearAuth, getRefreshToken, saveAuth } from "../auth-storage";
+import { apiDelete, apiGet, apiPost } from "./client";
+
+export interface User {
+    id: string;
+    username: string;
+    password?: string;
+    firstName: string;
+    lastName: string;
+    role: "STAFF" | "ADMIN" | "SUPERADMIN";
+    createdAt?: string;
+}
 
 export interface LoginPayload {
     username: string;
@@ -19,35 +28,32 @@ export interface LoginResponse {
     tokens: AuthTokens;
 }
 
-/** Local login: validate against the seeded demo users, persist a mock session. */
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
-    const user = SEED_USERS.find(
-        (u) => u.username.toLowerCase() === payload.username.toLowerCase()
-    );
-    if (!user || user.password !== payload.password) {
-        throw new Error("Invalid credentials");
-    }
-    if (user.role !== payload.role) {
-        throw new Error(`This account is not authorized to log in as ${payload.role}`);
-    }
-
-    const authUser: AuthUser = {
-        id: user.id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        roles: [user.role],
-    };
-    const tokens: AuthTokens = {
-        accessToken: `local-access-${user.id}`,
-        refreshToken: `local-refresh-${user.id}`,
-        expiresIn: "15m",
-    };
-    saveAuth(authUser, tokens.accessToken, tokens.refreshToken);
-    return delay({ user: authUser, tokens });
+    const result = await apiPost<LoginResponse>("/auth/login", payload);
+    saveAuth(result.user, result.tokens.accessToken, result.tokens.refreshToken);
+    return result;
 }
 
 export async function logout(): Promise<void> {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+        try {
+            await apiPost("/auth/logout", { refreshToken });
+        } catch {
+            /* best-effort revoke; still clear local session below */
+        }
+    }
     clearAuth();
-    return delay(undefined);
+}
+
+export async function listUsers(): Promise<User[]> {
+    return apiGet<User[]>("/users");
+}
+
+export async function createUser(payload: Omit<User, "id">): Promise<User> {
+    return apiPost<User>("/users", payload);
+}
+
+export async function deleteUser(id: string): Promise<void> {
+    await apiDelete(`/users/${id}`);
 }
