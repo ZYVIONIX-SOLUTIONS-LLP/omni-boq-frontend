@@ -17,17 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getUser, AuthUser } from "@/app/lib/auth-storage";
 import { listUsers, createUser, deleteUser, User } from "@/app/lib/api/auth";
 
-export default function UsersPage() {
+export default function StaffPage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +34,6 @@ export default function UsersPage() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"STAFF" | "ADMIN">("STAFF");
 
   // Delete state
   const [deleting, setDeleting] = useState<User | null>(null);
@@ -56,9 +48,11 @@ export default function UsersPage() {
     setError("");
     try {
       const data = await listUsers();
-      setUsers(data);
+      // Only show STAFF for this admin
+      const staffOnly = data.filter((u) => u.role === "STAFF");
+      setUsers(staffOnly);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
+      setError(err instanceof Error ? err.message : "Failed to load staff");
     } finally {
       setLoading(false);
     }
@@ -82,18 +76,17 @@ export default function UsersPage() {
         lastName,
         username,
         password,
-        role,
+        role: "STAFF",
       });
       // Clear fields
       setFirstName("");
       setLastName("");
       setUsername("");
       setPassword("");
-      setRole("STAFF");
       setCreateOpen(false);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create user");
+      setError(err instanceof Error ? err.message : "Failed to create staff");
     } finally {
       setCreateBusy(false);
     }
@@ -108,17 +101,12 @@ export default function UsersPage() {
       setDeleting(null);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete user");
+      setError(err instanceof Error ? err.message : "Failed to delete staff");
       setDeleting(null);
     } finally {
       setDeleteBusy(false);
     }
   };
-
-  // Check if current user is SUPERADMIN
-  const isSuper = useMemo(() => {
-    return currentUser?.roles?.includes("SUPERADMIN") || false;
-  }, [currentUser]);
 
   const columnDefs = useMemo<ColDef<User>[]>(
     () => [
@@ -137,25 +125,6 @@ export default function UsersPage() {
         cellClass: "font-mono text-xs",
       },
       {
-        field: "role",
-        headerName: "Role",
-        width: 130,
-        cellRenderer: (p: ICellRendererParams<User>) => {
-          if (!p.value) return null;
-          const bg =
-            p.value === "SUPERADMIN"
-              ? "bg-purple-100 text-purple-700 border-purple-200"
-              : p.value === "ADMIN"
-              ? "bg-blue-100 text-blue-700 border-blue-200"
-              : "bg-slate-100 text-slate-700 border-slate-200";
-          return (
-            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${bg}`}>
-              {p.value}
-            </span>
-          );
-        },
-      },
-      {
         headerName: "Created",
         field: "createdAt",
         width: 140,
@@ -168,12 +137,6 @@ export default function UsersPage() {
         filter: false,
         cellRenderer: (p: ICellRendererParams<User>) => {
           if (!p.data) return null;
-          const isSelf = p.data.id === currentUser?.id;
-          const isSuperUser = p.data.role === "SUPERADMIN";
-
-          // Prevent deleting self, and protect other Superadmins from deletion unless you are one
-          if (isSelf || isSuperUser) return null;
-
           return (
             <Button
               variant="ghost"
@@ -188,7 +151,7 @@ export default function UsersPage() {
         },
       },
     ],
-    [currentUser]
+    []
   );
 
   return (
@@ -197,7 +160,7 @@ export default function UsersPage() {
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search username, name, role"
+            placeholder="Search staff"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
@@ -218,7 +181,7 @@ export default function UsersPage() {
             className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all animate-all"
           >
             <Plus className="h-4 w-4" />
-            Register User
+            Register Staff
           </Button>
         </div>
       </div>
@@ -227,7 +190,7 @@ export default function UsersPage() {
 
       <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
         {loading ? (
-          <p className="text-center py-14 text-sm text-muted-foreground">Loading user directory...</p>
+          <p className="text-center py-14 text-sm text-muted-foreground">Loading staff directory...</p>
         ) : (
           <div className="p-2">
             <AgGridReact
@@ -251,10 +214,10 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary" />
-              Register User Account
+              Register Staff Account
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Add a new staff or admin login to your organization database.
+              Add a new staff estimator to your organization.
             </DialogDescription>
           </DialogHeader>
 
@@ -305,22 +268,6 @@ export default function UsersPage() {
                 placeholder="••••••••"
                 required
               />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-muted-foreground uppercase">Role</label>
-              <Select
-                value={role}
-                onValueChange={(val) => setRole(val as "STAFF" | "ADMIN")}
-              >
-                <SelectTrigger className="rounded-xl border-border bg-slate-50 focus:ring-primary/20 h-9.5 text-xs font-semibold">
-                  <SelectValue placeholder="Select user role" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-border text-xs">
-                  <SelectItem value="STAFF">Staff (Estimator)</SelectItem>
-                  {isSuper && <SelectItem value="ADMIN">Admin (Manager)</SelectItem>}
-                </SelectContent>
-              </Select>
             </div>
 
             <DialogFooter className="pt-2">

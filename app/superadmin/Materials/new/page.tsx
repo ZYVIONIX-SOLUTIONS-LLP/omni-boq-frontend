@@ -1,14 +1,13 @@
 "use client";
 
-// Add / Edit Product — a single scrollable form covering Manufacturer/Series/
-// Category/Model → Specifications → Variants → Pricing → Review. Unlike the
-// SuperAdmin version of this form, Manufacturer/Series/Category/SubCategory/
-// Unit/HSN Code here are plain typed text, not picked from the global catalog
-// — Admin/Staff manage their own local product list only, and typing these
-// values never creates or touches any global Manufacturer/Series/Category/etc.
-// row. With ?id=<productId> the form loads an existing product for editing.
+// Add / Edit Product — a single scrollable form covering the full catalog
+// hierarchy: Manufacturer → Division → Series → Category → Model
+// → Specifications → Variants → Pricing → Review. Everything is visible and
+// editable in one viewport; the pill bar just scrolls to a section, it never
+// gates access the way a wizard's Next/Back would. With ?id=<productId> the
+// form loads an existing product for editing.
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Plus, Trash2, X } from "lucide-react";
 
@@ -16,13 +15,46 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import SearchableCombo, { ComboPage } from "@/components/ui/searchable-combo";
 import { cn } from "@/lib/utils";
-import { getProduct, saveProduct, ProductInput, VariantInput } from "@/app/lib/catalog/api";
-import type { AttributeValues, FileMeta, PriceSet, ProductImages, VariantStatus } from "@/app/lib/catalog/types";
+import {
+  attributeDefsApi,
+  categoriesApi,
+  divisionsApi,
+  getProduct,
+  hsnCodesApi,
+  manufacturersApi,
+  saveProduct,
+  seriesApi,
+  taxRatesApi,
+  unitsApi,
+  ProductInput,
+  VariantInput,
+} from "@/app/lib/catalog/api";
+import type {
+  AttributeDef,
+  AttributeValues,
+  FileMeta,
+  PriceSet,
+  ProductImages,
+  TaxRate,
+  VariantStatus,
+} from "@/app/lib/catalog/types";
 import { PRICE_FIELDS } from "@/app/lib/catalog/types";
-import { getUser } from "@/app/lib/auth-storage";
 
 // ── Form state ───────────────────────────────────────────────────────────────
+
+interface Picked {
+  id: string;
+  name: string;
+}
 
 interface VariantDraft {
   key: string; // stable UI key
@@ -150,24 +182,27 @@ function ProductFormInner() {
   const [saveError, setSaveError] = useState("");
   const [initializing, setInitializing] = useState(Boolean(editId));
 
-  // Hierarchy — plain typed text, not references into the global catalog
-  const [manufacturerName, setManufacturerName] = useState("");
-  const [seriesName, setSeriesName] = useState("");
-  const [categoryName, setCategoryName] = useState("");
-  const [subCategoryName, setSubCategoryName] = useState("");
+  // Hierarchy selections
+  const [manufacturer, setManufacturer] = useState<Picked | null>(null);
+  const [division, setDivision] = useState<Picked | null>(null);
+  const [series, setSeries] = useState<Picked | null>(null);
+  const [category, setCategory] = useState<Picked | null>(null);
 
   // Model
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [unitName, setUnitName] = useState("");
-  const [hsnCode, setHsnCode] = useState("");
+  const [unit, setUnit] = useState<Picked | null>(null);
+  const [hsn, setHsn] = useState<Picked | null>(null);
   const [gstRate, setGstRate] = useState("");
   const [status, setStatus] = useState<VariantStatus>("ACTIVE");
 
-  // Variants & specifications. Images are not collected in this form, but
-  // existing values are preserved when editing older products.
+  // Variants & specifications. Sub-category and images are no longer collected
+  // in this form, but existing values are preserved when editing older products.
   const [variants, setVariants] = useState<VariantDraft[]>([newVariant()]);
+  const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
+  const [specs, setSpecs] = useState<AttributeValues>({});
   const [customSpecs, setCustomSpecs] = useState<CustomSpec[]>([]);
+  const [subCategory, setSubCategory] = useState<Picked | null>(null);
   const [images, setImages] = useState<ProductImages>({
     primary: null,
     gallery: [],
@@ -176,7 +211,22 @@ function ProductFormInner() {
     manual: null,
   });
 
-  const [isGlobalCopy, setIsGlobalCopy] = useState(false);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+
+  useEffect(() => {
+    taxRatesApi.list({ limit: 100 }).then((r) => setTaxRates(r.items));
+  }, []);
+
+  // The selected category decides which specification fields appear
+  useEffect(() => {
+    if (!category) {
+      setAttributeDefs([]);
+      return;
+    }
+    attributeDefsApi
+      .list({ filter: { categoryId: category.id } as Partial<AttributeDef>, limit: 500 })
+      .then((r) => setAttributeDefs([...r.items].sort((a, b) => a.sortOrder - b.sortOrder)));
+  }, [category]);
 
   // ── Edit mode: hydrate the form from an existing product ──
   useEffect(() => {
@@ -187,24 +237,19 @@ function ProductFormInner() {
         setInitializing(false);
         return;
       }
-      
-      const user = getUser();
-      const isSuper = user?.roles?.includes("SUPERADMIN");
-      const globalCopy = !product.tenantId && !isSuper;
-      setIsGlobalCopy(globalCopy);
-      setManufacturerName(product.manufacturer?.name ?? product.manufacturerName ?? "");
-      setSeriesName(product.series?.name ?? product.seriesName ?? "");
-      setCategoryName(product.category?.name ?? product.categoryName ?? "");
-      setSubCategoryName(product.subCategory?.name ?? product.subCategoryName ?? "");
+      setManufacturer(product.manufacturer ?? null);
+      setDivision(product.division ?? null);
+      setSeries(product.series ?? null);
+      setCategory(product.category ?? null);
+      setSubCategory(product.subCategory ?? null);
       setName(product.name);
       setDescription(product.description ?? "");
-      setUnitName(product.unitName ?? "");
-      setHsnCode(product.hsnCode ?? "");
+      setUnit(product.unitId ? { id: product.unitId, name: product.unitName ?? "" } : null);
+      setHsn(product.hsnCode ? { id: product.hsnCode, name: product.hsnCode } : null);
       setGstRate(product.gstRate != null ? String(product.gstRate) : "");
       setStatus(product.status);
-      // Only the manually-typed "custom:" specs apply here (no category-driven
-      // AttributeDef fields for Admin/Staff products), but keep parsing both in
-      // case an older product carries category-driven values from before.
+      // Split stored attributes into category specs and manual "custom:" ones
+      const defValues: AttributeValues = {};
       const customRows: CustomSpec[] = [];
       for (const [key, value] of Object.entries(product.attributes)) {
         if (key.startsWith(CUSTOM_PREFIX)) {
@@ -213,8 +258,11 @@ function ProductFormInner() {
             name: key.slice(CUSTOM_PREFIX.length),
             value: value != null ? String(value) : "",
           });
+        } else {
+          defValues[key] = value;
         }
       }
+      setSpecs(defValues);
       setCustomSpecs(customRows);
       setImages(product.images);
       setVariants(
@@ -241,6 +289,30 @@ function ProductFormInner() {
     });
   }, [editId]);
 
+  // ── Combo loaders (paged + searchable) ──
+  const comboLoader = useCallback(
+    <T extends { id: string; name: string }>(
+      api: {
+        list: (p: {
+          search?: string;
+          page?: number;
+          limit?: number;
+          filter?: Record<string, unknown>;
+        }) => Promise<{ items: T[]; meta: { hasNextPage: boolean } }>;
+      },
+      filter?: Record<string, unknown>,
+      hint?: (item: T) => string | undefined
+    ) =>
+      async (search: string, page: number, pageSize: number): Promise<ComboPage> => {
+        const result = await api.list({ search, page, limit: pageSize, filter });
+        return {
+          items: result.items.map((i) => ({ id: i.id, name: i.name, hint: hint?.(i) })),
+          hasMore: result.meta.hasNextPage,
+        };
+      },
+    []
+  );
+
   // ── Section refs (for scroll-to-section nav + jumping to the first error) ──
   const sectionRefs: Record<SectionId, React.RefObject<HTMLDivElement | null>> = {
     classification: useRef<HTMLDivElement>(null),
@@ -255,8 +327,8 @@ function ProductFormInner() {
 
   // ── Validation (runs once, at Save) ──
   const validate = (): { section: SectionId; message: string } | null => {
-    if (!manufacturerName.trim()) return { section: "classification", message: "Manufacturer is required" };
-    if (!categoryName.trim()) return { section: "classification", message: "Category is required" };
+    if (!manufacturer) return { section: "classification", message: "Select or create a manufacturer" };
+    if (!category) return { section: "classification", message: "Select or create a category" };
     if (!name.trim()) return { section: "model", message: "Product model name is required" };
     const named = variants.filter((v) => v.name.trim());
     if (named.length === 0)
@@ -281,31 +353,30 @@ function ProductFormInner() {
     setSaving(true);
     setSaveError("");
     try {
-      // Keep only filled specs
+      // Keep only filled specs; unticked checkboxes and blank values are dropped
       const attributes: AttributeValues = {};
+      for (const [key, value] of Object.entries(specs)) {
+        if (value === null || value === "" || value === false) continue;
+        attributes[key] = value;
+      }
       for (const row of customSpecs) {
         if (row.name.trim() && row.value.trim()) {
           attributes[`${CUSTOM_PREFIX}${row.name.trim()}`] = row.value.trim();
         }
       }
-      const finalEditId = isGlobalCopy ? undefined : editId;
       const productInput: ProductInput = {
-        id: finalEditId ?? undefined,
+        id: editId ?? undefined,
         name: name.trim(),
         description: description.trim() || null,
-        manufacturerId: undefined,
-        manufacturerName: manufacturerName.trim(),
-        divisionId: undefined,
-        seriesId: undefined,
-        seriesName: seriesName.trim() || null,
-        categoryId: undefined,
-        categoryName: categoryName.trim(),
-        subCategoryId: undefined,
-        subCategoryName: subCategoryName.trim() || null,
+        manufacturerId: manufacturer!.id,
+        divisionId: division?.id ?? null,
+        seriesId: series?.id ?? null,
+        categoryId: category!.id,
+        subCategoryId: subCategory?.id ?? null,
         attributes,
-        unitId: undefined,
-        unitName: unitName.trim() || null,
-        hsnCode: hsnCode.trim() || null,
+        unitId: unit?.id ?? null,
+        unitName: unit?.name ?? null,
+        hsnCode: hsn?.name ?? null,
         gstRate: toNum(gstRate),
         images,
         status,
@@ -313,7 +384,7 @@ function ProductFormInner() {
       const variantInputs: VariantInput[] = variants
         .filter((v) => v.name.trim())
         .map((v) => ({
-          id: isGlobalCopy ? undefined : v.id,
+          id: v.id,
           name: v.name.trim(),
           modelCode: v.modelCode.trim() || null,
           manufacturerSku: v.manufacturerSku.trim() || null,
@@ -331,7 +402,7 @@ function ProductFormInner() {
           image: v.image,
         }));
       await saveProduct(productInput, variantInputs);
-      router.push("/Materials");
+      router.push("/superadmin/Materials");
     } catch (err2) {
       setSaveError(err2 instanceof Error ? err2.message : "Failed to save product");
       setSaving(false);
@@ -350,21 +421,32 @@ function ProductFormInner() {
     return (
       <div className="px-7 py-10 text-center space-y-4">
         <p className="text-sm text-red-600">{loadError}</p>
-        <Button variant="outline" className="rounded-xl" onClick={() => router.push("/Materials")}>
+        <Button variant="outline" className="rounded-xl" onClick={() => router.push("/superadmin/Materials")}>
           Back to Product Library
         </Button>
       </div>
     );
   }
 
+  const booleanDefs = attributeDefs.filter((d) => d.type === "boolean");
+  const valueDefs = attributeDefs.filter((d) => d.type !== "boolean");
   const namedVariants = variants.filter((v) => v.name.trim());
-  const specRows = customSpecs
-    .filter((r) => r.name.trim() && r.value.trim())
-    .map((r) => ({ label: r.name.trim(), value: r.value.trim() }));
+  const specRows = [
+    ...Object.entries(specs)
+      .filter(([, v]) => v !== null && v !== "" && v !== false)
+      .map(([key, v]) => ({
+        label: attributeDefs.find((d) => d.id === key)?.name ?? key,
+        value: v === true ? "Yes" : String(v),
+      })),
+    ...customSpecs
+      .filter((r) => r.name.trim() && r.value.trim())
+      .map((r) => ({ label: r.name.trim(), value: r.value.trim() })),
+  ];
   const hierarchy = [
-    { label: "Manufacturer", value: manufacturerName || undefined },
-    { label: "Series", value: seriesName || undefined },
-    { label: "Category", value: categoryName || undefined },
+    { label: "Manufacturer", value: manufacturer?.name },
+    { label: "Division", value: division?.name },
+    { label: "Series", value: series?.name },
+    { label: "Category", value: category?.name },
   ];
 
   const saveButton = (
@@ -393,7 +475,7 @@ function ProductFormInner() {
             <Button
               variant="outline"
               className="rounded-xl gap-2"
-              onClick={() => router.push("/Materials")}
+              onClick={() => router.push("/superadmin/Materials")}
             >
               <X className="h-4 w-4" /> Cancel
             </Button>
@@ -425,39 +507,74 @@ function ProductFormInner() {
         <Section
           sectionRef={sectionRefs.classification}
           title="Manufacturer & Classification"
-          subtitle="Manufacturer and Category are required; type them as free text — nothing here is shared with any global catalog."
+          subtitle="Manufacturer and Category are required; Division and Series keep large catalogs organised."
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Manufacturer" required>
-              <Input
-                value={manufacturerName}
-                onChange={(e) => setManufacturerName(e.target.value)}
-                placeholder="e.g. Schneider Electric"
-                className="rounded-xl border-border h-10"
+              <SearchableCombo
+                value={manufacturer?.id ?? ""}
+                valueLabel={manufacturer?.name}
+                placeholder="Search manufacturers..."
+                loadOptions={comboLoader(manufacturersApi)}
+                onSelect={(item) => {
+                  setManufacturer(item);
+                  setDivision(null);
+                  setSeries(null);
+                }}
+                onCreate={async (n) => manufacturersApi.create({ name: n })}
               />
             </Field>
             <Field label="Category" required>
-              <Input
-                value={categoryName}
-                onChange={(e) => setCategoryName(e.target.value)}
+              <SearchableCombo
+                value={category?.id ?? ""}
+                valueLabel={category?.name}
                 placeholder="e.g. Switch, Socket, MCB, Wire..."
-                className="rounded-xl border-border h-10"
+                loadOptions={comboLoader(categoriesApi)}
+                onSelect={(item) => {
+                  setCategory(item);
+                  setSubCategory(null);
+                  setSpecs({});
+                  setCustomSpecs([]);
+                }}
+                onCreate={async (n) => categoriesApi.create({ name: n })}
+              />
+            </Field>
+            <Field label="Business Division">
+              <SearchableCombo
+                value={division?.id ?? ""}
+                valueLabel={division?.name}
+                placeholder={manufacturer ? "e.g. Wiring Devices, Switchgear..." : "Select a manufacturer first"}
+                allowClear
+                disabled={!manufacturer}
+                loadOptions={comboLoader(divisionsApi, { manufacturerId: manufacturer?.id })}
+                onSelect={(item) => {
+                  setDivision(item);
+                  setSeries(null);
+                }}
+                onCreate={async (n) =>
+                  divisionsApi.create({ name: n, manufacturerId: manufacturer!.id })
+                }
               />
             </Field>
             <Field label="Product Series">
-              <Input
-                value={seriesName}
-                onChange={(e) => setSeriesName(e.target.value)}
-                placeholder="e.g. Livia, Myrius, FR House Wire..."
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-            <Field label="Sub-category">
-              <Input
-                value={subCategoryName}
-                onChange={(e) => setSubCategoryName(e.target.value)}
-                placeholder="Optional"
-                className="rounded-xl border-border h-10"
+              <SearchableCombo
+                value={series?.id ?? ""}
+                valueLabel={series?.name}
+                placeholder={manufacturer ? "e.g. Livia, Myrius, FR House Wire..." : "Select a manufacturer first"}
+                allowClear
+                disabled={!manufacturer}
+                loadOptions={comboLoader(seriesApi, {
+                  manufacturerId: manufacturer?.id,
+                  ...(division ? { divisionId: division.id } : {}),
+                })}
+                onSelect={setSeries}
+                onCreate={async (n) =>
+                  seriesApi.create({
+                    name: n,
+                    manufacturerId: manufacturer!.id,
+                    divisionId: division?.id ?? null,
+                  })
+                }
               />
             </Field>
           </div>
@@ -475,29 +592,46 @@ function ProductFormInner() {
               />
             </Field>
             <Field label="Unit of Measure">
-              <Input
-                value={unitName}
-                onChange={(e) => setUnitName(e.target.value)}
+              <SearchableCombo
+                value={unit?.id ?? ""}
+                valueLabel={unit?.name}
                 placeholder="Nos, Meter, Roll, Box..."
-                className="rounded-xl border-border h-10"
+                allowClear
+                loadOptions={comboLoader(unitsApi)}
+                onSelect={setUnit}
+                onCreate={async (n) => unitsApi.create({ name: n })}
               />
             </Field>
             <Field label="HSN Code">
-              <Input
-                value={hsnCode}
-                onChange={(e) => setHsnCode(e.target.value)}
+              <SearchableCombo
+                value={hsn?.id ?? ""}
+                valueLabel={hsn?.name}
                 placeholder="e.g. 8536"
-                className="rounded-xl border-border h-10"
+                allowClear
+                loadOptions={comboLoader(hsnCodesApi, undefined, (i) =>
+                  typeof i.description === "string" ? i.description : undefined
+                )}
+                onSelect={(item) => setHsn(item ? { id: item.id, name: item.name } : null)}
+                onCreate={async (n) => hsnCodesApi.create({ name: n })}
               />
             </Field>
             <Field label="Default GST Rate (%)">
-              <Input
-                type="number"
+              <Select
                 value={gstRate}
-                onChange={(e) => setGstRate(e.target.value)}
-                placeholder="e.g. 18"
-                className="rounded-xl border-border h-10"
-              />
+                items={Object.fromEntries(taxRates.map((t) => [String(t.ratePercent), t.name]))}
+                onValueChange={(v) => v && setGstRate(v)}
+              >
+                <SelectTrigger className="rounded-xl border-border h-10 w-full">
+                  <SelectValue placeholder="Select GST" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border">
+                  {taxRates.map((t) => (
+                    <SelectItem key={t.id} value={String(t.ratePercent)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Description" className="md:col-span-2">
               <Textarea
@@ -514,52 +648,123 @@ function ProductFormInner() {
         <Section
           sectionRef={sectionRefs.specs}
           title="Specifications"
-          subtitle="Add any name/value specs that matter for this product."
+          subtitle={
+            category
+              ? `Tick what applies and fill in the values for ${category.name}. Manage this list under the Categories tab.`
+              : "Select a category above to see its specification fields."
+          }
         >
-          <div className="space-y-2">
-            {customSpecs.map((row) => (
-              <div key={row.key} className="flex items-center gap-2">
-                <Input
-                  placeholder="Name (e.g. Finish)"
-                  value={row.name}
-                  onChange={(e) =>
-                    setCustomSpecs((prev) =>
-                      prev.map((r) => (r.key === row.key ? { ...r, name: e.target.value } : r))
-                    )
-                  }
-                  className="rounded-xl border-border h-9 w-48"
-                />
-                <Input
-                  placeholder="Value (e.g. Matt White)"
-                  value={row.value}
-                  onChange={(e) =>
-                    setCustomSpecs((prev) =>
-                      prev.map((r) => (r.key === row.key ? { ...r, value: e.target.value } : r))
-                    )
-                  }
-                  className="rounded-xl border-border h-9 flex-1"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCustomSpecs((prev) => prev.filter((r) => r.key !== row.key))}
-                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500 shrink-0"
-                  aria-label="Remove specification"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+          <div className="space-y-5">
+            {booleanDefs.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2">Tick what applies</p>
+                <div className="flex flex-wrap gap-2">
+                  {booleanDefs.map((def) => {
+                    const checked = specs[def.id] === true;
+                    return (
+                      <label
+                        key={def.id}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all",
+                          checked
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-white hover:bg-muted/40"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setSpecs((prev) => ({ ...prev, [def.id]: e.target.checked }))
+                          }
+                          className="h-4 w-4 rounded accent-[#6c63ff]"
+                        />
+                        {def.name}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl gap-1.5"
-              onClick={() =>
-                setCustomSpecs((prev) => [...prev, { key: `c${++customSpecSeq}`, name: "", value: "" }])
-              }
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Specification
-            </Button>
+            )}
+
+            {valueDefs.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2">Values</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {valueDefs.map((def) => (
+                    <Field key={def.id} label={def.unit ? `${def.name} (${def.unit})` : def.name}>
+                      <Input
+                        value={specs[def.id] != null ? String(specs[def.id]) : ""}
+                        onChange={(e) =>
+                          setSpecs((prev) => ({ ...prev, [def.id]: e.target.value }))
+                        }
+                        className="rounded-xl border-border h-9"
+                      />
+                    </Field>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {category && attributeDefs.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border bg-white px-5 py-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No predefined specifications for{" "}
+                  <span className="font-semibold">{category.name}</span> yet.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Define them under Categories → Specifications, or add them manually below.
+                </p>
+              </div>
+            )}
+
+            {/* Ad-hoc specs typed at material-creation time */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold">Additional Specifications</p>
+              {customSpecs.map((row) => (
+                <div key={row.key} className="flex items-center gap-2">
+                  <Input
+                    placeholder="Name (e.g. Finish)"
+                    value={row.name}
+                    onChange={(e) =>
+                      setCustomSpecs((prev) =>
+                        prev.map((r) => (r.key === row.key ? { ...r, name: e.target.value } : r))
+                      )
+                    }
+                    className="rounded-xl border-border h-9 w-48"
+                  />
+                  <Input
+                    placeholder="Value (e.g. Matt White)"
+                    value={row.value}
+                    onChange={(e) =>
+                      setCustomSpecs((prev) =>
+                        prev.map((r) => (r.key === row.key ? { ...r, value: e.target.value } : r))
+                      )
+                    }
+                    className="rounded-xl border-border h-9 flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCustomSpecs((prev) => prev.filter((r) => r.key !== row.key))}
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500 shrink-0"
+                    aria-label="Remove specification"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-1.5"
+                onClick={() =>
+                  setCustomSpecs((prev) => [...prev, { key: `c${++customSpecSeq}`, name: "", value: "" }])
+                }
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Specification
+              </Button>
+            </div>
           </div>
         </Section>
 
@@ -694,11 +899,11 @@ function ProductFormInner() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
               <p className="text-xs">
                 <span className="text-muted-foreground">Unit: </span>
-                <span className="font-semibold">{unitName || "—"}</span>
+                <span className="font-semibold">{unit?.name || "—"}</span>
               </p>
               <p className="text-xs">
                 <span className="text-muted-foreground">HSN: </span>
-                <span className="font-semibold">{hsnCode || "—"}</span>
+                <span className="font-semibold">{hsn?.name || "—"}</span>
               </p>
               <p className="text-xs">
                 <span className="text-muted-foreground">GST: </span>

@@ -104,6 +104,7 @@ export interface ListProductsParams {
   manufacturerId?: string;
   categoryId?: string;
   seriesId?: string;
+  scope?: 'global' | 'local' | 'all';
 }
 
 export interface VariantSummary {
@@ -217,6 +218,10 @@ export function saveProduct(
 
 export function deleteProduct(id: string): Promise<void> {
   return apiDelete(`/catalog/products/${id}`);
+}
+
+export function deleteAllProducts(): Promise<void> {
+  return apiDelete(`/catalog/products/all`);
 }
 
 /** Counts for the management dashboards (e.g. products per manufacturer). */

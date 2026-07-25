@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, use, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Search, Loader2, Sparkles, FolderKanban, Printer } from "lucide-react";
+import { ArrowLeft, Save, Search, Loader2, Sparkles, FolderKanban, Printer, X } from "lucide-react";
 
 import Spreadsheet from "@/components/spreadsheet/Spreadsheet";
 import { useSpreadsheetStore } from "@/components/spreadsheet/store/spreadsheetStore";
 import { cellKey } from "@/components/spreadsheet/utils/cellUtils";
 import { getQuotation, updateQuotation, Quotation } from "@/app/lib/api/quotations";
-import { listActivities, Activity } from "@/app/lib/api/activities";
+import { listActivities, Activity, ActivityRequirementOption } from "@/app/lib/api/activities";
 import {
   listProducts,
   manufacturersApi,
@@ -79,15 +79,15 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Brand preferences state
-  const [brandPreferences, setBrandPreferences] = useState<{
-    wiresId?: string | null;
-    conduitsId?: string | null;
-    accessoriesId?: string | null;
-    accessoriesSeriesId?: string | null;
-    switchgearId?: string | null;
-    switchgearSeriesId?: string | null;
-  }>({});
+  // Preferred manufacturer (+ optional series) per catalog category — drives which
+  // configured make wins when an Activity's multi-make requirement is added below.
+  type BrandPreferences = Record<string, { manufacturerId: string; seriesId?: string | null }>;
+  const [brandPreferences, setBrandPreferences] = useState<BrandPreferences>({});
+
+  // "Add a preference" mini-form state (sidebar panel)
+  const [prefCatId, setPrefCatId] = useState("");
+  const [prefMfrId, setPrefMfrId] = useState("");
+  const [prefSeriesId, setPrefSeriesId] = useState("");
 
   // Per-row activity tags ("header" | "detail"), keyed by row index. Lets
   // detail-row detection (brand swap, PDF export filtering) rely on real
@@ -199,10 +199,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
             modelCode: v.modelCode,
             mrp: v.mrp,
             unit: p.unitName || "NOS",
-            categoryId: p.categoryId,
-            categoryName: p.category?.name || "—",
-            manufacturerId: p.manufacturerId,
-            manufacturerName: p.manufacturer?.name || "—",
+            categoryId: p.categoryId || "",
+            categoryName: p.category?.name || p.categoryName || "—",
+            manufacturerId: p.manufacturerId || "",
+            manufacturerName: p.manufacturer?.name || p.manufacturerName || "—",
             seriesId: p.seriesId || "",
             seriesName: p.series?.name || "—",
           });
@@ -210,22 +210,14 @@ export default function QuotationEditorPage({ params }: PageProps) {
       });
       setFlatVariants(flattened);
 
-      // Initialize spreadsheet cells
-      if (quoData.sheetData && quoData.sheetData.cells) {
-        const loadedCells = new Map<string, any>(quoData.sheetData.cells);
-        const loadedColWidths = quoData.sheetData.colWidths
-          ? new Map<number, number>(quoData.sheetData.colWidths)
-          : undefined;
-        const loadedRowHeights = quoData.sheetData.rowHeights
-          ? new Map<number, number>(quoData.sheetData.rowHeights)
-          : undefined;
-        store.loadSheet(
-          loadedCells,
-          quoData.sheetData.rowCount,
-          quoData.sheetData.colCount,
-          loadedColWidths,
-          loadedRowHeights
-        );
+      // Initialize spreadsheet cells (handles both the current multi-sheet
+      // workbook shape and the single-sheet shape saved before sheet tabs existed)
+      const rawSheetData = quoData.sheetData as
+        | { cells?: unknown; sheets?: unknown }
+        | null
+        | undefined;
+      if (rawSheetData && (rawSheetData.sheets || rawSheetData.cells)) {
+        store.loadWorkbook(quoData.sheetData);
       } else {
         const newCells = new Map<string, any>(store.cells);
 
@@ -270,18 +262,22 @@ export default function QuotationEditorPage({ params }: PageProps) {
     setSaving(true);
     setSaveSuccess(false);
 
+    // Totals are always read from the primary (first) sheet — if the user happened
+    // to be on a different tab, hop there first and back afterwards.
+    const primarySheetId = store.sheets[0]?.id;
+    const originalSheetId = store.activeSheetId;
+    if (primarySheetId && primarySheetId !== originalSheetId) {
+      store.switchToSheet(primarySheetId);
+    }
+
     try {
       const materialCost = Number(store.getEvaluatedCell(1, 11).raw || 0);
       const labourCost = Number(store.getEvaluatedCell(1, 12).raw || 0);
       const subTotal = materialCost + labourCost;
 
-      const sheetData = {
-        rowCount: store.rowCount,
-        colCount: store.colCount,
-        cells: Array.from(store.cells.entries()),
-        colWidths: Array.from(store.colWidths.entries()),
-        rowHeights: Array.from(store.rowHeights.entries()),
-      };
+      // Persist whichever tab the user was actually looking at, not the primary
+      // sheet we hopped to above just to read totals.
+      const sheetData = { ...store.serializeWorkbook(), activeSheetId: originalSheetId };
 
       const updated = await updateQuotation(quotation.id, {
         subTotal,
@@ -297,6 +293,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
     } catch (err) {
       console.error(err);
     } finally {
+      if (primarySheetId && primarySheetId !== originalSheetId) {
+        store.switchToSheet(originalSheetId);
+      }
       setSaving(false);
     }
   };
@@ -442,39 +441,48 @@ export default function QuotationEditorPage({ params }: PageProps) {
     });
   };
 
-  // Resolve template requirements according to Brand Preferences
+  // Resolve a template requirement to a specific catalog variant, per the category's
+  // preferred brand/series.
   const resolveRequirementVariant = (
-    req: { categoryId: string; description: string },
-    prefs: typeof brandPreferences,
+    req: { categoryId: string; description: string; options?: ActivityRequirementOption[] },
+    prefs: BrandPreferences,
     variants: FlattenedVariant[]
   ) => {
-    let preferredBrandId: string | null = null;
-    let preferredSeriesId: string | null = null;
-    const catId = req.categoryId;
+    const pref = prefs[req.categoryId];
 
-    if (catId === "ccat-wire") {
-      preferredBrandId = prefs.wiresId || null;
-    } else if (catId === "ccat-conduit") {
-      preferredBrandId = prefs.conduitsId || null;
-    } else if (["ccat-switch", "ccat-socket", "ccat-coverframe", "ccat-box"].includes(catId)) {
-      preferredBrandId = prefs.accessoriesId || null;
-      preferredSeriesId = prefs.accessoriesSeriesId || null;
-    } else if (["ccat-mcb", "ccat-db"].includes(catId)) {
-      preferredBrandId = prefs.switchgearId || null;
-      preferredSeriesId = prefs.switchgearSeriesId || null;
+    // Requirement has configured alternate makes (e.g. Switch: Legrand/Schneider) — pick the
+    // one matching the category's preferred brand/series among THOSE options only; fall back
+    // to whichever the Activity itself marked as default.
+    if (req.options && req.options.length > 0) {
+      const optionVariants = req.options
+        .map((o) => ({ opt: o, v: variants.find((fv) => fv.id === o.variantId) }))
+        .filter((x): x is { opt: ActivityRequirementOption; v: FlattenedVariant } => Boolean(x.v));
+
+      if (pref) {
+        const matched = optionVariants.find(
+          ({ v }) => v.manufacturerId === pref.manufacturerId && (!pref.seriesId || v.seriesId === pref.seriesId)
+        );
+        if (matched) return matched.v;
+      }
+
+      const defaultOpt = optionVariants.find(({ opt }) => opt.isDefault) ?? optionVariants[0];
+      if (defaultOpt) return defaultOpt.v;
+      // fall through to the generic category search below if none of the options resolved
     }
 
-    if (preferredBrandId) {
+    // Simple requirement (no configured makes) — search the whole category by preference,
+    // then by spec-keyword match, then just anything in the category.
+    const catId = req.categoryId;
+    if (pref) {
       const brandVars = variants.filter((v) => {
-        if (v.categoryId !== catId || v.manufacturerId !== preferredBrandId) return false;
-        if (preferredSeriesId && v.seriesId !== preferredSeriesId) return false;
+        if (v.categoryId !== catId || v.manufacturerId !== pref.manufacturerId) return false;
+        if (pref.seriesId && v.seriesId !== pref.seriesId) return false;
         return true;
       });
       const matched = brandVars.find((v) => matchesSpecKeyword(v.displayName, req.description));
       if (matched) return matched;
     }
 
-    // Fallback: search all brands for matching spec
     const matchedFallback = variants.find(
       (v) => v.categoryId === catId && matchesSpecKeyword(v.displayName, req.description)
     );
@@ -516,8 +524,12 @@ export default function QuotationEditorPage({ params }: PageProps) {
       const childRowSp = childRowIdx + 1; // 1-indexed row number for Excel formulas
       tags[childRowIdx] = "detail";
 
-      // Resolve variant based on brand preferences
-      const variant = resolveRequirementVariant(req, brandPreferences, flatVariants);
+      // Resolve variant based on brand preferences (and the requirement's own configured makes)
+      const variant = resolveRequirementVariant(
+        { categoryId: req.categoryId, description: req.description, options: req.options },
+        brandPreferences,
+        flatVariants
+      );
       const displayName = variant
         ? `  ↳ ${variant.manufacturerName} ${variant.displayName}`
         : `  ↳ ${req.description}`;
@@ -674,6 +686,33 @@ export default function QuotationEditorPage({ params }: PageProps) {
     );
   };
 
+  // Brand/Series lists scoped to whichever makes actually exist in the selected category
+  // (e.g. a "Switch" category with only Legrand + Schneider stock shows just those two).
+  const availableManufacturers =
+    selectedCat === "all"
+      ? manufacturers
+      : manufacturers.filter((m) => flatVariants.some((v) => v.categoryId === selectedCat && v.manufacturerId === m.id));
+
+  const filteredSeriesList = seriesList.filter((s) => {
+    if (selectedMfr !== "all" && s.manufacturerId !== selectedMfr) return false;
+    if (selectedCat === "all") return true;
+    return flatVariants.some(
+      (v) => v.categoryId === selectedCat && v.seriesId === s.id && (selectedMfr === "all" || v.manufacturerId === selectedMfr)
+    );
+  });
+
+  // Same category-scoping for the "Preferred Brands" add-form.
+  const prefAvailableManufacturers = !prefCatId
+    ? manufacturers
+    : manufacturers.filter((m) => flatVariants.some((v) => v.categoryId === prefCatId && v.manufacturerId === m.id));
+  const prefAvailableSeries = seriesList.filter((s) => {
+    if (prefMfrId && s.manufacturerId !== prefMfrId) return false;
+    if (!prefCatId) return true;
+    return flatVariants.some(
+      (v) => v.categoryId === prefCatId && v.seriesId === s.id && (!prefMfrId || v.manufacturerId === prefMfrId)
+    );
+  });
+
   // Filter lists
   const filteredVariants = flatVariants.filter((v) => {
     const matchesSearch =
@@ -682,7 +721,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
     const matchesCat = selectedCat === "all" || v.categoryId === selectedCat;
     const matchesMfr = selectedMfr === "all" || v.manufacturerId === selectedMfr;
     const matchesSeries = selectedSeries === "all" || v.seriesId === selectedSeries;
-    
+
     return matchesSearch && matchesCat && matchesMfr && matchesSeries;
   });
 
@@ -702,7 +741,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100vh-3rem)] items-center justify-center bg-slate-50/50">
+      <div className="flex h-[calc(100vh-0rem)] items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
           <p className="text-sm font-semibold text-muted-foreground">Loading quotation sheet...</p>
@@ -715,7 +754,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
     <div
       ref={pageRef}
       className={`flex flex-col bg-white overflow-hidden ${
-        isFullscreen ? "w-screen h-screen p-2" : "h-[calc(100vh-3rem)] w-full"
+        isFullscreen ? "w-screen h-screen p-2" : "h-[calc(100vh-0rem)] w-full"
       }`}
     >
       {/* Sub Header */}
@@ -790,116 +829,137 @@ export default function QuotationEditorPage({ params }: PageProps) {
           style={{ width: sidebarWidth }}
           className="h-full flex flex-col bg-slate-50/50 shrink-0 select-none overflow-hidden"
         >
-          {/* Brand Preferences Configurator */}
-          {/* <div className="p-3 bg-white border-b border-border space-y-2 shrink-0">
+          {/* Preferred Brands by Category — drives which configured make (Legrand vs.
+              Schneider, etc.) an Activity's requirement resolves to when added below. */}
+          <div className="p-3 bg-white border-b border-border space-y-2 shrink-0">
             <h3 className="text-xs font-bold text-foreground flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Default Brand Preferences
+              {/* <Sparkles className="h-3.5 w-3.5 text-primary" /> */}
+              Preferred Brands by Category
             </h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-0.5">
-                <span className="text-[9px] font-bold text-muted-foreground uppercase">Wires</span>
-                <Select
-                  value={brandPreferences.wiresId || "none"}
-                  onValueChange={(val) =>
-                    setBrandPreferences((prev) => ({ ...prev, wiresId: val === "none" ? null : val }))
-                  }
-                >
-                  <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-2 font-medium">
-                    <SelectValue placeholder="Default Wires" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-border text-xs">
-                    <SelectItem value="none">No Preference</SelectItem>
-                    <SelectItem value="mfr-polycab">Polycab</SelectItem>
-                    <SelectItem value="mfr-finolex">Finolex</SelectItem>
-                    <SelectItem value="mfr-rr">RR Kabel</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="space-y-0.5">
-                <span className="text-[9px] font-bold text-muted-foreground uppercase">Conduits</span>
-                <Select
-                  value={brandPreferences.conduitsId || "none"}
-                  onValueChange={(val) =>
-                    setBrandPreferences((prev) => ({ ...prev, conduitsId: val === "none" ? null : val }))
-                  }
-                >
-                  <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-2 font-medium">
-                    <SelectValue placeholder="Default Conduits" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-border text-xs">
-                    <SelectItem value="none">No Preference</SelectItem>
-                    <SelectItem value="mfr-finolex">Finolex</SelectItem>
-                    <SelectItem value="mfr-polycab">Polycab</SelectItem>
-                  </SelectContent>
-                </Select>
+            {Object.keys(brandPreferences).length > 0 && (
+              <div className="space-y-1">
+                {Object.entries(brandPreferences).map(([catId, pref]) => {
+                  const cat = categories.find((c) => c.id === catId);
+                  const mfr = manufacturers.find((m) => m.id === pref.manufacturerId);
+                  const ser = pref.seriesId ? seriesList.find((s) => s.id === pref.seriesId) : null;
+                  return (
+                    <div
+                      key={catId}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 border border-border px-2 py-1.5"
+                    >
+                      <span className="text-[10px] font-semibold text-foreground truncate">
+                        {cat?.name ?? catId}:{" "}
+                        <span className="text-primary">{mfr?.name ?? pref.manufacturerId}</span>
+                        {ser && <span className="text-muted-foreground"> — {ser.name}</span>}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setBrandPreferences((prev) => {
+                            const next = { ...prev };
+                            delete next[catId];
+                            return next;
+                          })
+                        }
+                        className="text-muted-foreground hover:text-red-500 shrink-0"
+                        aria-label={`Remove preference for ${cat?.name ?? catId}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
+            )}
 
-              <div className="space-y-0.5">
-                <span className="text-[9px] font-bold text-muted-foreground uppercase">Accessories</span>
-                <Select
-                  value={
-                    brandPreferences.accessoriesId && brandPreferences.accessoriesSeriesId
-                      ? `${brandPreferences.accessoriesId}|${brandPreferences.accessoriesSeriesId}`
-                      : brandPreferences.accessoriesId || "none"
+            <div className="grid grid-cols-3 gap-1.5">
+              <Select
+                value={prefCatId}
+                items={Object.fromEntries(categories.map((c) => [c.id, c.name]))}
+                onValueChange={(val) => {
+                  const nextCat = val || "";
+                  setPrefCatId(nextCat);
+                  // The brand picked so far may not stock anything in the newly chosen
+                  // category — reset rather than leave a now-invalid selection in place.
+                  if (
+                    prefMfrId &&
+                    nextCat &&
+                    !flatVariants.some((v) => v.categoryId === nextCat && v.manufacturerId === prefMfrId)
+                  ) {
+                    setPrefMfrId("");
+                    setPrefSeriesId("");
                   }
-                  onValueChange={(val) => {
-                    if (val === "none") {
-                      setBrandPreferences((prev) => ({ ...prev, accessoriesId: null, accessoriesSeriesId: null }));
-                    } else if (val && val.includes("|")) {
-                      const [mId, sId] = val.split("|");
-                      setBrandPreferences((prev) => ({ ...prev, accessoriesId: mId, accessoriesSeriesId: sId }));
-                    } else {
-                      setBrandPreferences((prev) => ({ ...prev, accessoriesId: val || null, accessoriesSeriesId: null }));
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-2 font-medium">
-                    <SelectValue placeholder="Default Accessories" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-border text-xs">
-                    <SelectItem value="none">No Preference</SelectItem>
-                    <SelectItem value="mfr-schneider|ser-livia">Schneider - Livia</SelectItem>
-                    <SelectItem value="mfr-schneider|ser-miluz">Schneider - Miluz</SelectItem>
-                    <SelectItem value="mfr-gm|ser-gm-fourfive">GM Modular - Four Five</SelectItem>
-                    <SelectItem value="mfr-legrand|ser-myrius">Legrand - Myrius</SelectItem>
-                    <SelectItem value="mfr-legrand|ser-lyncus">Legrand - Lyncus</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                }}
+              >
+                <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-border text-xs">
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <div className="space-y-0.5">
-                <span className="text-[9px] font-bold text-muted-foreground uppercase">Switchgear</span>
-                <Select
-                  value={
-                    brandPreferences.switchgearId && brandPreferences.switchgearSeriesId
-                      ? `${brandPreferences.switchgearId}|${brandPreferences.switchgearSeriesId}`
-                      : brandPreferences.switchgearId || "none"
-                  }
-                  onValueChange={(val) => {
-                    if (val === "none") {
-                      setBrandPreferences((prev) => ({ ...prev, switchgearId: null, switchgearSeriesId: null }));
-                    } else if (val && val.includes("|")) {
-                      const [mId, sId] = val.split("|");
-                      setBrandPreferences((prev) => ({ ...prev, switchgearId: mId, switchgearSeriesId: sId }));
-                    } else {
-                      setBrandPreferences((prev) => ({ ...prev, switchgearId: val || null, switchgearSeriesId: null }));
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-2 font-medium">
-                    <SelectValue placeholder="Default Switchgear" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-border text-xs">
-                    <SelectItem value="none">No Preference</SelectItem>
-                    <SelectItem value="mfr-schneider|ser-livia">Schneider</SelectItem>
-                    <SelectItem value="mfr-legrand|ser-myrius">Legrand</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select
+                value={prefMfrId}
+                items={Object.fromEntries(prefAvailableManufacturers.map((m) => [m.id, m.name]))}
+                onValueChange={(val) => {
+                  setPrefMfrId(val || "");
+                  setPrefSeriesId("");
+                }}
+              >
+                <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-border text-xs">
+                  {prefAvailableManufacturers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={prefSeriesId}
+                items={Object.fromEntries(prefAvailableSeries.map((s) => [s.id, s.name]))}
+                onValueChange={(val) => setPrefSeriesId(val || "")}
+                disabled={!prefMfrId}
+              >
+                <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
+                  <SelectValue placeholder="Series" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-border text-xs">
+                  {prefAvailableSeries.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div> */}
+
+            <Button
+              onClick={() => {
+                if (!prefCatId || !prefMfrId) return;
+                setBrandPreferences((prev) => ({
+                  ...prev,
+                  [prefCatId]: { manufacturerId: prefMfrId, seriesId: prefSeriesId || null },
+                }));
+                setPrefCatId("");
+                setPrefMfrId("");
+                setPrefSeriesId("");
+              }}
+              disabled={!prefCatId || !prefMfrId}
+              variant="outline"
+              className="w-full h-7.5 rounded-lg text-[10px] font-bold border-border"
+            >
+              Add Preference
+            </Button>
+          </div>
 
           <div className="p-3 border-b border-border bg-white shrink-0 space-y-3">
             {/* Segmented Control Tabs */}
@@ -948,7 +1008,23 @@ export default function QuotationEditorPage({ params }: PageProps) {
             {/* Material Specific Filters */}
             {activeTab === "material" && (
               <div className="grid grid-cols-3 gap-1.5">
-                <Select value={selectedCat} onValueChange={(val) => setSelectedCat(val || "all")}>
+                <Select
+                  value={selectedCat}
+                  items={{ all: "Category", ...Object.fromEntries(categories.map((c) => [c.id, c.name])) }}
+                  onValueChange={(val) => {
+                    const nextCat = val || "all";
+                    setSelectedCat(nextCat);
+                    if (
+                      selectedMfr !== "all" &&
+                      !manufacturers.some(
+                        (m) => m.id === selectedMfr && flatVariants.some((v) => v.categoryId === nextCat && v.manufacturerId === m.id)
+                      )
+                    ) {
+                      setSelectedMfr("all");
+                      setSelectedSeries("all");
+                    }
+                  }}
+                >
                   <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
@@ -962,13 +1038,20 @@ export default function QuotationEditorPage({ params }: PageProps) {
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedMfr} onValueChange={(val) => setSelectedMfr(val || "all")}>
+                <Select
+                  value={selectedMfr}
+                  items={{ all: "Brand", ...Object.fromEntries(availableManufacturers.map((m) => [m.id, m.name])) }}
+                  onValueChange={(val) => {
+                    setSelectedMfr(val || "all");
+                    setSelectedSeries("all");
+                  }}
+                >
                   <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
                     <SelectValue placeholder="Brand" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-border text-xs">
                     <SelectItem value="all">Brand</SelectItem>
-                    {manufacturers.map((m) => (
+                    {availableManufacturers.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.name}
                       </SelectItem>
@@ -976,13 +1059,17 @@ export default function QuotationEditorPage({ params }: PageProps) {
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedSeries} onValueChange={(val) => setSelectedSeries(val || "all")}>
+                <Select
+                  value={selectedSeries}
+                  items={{ all: "Series", ...Object.fromEntries(filteredSeriesList.map((s) => [s.id, s.name])) }}
+                  onValueChange={(val) => setSelectedSeries(val || "all")}
+                >
                   <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
                     <SelectValue placeholder="Series" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-border text-xs">
                     <SelectItem value="all">Series</SelectItem>
-                    {seriesList.map((s) => (
+                    {filteredSeriesList.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
                       </SelectItem>

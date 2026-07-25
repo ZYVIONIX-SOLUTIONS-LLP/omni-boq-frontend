@@ -155,16 +155,23 @@ export interface Variant {
 
 export interface ProductModel {
   id: string;
+  tenantId?: string | null;
   name: string;
   description?: string | null;
 
-  manufacturerId: string;
+  manufacturerId?: string | null;
+  manufacturerName?: string | null;
   divisionId?: string | null;
   seriesId?: string | null;
-  categoryId: string;
+  seriesName?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
   subCategoryId?: string | null;
+  subCategoryName?: string | null;
 
-  // Denormalised names so lists render without join lookups
+  // Denormalised names so lists render without join lookups. Populated for
+  // products that reference the global catalog (SuperAdmin-created); Admin/Staff
+  // free-text products carry only the *Name string fields above instead.
   manufacturer?: NamedRef | null;
   division?: NamedRef | null;
   series?: NamedRef | null;

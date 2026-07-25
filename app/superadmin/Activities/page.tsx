@@ -19,7 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   listActivities,
   Activity,
@@ -30,7 +29,6 @@ import {
 } from "@/app/lib/api/activities";
 import ActivityCreateDialog from "./activity-create-dialog";
 import ActivityImportDialog from "@/components/activities/activity-import-dialog";
-import { getUser } from "@/app/lib/auth-storage";
 
 function inr(value: number | null | undefined): string {
   if (value == null) return "₹0.00";
@@ -40,7 +38,6 @@ function inr(value: number | null | undefined): string {
 export default function ActivitiesPage() {
   const router = useRouter();
   const [items, setItems] = useState<Activity[]>([]);
-  const [scope, setScope] = useState<"local" | "global">("local");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -60,21 +57,21 @@ export default function ActivitiesPage() {
     setLoading(true);
     setError("");
     try {
-      const result = await listActivities({ limit: 500, scope });
+      const result = await listActivities({ limit: 500 });
       setItems(result.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load activities");
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const openActivity = useCallback(
-    (id: string) => router.push(`/Activities/${id}`),
+    (id: string) => router.push(`/superadmin/Activities/${id}`),
     [router]
   );
 
@@ -246,20 +243,15 @@ export default function ActivitiesPage() {
         width: 175,
         sortable: false,
         filter: false,
-        cellRenderer: (p: ICellRendererParams<Activity>) => {
-          const isGlobal = p.data && !p.data.tenantId;
-          return (
+        cellRenderer: (p: ICellRendererParams<Activity>) => (
           <div className="flex items-center gap-1.5 h-full">
-            {isGlobal && (
-              <span className="text-[10px] uppercase font-bold text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded mr-1">Global</span>
-            )}
             <Button
               variant="outline"
               size="sm"
               className="rounded-lg h-7 text-xs"
               onClick={() => p.data && openActivity(p.data.id)}
             >
-              {isGlobal ? "View" : "Open"}
+              Open
             </Button>
             <Button
               variant="ghost"
@@ -270,19 +262,17 @@ export default function ActivitiesPage() {
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>
-            {!isGlobal && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
-                onClick={() => p.data && setDeleting(p.data)}
-                aria-label="Delete activity"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+              onClick={() => p.data && setDeleting(p.data)}
+              aria-label="Delete activity"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        )},
+        ),
       },
     ],
     [openActivity]
@@ -290,15 +280,6 @@ export default function ActivitiesPage() {
 
   return (
     <div className="px-7 py-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <Tabs value={scope} onValueChange={(val) => setScope(val as any)}>
-          <TabsList>
-            <TabsTrigger value="local" className="px-6">My Activities</TabsTrigger>
-            <TabsTrigger value="global" className="px-6">Global Activities</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -310,16 +291,14 @@ export default function ActivitiesPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          {getUser()?.roles.includes("SUPERADMIN") && (
-            <Button
-              variant="destructive"
-              onClick={handleDeleteAll}
-              className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2 bg-red-600 hover:bg-red-700 text-white"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete All
-            </Button>
-          )}
+          <Button
+            variant="destructive"
+            onClick={handleDeleteAll}
+            className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2 bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete All
+          </Button>
           {selectedRows.length > 0 && (
             <Button
               variant="outline"
@@ -382,7 +361,6 @@ export default function ActivitiesPage() {
               animateRows
               suppressCellFocus
               rowSelection={{ mode: "multiRow", headerCheckbox: true, enableClickSelection: false }}
-              isRowSelectable={(rowNode) => rowNode.data ? !!rowNode.data.tenantId : false}
               onSelectionChanged={onSelectionChanged}
               onRowDoubleClicked={(e) => e.data && openActivity(e.data.id)}
             />

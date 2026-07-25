@@ -15,6 +15,7 @@ import Grid from './Grid/Grid';
 import ContextMenu from './ContextMenu/ContextMenu';
 import FindReplaceDialog from './Dialogs/FindReplaceDialog';
 import StatusBar from './StatusBar/StatusBar';
+import SheetTabs from './SheetTabs/SheetTabs';
 import { useSpreadsheetStore } from './store/spreadsheetStore';
 
 export interface SpreadsheetProps {
@@ -50,7 +51,7 @@ export default function Spreadsheet({ fullscreenElementRef }: SpreadsheetProps) 
       className="h-full w-full flex flex-col overflow-hidden bg-white relative"
     >
       <Toolbar />
-      <FormulaBar />
+      {/* <FormulaBar /> */}
       <div className="flex-1 relative overflow-hidden">
         <Grid />
         <FindReplaceDialog />
@@ -65,13 +66,14 @@ export default function Spreadsheet({ fullscreenElementRef }: SpreadsheetProps) 
           </div>
         )}
       </div>
+      <SheetTabs />
       <StatusBar />
 
       <button
         type="button"
         onClick={toggleFullscreen}
         title={isFullscreen ? 'Exit full screen' : 'Full screen'}
-        className="absolute top-1.5 right-2 z-50 flex items-center justify-center w-7 h-7 rounded text-white hover:bg-white/20"
+        className="absolute top-1.5 right-2 z-50 flex items-center justify-center w-7 h-7 rounded text-green-600 hover:bg-green-100"
       >
         {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
       </button>

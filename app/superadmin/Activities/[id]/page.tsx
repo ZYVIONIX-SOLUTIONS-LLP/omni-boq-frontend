@@ -7,8 +7,7 @@ import { ArrowLeft, Save, Search, Hammer, Loader2, Sparkles } from "lucide-react
 import Spreadsheet from "@/components/spreadsheet/Spreadsheet";
 import { useSpreadsheetStore } from "@/components/spreadsheet/store/spreadsheetStore";
 import { cellKey } from "@/components/spreadsheet/utils/cellUtils";
-import { getActivity, updateActivity, Activity, ActivityRequirementOption, duplicateActivity } from "@/app/lib/api/activities";
-import { getUser } from "@/app/lib/auth-storage";
+import { getActivity, updateActivity, Activity, ActivityRequirementOption } from "@/app/lib/api/activities";
 import {
   listProducts,
   manufacturersApi,
@@ -351,30 +350,12 @@ export default function ActivityEditorPage({ params }: PageProps) {
       const materialCost = Number(store.getEvaluatedCell(1, 11).raw || 0);
       const labourCost = Number(store.getEvaluatedCell(1, 12).raw || 0);
 
-      const user = getUser();
-      const isSuper = user?.roles?.includes("SUPERADMIN");
-      const isGlobalCopy = !activity.tenantId && !isSuper;
-
-      let targetActivityId = activity.id;
-
-      if (isGlobalCopy) {
-        // Create duplicate first to establish the new local DB record
-        const dup = await duplicateActivity(activity.id, activity.name + " (Copy)");
-        targetActivityId = dup.id;
-      }
-
-      const updated = await updateActivity(targetActivityId, {
+      const updated = await updateActivity(activity.id, {
         requirements: requirementsList,
         sheetData,
         materialCost,
         labourCost,
       });
-
-      if (isGlobalCopy) {
-        // Redirect to the new activity ID so they are editing their copy going forward
-        router.replace(`/Activities/${updated.id}`);
-        return;
-      }
 
       setActivity(updated);
       setSaveSuccess(true);
@@ -537,7 +518,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
           {!isFullscreen && (
             <>
               <button
-                onClick={() => router.push("/Activities")}
+                onClick={() => router.push("/superadmin/Activities")}
                 className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-primary transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
@@ -555,13 +536,10 @@ export default function ActivityEditorPage({ params }: PageProps) {
               <Sparkles className="h-3.5 w-3.5" /> Saved successfully
             </span>
           )}
-          {(!activity?.tenantId) && (
-            <span className="text-xs font-semibold text-muted-foreground mr-2">Global Activity (Edit saves as copy)</span>
-          )}
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="gap-2 rounded-xl h-9 px-4 font-semibold bg-primary text-white hover:bg-primary/95 transition-all shadow-md shadow-primary/10 disabled:opacity-50"
+            className="gap-2 rounded-xl h-9 px-4 font-semibold bg-primary text-white hover:bg-primary/95 transition-all shadow-md shadow-primary/10"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />

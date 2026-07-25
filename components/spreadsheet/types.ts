@@ -109,6 +109,46 @@ export interface SheetData {
   colCount: number;
 }
 
+/** Everything a sheet tab needs to fully restore itself when switched back to,
+ *  including its own undo history and cursor position. */
+export interface SheetSnapshot extends SheetData {
+  undoStack: HistoryEntry[];
+  redoStack: HistoryEntry[];
+  selection: SelectionState;
+}
+
+/** One tab in the workbook — the currently-active tab's snapshot is kept live in
+ *  the store's flat top-level fields; inactive tabs' snapshots sit here until
+ *  switched back to. */
+export interface SheetTab {
+  id: string;
+  name: string;
+  snapshot: SheetSnapshot;
+}
+
+/** Plain-JSON-serializable form of a sheet, suitable for a Prisma `Json` column
+ *  (Maps/Sets become entry arrays). Undo/redo history is intentionally dropped —
+ *  it's a within-session convenience, not something worth persisting. */
+export interface SerializedSheet {
+  id: string;
+  name: string;
+  rowCount: number;
+  colCount: number;
+  cells: [string, CellData][];
+  colWidths: [number, number][];
+  rowHeights: [number, number][];
+  merges: MergedRange[];
+  hiddenRows: number[];
+  hiddenCols: number[];
+  frozenRows: number;
+  frozenCols: number;
+}
+
+export interface SerializedWorkbook {
+  sheets: SerializedSheet[];
+  activeSheetId: string;
+}
+
 export type ClipboardMode = 'copy' | 'cut' | null;
 
 export interface ClipboardData {

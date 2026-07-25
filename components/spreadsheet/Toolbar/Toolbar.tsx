@@ -85,11 +85,11 @@ export default function Toolbar() {
   return (
     <div className="border-b border-excel-border bg-excel-toolbar shrink-0">
       {/* Title bar */}
-      <div className="flex items-center gap-2 px-3 h-9 bg-excel-green text-white text-sm font-medium">
+      {/* <div className="flex items-center gap-2 px-3 h-9 bg-excel-green text-white text-sm font-medium">
         <Grid3x3 size={16} />
         <span>Sheets</span>
         <span className="opacity-70 font-normal">— Untitled workbook</span>
-      </div>
+      </div> */}
 
       {/* Ribbon */}
       <div className="flex items-center flex-wrap gap-0.5 px-2 py-1">
@@ -98,11 +98,13 @@ export default function Toolbar() {
         <ToolbarButton title="Redo (Ctrl+Y)" onClick={store.redo}><Redo2 size={16} /></ToolbarButton>
         <Divider />
 
-        {/* Clipboard */}
+        {/* Clipboard — hidden per request, not needed for now */}
+        {/*
         <ToolbarButton title="Copy (Ctrl+C)" onClick={() => store.copySelection(false)}><Copy size={16} /></ToolbarButton>
         <ToolbarButton title="Cut (Ctrl+X)" onClick={() => store.copySelection(true)}><Scissors size={16} /></ToolbarButton>
         <ToolbarButton title="Paste (Ctrl+V)" onClick={() => store.pasteAt(selection.active)}><ClipboardPaste size={16} /></ToolbarButton>
         <Divider />
+        */}
 
         {/* Font */}
         <select
@@ -123,10 +125,12 @@ export default function Toolbar() {
         </select>
         <Divider />
 
-        {/* Bold / italic / underline */}
+        {/* Bold / italic / underline — italic & underline hidden per request */}
         <ToolbarButton title="Bold (Ctrl+B)" active={!!activeFormat?.bold} onClick={() => patch({ bold: !activeFormat?.bold })}><Bold size={16} /></ToolbarButton>
+        {/*
         <ToolbarButton title="Italic (Ctrl+I)" active={!!activeFormat?.italic} onClick={() => patch({ italic: !activeFormat?.italic })}><Italic size={16} /></ToolbarButton>
         <ToolbarButton title="Underline (Ctrl+U)" active={!!activeFormat?.underline} onClick={() => patch({ underline: !activeFormat?.underline })}><Underline size={16} /></ToolbarButton>
+        */}
 
         {/* Font color */}
         <label title="Font color" className="flex flex-col items-center justify-center w-7 h-7 rounded hover:bg-gray-200 cursor-pointer">
@@ -167,7 +171,8 @@ export default function Toolbar() {
         <ToolbarButton title="Align middle" active={activeFormat?.vAlign === 'middle'} onClick={() => patch({ vAlign: 'middle' })}><AlignCenterVertical size={16} /></ToolbarButton>
         <ToolbarButton title="Align bottom" active={activeFormat?.vAlign === 'bottom'} onClick={() => patch({ vAlign: 'bottom' })}><AlignEndVertical size={16} /></ToolbarButton>
         <ToolbarButton title="Wrap text" active={!!activeFormat?.wrap} onClick={() => patch({ wrap: !activeFormat?.wrap })}><WrapText size={16} /></ToolbarButton>
-        <ToolbarButton title="Rotate text" onClick={() => patch({ rotation: activeFormat?.rotation === 45 ? 0 : 45 })}><RotateCw size={16} /></ToolbarButton>
+        {/* Rotate text — hidden per request */}
+        {/* <ToolbarButton title="Rotate text" onClick={() => patch({ rotation: activeFormat?.rotation === 45 ? 0 : 45 })}><RotateCw size={16} /></ToolbarButton> */}
         <ToolbarButton title="Merge cells" onClick={store.mergeSelection}><Merge size={16} /></ToolbarButton>
         <Divider />
 
@@ -189,25 +194,24 @@ export default function Toolbar() {
         </select>
         <Divider />
 
-        {/* Rows / columns */}
+        {/* Rows / columns — row insert/delete hidden per request; column insert/delete kept */}
+        {/*
         <ToolbarButton title="Insert row above" onClick={() => store.insertRowAt(normalizeRange(selection.range).start.row)}><Rows size={16} /><Plus size={10} /></ToolbarButton>
         <ToolbarButton title="Delete row" onClick={() => store.deleteRowAt(normalizeRange(selection.range).start.row)}><Rows size={16} /><Trash2 size={10} /></ToolbarButton>
-        <ToolbarButton title="Insert column left" onClick={() => store.insertColAt(normalizeRange(selection.range).start.col)}><Columns size={16} /><Plus size={10} /></ToolbarButton>
-        <ToolbarButton title="Delete column" onClick={() => store.deleteColAt(normalizeRange(selection.range).start.col)}><Columns size={16} /><Trash2 size={10} /></ToolbarButton>
-        <Divider />
+        */}
+        {/* <ToolbarButton title="Insert column left" onClick={() => store.insertColAt(normalizeRange(selection.range).start.col)}><Columns size={16} /><Plus size={10} /></ToolbarButton>
+        <ToolbarButton title="Delete column" onClick={() => store.deleteColAt(normalizeRange(selection.range).start.col)}><Columns size={16} /><Trash2 size={10} /></ToolbarButton> */}
 
-        {/* Freeze panes */}
+        {/* Freeze panes, sort/filter/find, import/export — all hidden per request, not needed for now */}
+        {/*
+        <Divider />
         <ToolbarButton title="Freeze top row" active={store.frozenRows > 0} onClick={store.toggleFreezeTopRow}><Pin size={16} /></ToolbarButton>
         <ToolbarButton title="Freeze first column" active={store.frozenCols > 0} onClick={store.toggleFreezeFirstCol}><PinOff size={16} /></ToolbarButton>
         <Divider />
-
-        {/* Sort / filter / find */}
         <ToolbarButton title="Sort A → Z" onClick={() => store.sortByColumn(selection.active.col, 'asc')}><ArrowDownAZ size={16} /></ToolbarButton>
         <ToolbarButton title="Sort Z → A" onClick={() => store.sortByColumn(selection.active.col, 'desc')}><ArrowUpZA size={16} /></ToolbarButton>
         <ToolbarButton title="Find & Replace (Ctrl+F)" onClick={() => store.toggleFindReplace(true)}><Search size={16} /></ToolbarButton>
         <Divider />
-
-        {/* Import / export */}
         <ToolbarButton title="Import .xlsx" onClick={() => { setPendingImportKind('xlsx'); fileInputRef.current?.click(); }}><Upload size={16} /></ToolbarButton>
         <ToolbarButton title="Export .xlsx" onClick={doExportXlsx}><FileSpreadsheet size={16} /></ToolbarButton>
         <ToolbarButton title="Export .csv" onClick={doExportCsv}><FileText size={16} /></ToolbarButton>
@@ -229,6 +233,7 @@ export default function Toolbar() {
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ''; }}
         />
+        */}
       </div>
     </div>
   );

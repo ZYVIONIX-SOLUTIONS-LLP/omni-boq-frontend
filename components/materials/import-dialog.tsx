@@ -98,7 +98,7 @@ export default function ImportDialog({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="w-[calc(100%-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Import Products from Excel</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Import Products from Excel or CSV</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             Use the same layout as Download Excel — Manufacturer, Series, Category and other names are
             matched against your existing data; anything new is flagged before it's created.
@@ -113,12 +113,12 @@ export default function ImportDialog({
           <div className="border-2 border-dashed border-border rounded-2xl p-8 text-center space-y-3">
             <Upload className="h-8 w-8 mx-auto text-muted-foreground/60" />
             <p className="text-sm text-muted-foreground">
-              Choose an .xlsx file exported from (or matching) the Product Library.
+              Choose an .xlsx, .xls, or .csv file exported from (or matching) the Product Library.
             </p>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               onChange={handleFileChange}
               className="hidden"
               id="import-file-input"

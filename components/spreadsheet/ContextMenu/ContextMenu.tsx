@@ -70,8 +70,8 @@ export default function ContextMenu() {
 
       {contextMenu.target === 'col' && (
         <>
-          <MenuItem label="Insert column left" onClick={close(() => store.insertColAt(n.start.col))} />
-          <MenuItem label="Delete column" onClick={close(() => store.deleteColAt(n.start.col))} />
+          {/* <MenuItem label="Insert column left" onClick={close(() => store.insertColAt(n.start.col))} />
+          <MenuItem label="Delete column" onClick={close(() => store.deleteColAt(n.start.col))} /> */}
           <MenuItem label="Duplicate column" onClick={close(() => store.duplicateColAt(n.start.col))} />
           <MenuItem label="Hide column" onClick={close(() => store.toggleHideCol(n.start.col))} />
           <MenuItem label="Unhide all columns" onClick={close(() => store.unhideAllCols())} />

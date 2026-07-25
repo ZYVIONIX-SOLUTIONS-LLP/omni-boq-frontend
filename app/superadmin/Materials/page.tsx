@@ -15,10 +15,10 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  Upload as UploadIcon,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getUser } from "@/app/lib/auth-storage";
+import ImportDialog from "@/components/materials/import-dialog";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import SearchableCombo, { ComboPage } from "@/components/ui/searchable-combo";
 import {
   Table,
   TableBody,
@@ -42,11 +43,13 @@ import {
 } from "@/components/ui/table";
 import {
   attributeDefsApi,
+  categoriesApi,
   deleteProduct,
   exportProductRows,
   getProduct,
   listProducts,
   deleteAllProducts,
+  manufacturersApi,
   PageMeta,
   ProductListRow,
   VariantSummary,
@@ -104,11 +107,11 @@ function ProductDetailDialog({
               <DialogTitle className="text-lg font-bold">{product.name}</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {[
-                  product.manufacturer?.name ?? product.manufacturerName,
+                  product.manufacturer?.name,
                   product.division?.name,
-                  product.series?.name ?? product.seriesName,
-                  product.category?.name ?? product.categoryName,
-                  product.subCategory?.name ?? product.subCategoryName,
+                  product.series?.name,
+                  product.category?.name,
+                  product.subCategory?.name,
                 ]
                   .filter(Boolean)
                   .join(" › ")}
@@ -233,7 +236,8 @@ export default function ProductLibraryPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [scope, setScope] = useState<"local" | "global">("local");
+  const [manufacturerFilter, setManufacturerFilter] = useState<{ id: string; name: string } | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -241,6 +245,7 @@ export default function ProductLibraryPage() {
   const [deleting, setDeleting] = useState<ProductListRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
@@ -253,6 +258,27 @@ export default function ProductLibraryPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const manufacturerLoader = useCallback(
+    async (s: string, p: number, ps: number): Promise<ComboPage> => {
+      const r = await manufacturersApi.list({ search: s, page: p, limit: ps });
+      return {
+        items: r.items.map(({ id, name }) => ({ id, name })),
+        hasMore: r.meta.hasNextPage,
+      };
+    },
+    []
+  );
+  const categoryLoader = useCallback(
+    async (s: string, p: number, ps: number): Promise<ComboPage> => {
+      const r = await categoriesApi.list({ search: s, page: p, limit: ps });
+      return {
+        items: r.items.map(({ id, name }) => ({ id, name })),
+        hasMore: r.meta.hasNextPage,
+      };
+    },
+    []
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -261,7 +287,8 @@ export default function ProductLibraryPage() {
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
-        scope,
+        manufacturerId: manufacturerFilter?.id,
+        categoryId: categoryFilter?.id,
       });
       setItems(result.items);
       setMeta(result.meta);
@@ -271,7 +298,7 @@ export default function ProductLibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, scope]);
+  }, [page, debouncedSearch, manufacturerFilter, categoryFilter]);
 
   useEffect(() => {
     load();
@@ -283,6 +310,8 @@ export default function ProductLibraryPage() {
     try {
       const rows = await exportProductRows({
         search: debouncedSearch || undefined,
+        manufacturerId: manufacturerFilter?.id,
+        categoryId: categoryFilter?.id,
       });
       const sheetRows = rows.map((r) => ({
         "Model Code": r.modelCode,
@@ -409,15 +438,6 @@ export default function ProductLibraryPage() {
 
   return (
     <div className="px-7 py-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <Tabs value={scope} onValueChange={(val) => { setScope(val as any); setPage(1); }}>
-          <TabsList>
-            <TabsTrigger value="local" className="px-6">My Materials</TabsTrigger>
-            <TabsTrigger value="global" className="px-6">Global Materials</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-      
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-xs">
@@ -430,17 +450,41 @@ export default function ProductLibraryPage() {
           />
         </div>
 
+        <SearchableCombo
+          className="w-[190px]"
+          value={manufacturerFilter?.id ?? ""}
+          valueLabel={manufacturerFilter?.name}
+          placeholder="All manufacturers"
+          allowClear
+          loadOptions={manufacturerLoader}
+          onSelect={(item) => {
+            setManufacturerFilter(item);
+            setPage(1);
+          }}
+        />
+
+        <SearchableCombo
+          className="w-[180px]"
+          value={categoryFilter?.id ?? ""}
+          valueLabel={categoryFilter?.name}
+          placeholder="All categories"
+          allowClear
+          loadOptions={categoryLoader}
+          onSelect={(item) => {
+            setCategoryFilter(item);
+            setPage(1);
+          }}
+        />
+
         <div className="flex items-center gap-2 ml-auto">
-          {getUser()?.roles.includes("SUPERADMIN") && (
-            <Button
-              variant="destructive"
-              onClick={handleDeleteAll}
-              className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete All
-            </Button>
-          )}
+          <Button
+            variant="destructive"
+            onClick={handleDeleteAll}
+            className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete All
+          </Button>
           {selectedIds.size > 0 && (
             <Button
               variant="destructive"
@@ -470,7 +514,15 @@ export default function ProductLibraryPage() {
             {exporting ? "Exporting..." : "Download Excel"}
           </Button>
           <Button
-            onClick={() => router.push("/Materials/new")}
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 rounded-xl h-10 px-4 font-semibold border-border"
+          >
+            <UploadIcon className="h-4 w-4" />
+            Import Excel
+          </Button>
+          <Button
+            onClick={() => router.push("/superadmin/Materials/new")}
             className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all"
           >
             <Plus className="h-4 w-4" />
@@ -529,44 +581,34 @@ export default function ProductLibraryPage() {
               items.flatMap((p) => {
                 const rows: (VariantSummary | null)[] =
                   p.variantSummaries.length > 0 ? p.variantSummaries : [null];
-                return rows.map((v) => {
-                  const isGlobal = !p.tenantId;
-                  return (
+                return rows.map((v) => (
                   <TableRow key={`${p.id}-${v?.id ?? "none"}`} className="hover:bg-muted/30">
                     <TableCell className="pl-5">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
-                        disabled={isGlobal}
                         aria-label={`Select ${p.name}`}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-30"
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                       />
                     </TableCell>
                     <TableCell className="text-sm font-semibold whitespace-nowrap">
                       {v?.modelCode || "—"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold max-w-[220px] truncate" title={p.name}>
-                          {p.name}
-                        </p>
-                        {isGlobal && (
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">
-                            Global
-                          </span>
-                        )}
-                      </div>
+                      <p className="text-sm font-semibold max-w-[220px] truncate" title={p.name}>
+                        {p.name}
+                      </p>
                       {v && (
                         <p className="text-[11px] text-muted-foreground truncate">{v.name}</p>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{p.manufacturer?.name ?? p.manufacturerName ?? "—"}</TableCell>
-                    <TableCell className="text-sm">{p.series?.name ?? p.seriesName ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{p.manufacturer?.name || "—"}</TableCell>
+                    <TableCell className="text-sm">{p.series?.name || "—"}</TableCell>
                     <TableCell>
-                      {p.category?.name ?? p.categoryName ? (
+                      {p.category?.name ? (
                         <Badge className="bg-[#6c63ff]/12 text-[#6c63ff] border-0 font-semibold rounded-full px-3 whitespace-nowrap">
-                          {p.category?.name ?? p.categoryName}
+                          {p.category.name}
                         </Badge>
                       ) : (
                         "—"
@@ -600,27 +642,25 @@ export default function ProductLibraryPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => router.push(`/Materials/new?id=${p.id}`)}
+                          onClick={() => router.push(`/superadmin/Materials/new?id=${p.id}`)}
                           className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
                           aria-label={`Edit ${p.name}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        {!isGlobal && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleting(p)}
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
-                            aria-label={`Delete ${p.name}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleting(p)}
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
+                          aria-label={`Delete ${p.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                )});
+                ));
               })
             )}
           </TableBody>
@@ -661,6 +701,12 @@ export default function ProductLibraryPage() {
       )}
 
       <ProductDetailDialog productId={viewing} onClose={() => setViewing(null)} />
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={load}
+      />
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>

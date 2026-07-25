@@ -10,6 +10,10 @@ import type {
   MergedRange,
   SelectionKind,
   SelectionState,
+  SerializedSheet,
+  SerializedWorkbook,
+  SheetSnapshot,
+  SheetTab,
   SortState,
 } from '@/components/spreadsheet/types';
 import {
@@ -159,6 +163,13 @@ interface SpreadsheetState {
 
   loading: boolean;
 
+  // --- workbook (multi-sheet tabs) ---
+  // The active tab's data lives live in the flat fields above; `sheets` holds every
+  // OTHER tab's last-saved snapshot plus a stale copy of the active one (refreshed
+  // on every switch/save so it's never more than one switch out of date).
+  sheets: SheetTab[];
+  activeSheetId: string;
+
   // --- derived read helpers (not reactive selectors, plain functions) ---
   getEvaluatedCell: (row: number, col: number) => EvaluatedCell;
   getCellData: (row: number, col: number) => CellData | undefined;
@@ -235,6 +246,19 @@ interface SpreadsheetState {
   ) => void;
   resetSheet: () => void;
   setLoading: (v: boolean) => void;
+
+  // --- workbook (multi-sheet tabs) ---
+  addSheet: (name?: string) => void;
+  renameSheet: (id: string, name: string) => void;
+  deleteSheet: (id: string) => void;
+  switchToSheet: (id: string) => void;
+  /** Loads a whole workbook from persisted `sheetData` — accepts both the new
+   *  `{ sheets, activeSheetId }` shape and the old single-sheet shape saved before
+   *  multi-sheet support existed (detected by the absence of `.sheets`). */
+  loadWorkbook: (raw: unknown) => void;
+  /** Snapshots the live active sheet, then returns the whole workbook in the
+   *  plain-JSON shape ready to hand to `JSON.stringify` / a Prisma Json column. */
+  serializeWorkbook: () => SerializedWorkbook;
 }
 
 function createDefaultCells(): Map<string, CellData> {
@@ -316,6 +340,115 @@ function snapshot(state: SpreadsheetState): HistoryEntry {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Multi-sheet workbook helpers. Only the currently-active sheet's data lives in
+// the store's flat top-level fields at any given time; every other sheet's data
+// sits in `sheets[i].snapshot` until switched back to. Switching just swaps the
+// flat fields for a different snapshot (see switchToSheet/addSheet/deleteSheet).
+// ---------------------------------------------------------------------------
+let sheetIdCounter = 0;
+function genSheetId(): string {
+  sheetIdCounter += 1;
+  return `sheet-${Date.now()}-${sheetIdCounter}`;
+}
+
+function captureActiveSnapshot(state: SpreadsheetState): SheetSnapshot {
+  return {
+    cells: state.cells,
+    rowHeights: state.rowHeights,
+    colWidths: state.colWidths,
+    merges: state.merges,
+    hiddenRows: state.hiddenRows,
+    hiddenCols: state.hiddenCols,
+    frozenRows: state.frozenRows,
+    frozenCols: state.frozenCols,
+    rowCount: state.rowCount,
+    colCount: state.colCount,
+    undoStack: state.undoStack,
+    redoStack: state.redoStack,
+    selection: state.selection,
+  };
+}
+
+function blankSheetSnapshot(): SheetSnapshot {
+  return {
+    cells: new Map(),
+    rowHeights: new Map(),
+    colWidths: createDefaultColWidths(),
+    merges: [],
+    hiddenRows: new Set(),
+    hiddenCols: new Set(),
+    frozenRows: 0,
+    frozenCols: 0,
+    rowCount: DEFAULT_ROW_COUNT,
+    colCount: DEFAULT_COL_COUNT,
+    undoStack: [],
+    redoStack: [],
+    selection: initialSelection,
+  };
+}
+
+/** Fields to `set()` in order to make `snap` the live, active sheet. */
+function snapshotToFlatFields(snap: SheetSnapshot) {
+  return {
+    cells: snap.cells,
+    rowHeights: snap.rowHeights,
+    colWidths: snap.colWidths,
+    merges: snap.merges,
+    hiddenRows: snap.hiddenRows,
+    hiddenCols: snap.hiddenCols,
+    frozenRows: snap.frozenRows,
+    frozenCols: snap.frozenCols,
+    rowCount: snap.rowCount,
+    colCount: snap.colCount,
+    undoStack: snap.undoStack,
+    redoStack: snap.redoStack,
+    selection: snap.selection,
+    editing: null,
+    version: 0,
+  };
+}
+
+function serializeSheet(tab: SheetTab): SerializedSheet {
+  const s = tab.snapshot;
+  return {
+    id: tab.id,
+    name: tab.name,
+    rowCount: s.rowCount,
+    colCount: s.colCount,
+    cells: Array.from(s.cells.entries()),
+    colWidths: Array.from(s.colWidths.entries()),
+    rowHeights: Array.from(s.rowHeights.entries()),
+    merges: s.merges,
+    hiddenRows: [...s.hiddenRows],
+    hiddenCols: [...s.hiddenCols],
+    frozenRows: s.frozenRows,
+    frozenCols: s.frozenCols,
+  };
+}
+
+function deserializeSheet(raw: SerializedSheet): SheetTab {
+  return {
+    id: raw.id,
+    name: raw.name,
+    snapshot: {
+      cells: new Map(raw.cells),
+      rowHeights: new Map(raw.rowHeights ?? []),
+      colWidths: new Map(raw.colWidths ?? []),
+      merges: raw.merges ?? [],
+      hiddenRows: new Set(raw.hiddenRows ?? []),
+      hiddenCols: new Set(raw.hiddenCols ?? []),
+      frozenRows: raw.frozenRows ?? 0,
+      frozenCols: raw.frozenCols ?? 0,
+      rowCount: Math.max(raw.rowCount ?? DEFAULT_ROW_COUNT, DEFAULT_ROW_COUNT),
+      colCount: Math.max(raw.colCount ?? DEFAULT_COL_COUNT, DEFAULT_COL_COUNT),
+      undoStack: [],
+      redoStack: [],
+      selection: initialSelection,
+    },
+  };
+}
+
 export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
   cells: createDefaultCells(),
   rowHeights: new Map(),
@@ -344,6 +477,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
   undoStack: [],
   redoStack: [],
   loading: false,
+
+  // Placeholder snapshot content — irrelevant until read, and it's only ever read
+  // after being refreshed from the live flat fields (on switch-away or save).
+  sheets: [{ id: 'sheet-1', name: 'Sheet1', snapshot: blankSheetSnapshot() }],
+  activeSheetId: 'sheet-1',
 
   // ---- read helpers -------------------------------------------------------
   getEvaluatedCell: (row, col) => evaluateCell(row, col, get().cells, new Set()),
@@ -1014,4 +1152,129 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
     });
   },
   setLoading: (v) => set({ loading: v }),
+
+  // ---- workbook (multi-sheet tabs) -------------------------------------------
+  addSheet: (name) => {
+    set((state) => {
+      const sheets = state.sheets.map((t) =>
+        t.id === state.activeSheetId ? { ...t, snapshot: captureActiveSnapshot(state) } : t
+      );
+      const id = genSheetId();
+      const newTab: SheetTab = {
+        id,
+        name: name?.trim() || `Sheet${sheets.length + 1}`,
+        snapshot: blankSheetSnapshot(),
+      };
+      invalidateEvalCache();
+      return {
+        sheets: [...sheets, newTab],
+        activeSheetId: id,
+        ...snapshotToFlatFields(newTab.snapshot),
+      };
+    });
+  },
+
+  renameSheet: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set((state) => ({
+      sheets: state.sheets.map((t) => (t.id === id ? { ...t, name: trimmed } : t)),
+    }));
+  },
+
+  deleteSheet: (id) => {
+    set((state) => {
+      if (state.sheets.length <= 1) return {}; // always keep at least one sheet
+      const deleteIdx = state.sheets.findIndex((t) => t.id === id);
+      if (deleteIdx === -1) return {};
+      const remaining = state.sheets.filter((t) => t.id !== id);
+      if (id !== state.activeSheetId) return { sheets: remaining };
+
+      // Deleting the active tab — fall back to its nearest neighbor.
+      const neighbor = remaining[Math.min(deleteIdx, remaining.length - 1)];
+      invalidateEvalCache();
+      return {
+        sheets: remaining,
+        activeSheetId: neighbor.id,
+        ...snapshotToFlatFields(neighbor.snapshot),
+      };
+    });
+  },
+
+  switchToSheet: (id) => {
+    set((state) => {
+      if (id === state.activeSheetId) return {};
+      const target = state.sheets.find((t) => t.id === id);
+      if (!target) return {};
+      const sheets = state.sheets.map((t) =>
+        t.id === state.activeSheetId ? { ...t, snapshot: captureActiveSnapshot(state) } : t
+      );
+      invalidateEvalCache();
+      return {
+        sheets,
+        activeSheetId: id,
+        ...snapshotToFlatFields(target.snapshot),
+      };
+    });
+  },
+
+  loadWorkbook: (raw) => {
+    const data = raw as Partial<SerializedWorkbook & SerializedSheet> | null | undefined;
+    if (!data) return;
+
+    let tabs: SheetTab[];
+    let activeSheetId: string;
+
+    if (Array.isArray(data.sheets) && data.sheets.length > 0) {
+      // Current multi-sheet shape.
+      tabs = data.sheets.map(deserializeSheet);
+      activeSheetId =
+        typeof data.activeSheetId === 'string' && tabs.some((t) => t.id === data.activeSheetId)
+          ? data.activeSheetId
+          : tabs[0].id;
+    } else if (Array.isArray(data.cells)) {
+      // Single-sheet shape saved before multi-sheet tabs existed — wrap it as "Sheet1".
+      const id = genSheetId();
+      tabs = [
+        deserializeSheet({
+          id,
+          name: 'Sheet1',
+          rowCount: data.rowCount ?? DEFAULT_ROW_COUNT,
+          colCount: data.colCount ?? DEFAULT_COL_COUNT,
+          cells: data.cells,
+          colWidths: data.colWidths ?? [],
+          rowHeights: data.rowHeights ?? [],
+          merges: [],
+          hiddenRows: [],
+          hiddenCols: [],
+          frozenRows: 0,
+          frozenCols: 0,
+        }),
+      ];
+      activeSheetId = id;
+    } else {
+      return;
+    }
+
+    invalidateEvalCache();
+    const active = tabs.find((t) => t.id === activeSheetId)!;
+    set({
+      sheets: tabs,
+      activeSheetId,
+      ...snapshotToFlatFields(active.snapshot),
+    });
+  },
+
+  serializeWorkbook: () => {
+    const state = get();
+    const sheets = state.sheets.map((t) =>
+      t.id === state.activeSheetId ? { ...t, snapshot: captureActiveSnapshot(state) } : t
+    );
+    // Write the freshly-captured snapshot back so it isn't lost on the next switch.
+    set({ sheets });
+    return {
+      sheets: sheets.map(serializeSheet),
+      activeSheetId: state.activeSheetId,
+    };
+  },
 }));

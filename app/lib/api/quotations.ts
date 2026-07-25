@@ -41,23 +41,19 @@ export interface Quotation {
     customer?: QuotationCustomer | null;
     project?: QuotationProject | null;
     items?: QuotationItem[];
-    sheetData?: {
-        rowCount: number;
-        colCount: number;
-        cells: [string, any][];
-        colWidths?: [number, number][];
-        rowHeights?: [number, number][];
-    } | null;
+    /** Opaque spreadsheet workbook blob (shape owned by the spreadsheet store —
+     *  either the current multi-sheet form or, for older records, the single-sheet
+     *  form saved before sheet tabs existed; `store.loadWorkbook` handles both). */
+    sheetData?: unknown;
     activityRows?: Record<number, string> | null;
     activityCustomizations?: Record<number, Record<string, string>> | null;
-    brandPreferences?: {
-        wiresId?: string | null;
-        conduitsId?: string | null;
-        accessoriesId?: string | null;
-        accessoriesSeriesId?: string | null;
-        switchgearId?: string | null;
-        switchgearSeriesId?: string | null;
-    } | null;
+    /** Preferred manufacturer (and optionally series) per catalog category, keyed by
+     *  categoryId — e.g. { "cat-switch-id": { manufacturerId: "mfr-legrand", seriesId: "ser-myrius" } }.
+     *  Used to auto-pick a make when an Activity's material requirement is added to this
+     *  quotation: if the requirement has multiple configured alternate makes, the one from
+     *  the preferred manufacturer (and series, if set) wins; otherwise falls back to the
+     *  requirement's own default. */
+    brandPreferences?: Record<string, { manufacturerId: string; seriesId?: string | null }> | null;
 }
 
 export interface CreateQuotationWithClientPayload {

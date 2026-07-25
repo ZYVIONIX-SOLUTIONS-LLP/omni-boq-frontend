@@ -14,6 +14,22 @@ const SIDEBAR_WIDTH = 190;
 const SIDEBAR_WIDTH_COLLAPSED = 64;
 const SIDEBAR_COLLAPSE_KEY = "omni.sidebarCollapsed";
 
+// ── Theme tokens: "Deepwater & Voltage" ─────────────────────────────────────
+// Canvas:    #F5F7F5   Surface: #FFFFFF   Ink: #14231F   Muted: #62726C
+// Deepwater: #0E6656 (primary/brand)      Voltage: #F0A93B (sparing accent)
+// Hairline:  #DEE6E2
+const THEME = {
+  canvas: "#F5F7F5",
+  surface: "#FFFFFF",
+  ink: "#14231F",
+  muted: "#62726C",
+  deepwater: "#0E6656",
+  deepwaterDark: "#0B4F42",
+  voltage: "#F0A93B",
+  hairline: "#DEE6E2",
+  hoverTint: "#EAF2EF",
+};
+
 // ── SVG Icons ──────────────────────────────────────────────────────────────────
 function BoltIcon() {
   return (
@@ -25,30 +41,33 @@ function BoltIcon() {
 function DashboardIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>;
 }
-function MaterialsIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>;
-}
 function QuotationsIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
-}
-function ActivitiesIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>;
 }
 function UsersIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
 }
 
+function MaterialsIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>;
+}
+function ActivitiesIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>;
+}
+
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/Dashboard", icon: <DashboardIcon /> },
+  { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
   { label: "Materials", href: "/Materials", icon: <MaterialsIcon /> },
   { label: "Activities", href: "/Activities", icon: <ActivitiesIcon /> },
-  { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
-  { label: "Users", href: "/Users", icon: <UsersIcon /> },
+  { label: "Staff", href: "/Staff", icon: <UsersIcon /> },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isEditorPage = /^\/(Quotations|Activities|Materials)\/[^/]+$/.test(pathname);
+
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checked, setChecked] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -59,7 +78,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/Login");
       return;
     }
-    setUser(getUser());
+    const currentUser = getUser();
+    if (!currentUser || currentUser.roles.includes("SUPERADMIN")) {
+       // SuperAdmin belongs in the other shell!
+       router.replace("/SuperAdminLogin");
+       return;
+    }
+    setUser(currentUser);
     setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1");
     setChecked(true);
   }, [router]);
@@ -78,18 +103,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/Login");
   };
 
-  // Filter visible nav links based on role
+  // Filter visible nav links based on role (Admin vs Staff)
   const visibleNavItems = useMemo(() => {
     if (!user) return [];
     const role = user.roles && user.roles[0] ? user.roles[0] : "";
-    if (role === "SUPERADMIN") {
-      return NAV_ITEMS;
-    }
     if (role === "ADMIN") {
-      return NAV_ITEMS.filter((item) => item.label !== "Materials" && item.label !== "Activities");
+      return NAV_ITEMS; // Admin sees Dashboard, Quotations, Materials, Activities, Staff
     }
     // STAFF
-    return NAV_ITEMS.filter((item) => item.label !== "Materials" && item.label !== "Activities" && item.label !== "Users");
+    return NAV_ITEMS.filter((item) => item.label !== "Staff");
   }, [user]);
 
   const activeItem =
@@ -100,28 +122,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Avoid flashing protected content before the auth check runs
   if (!checked) {
-    return <div className="min-h-screen bg-[#f8f7ff]" />;
+    return <div className="min-h-screen" style={{ backgroundColor: THEME.canvas }} />;
   }
 
   const sidebarWidth = collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH;
 
   return (
-    <div className="min-h-screen bg-[#f8f7ff]">
+    <div className="min-h-screen" style={{ backgroundColor: THEME.canvas }}>
       {/* ═══ FIXED SIDEBAR ═══ */}
       <aside
-        className="fixed left-0 top-0 z-30 h-screen bg-white border-r border-border flex flex-col py-5 transition-[width] duration-200"
-        style={{ width: sidebarWidth }}
+        className="fixed left-0 top-0 z-30 h-screen flex flex-col py-5 transition-[width] duration-200"
+        style={{ width: sidebarWidth, backgroundColor: THEME.surface, borderRight: `1px solid ${THEME.hairline}` }}
       >
         {/* Brand + collapse toggle */}
         <div className={`flex items-center mb-6 px-4 ${collapsed ? "flex-col gap-2" : "justify-between gap-2"}`}>
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-primary/30">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: `linear-gradient(135deg, ${THEME.deepwater}, ${THEME.deepwaterDark})`,
+                boxShadow: `0 0 18px -4px ${THEME.voltage}80`,
+              }}
+            >
               <BoltIcon />
             </div>
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">Zyvionix</p>
-                <p className="text-xs font-semibold text-primary truncate">solutions</p>
+                <p className="text-sm font-bold truncate" style={{ color: THEME.ink }}>Zyvionix</p>
+                <p className="text-[10px] font-semibold truncate" style={{ color: THEME.deepwater }}>Solutions</p>
               </div>
             )}
           </div>
@@ -130,7 +158,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             variant="ghost"
             size="icon"
             onClick={toggleCollapsed}
-            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent flex-shrink-0"
+            className="h-7 w-7 rounded-lg flex-shrink-0"
+            style={{ color: THEME.muted }}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -147,14 +176,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.label}
                 href={item.href}
                 title={collapsed ? item.label : undefined}
-                className={
-                  (isActive
-                    ? "bg-primary text-white shadow-md shadow-primary/25 font-semibold"
-                    : "text-muted-foreground hover:text-primary hover:bg-accent font-medium") +
-                  ` flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm transition-all ${
-                    collapsed ? "justify-center" : ""
-                  }`
+                className={`flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm transition-all ${
+                  isActive ? "font-semibold shadow-md" : "font-medium"
+                } ${collapsed ? "justify-center" : ""}`}
+                style={
+                  isActive
+                    ? { backgroundColor: THEME.deepwater, color: "white", boxShadow: `0 4px 10px -4px ${THEME.deepwater}80` }
+                    : { color: THEME.muted }
                 }
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = THEME.hoverTint;
+                    e.currentTarget.style.color = THEME.deepwater;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = THEME.muted;
+                  }
+                }}
               >
                 {item.icon}
                 {!collapsed && item.label}
@@ -164,17 +205,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User profile + logout */}
-        <div className={`border-t border-border pt-4 px-3 flex ${collapsed ? "flex-col items-center gap-2" : "items-center gap-2.5"}`}>
+        <div
+          className={`pt-4 px-3 flex ${collapsed ? "flex-col items-center gap-2" : "items-center gap-2.5"}`}
+          style={{ borderTop: `1px solid ${THEME.hairline}` }}
+        >
           <div className={`flex items-center gap-2.5 min-w-0 ${collapsed ? "" : "flex-1"}`}>
-            <Avatar className="w-9 h-9 border border-border shadow-sm flex-shrink-0">
-              <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
+            <Avatar className="w-9 h-9 shadow-sm flex-shrink-0" style={{ border: `1px solid ${THEME.hairline}` }}>
+              <AvatarFallback
+                className="text-xs font-bold"
+                style={{ backgroundColor: `${THEME.deepwater}14`, color: THEME.deepwater }}
+              >
                 {initial}
               </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Welcome back,</p>
-                <p className="text-sm font-bold text-foreground leading-none truncate">{displayName}!</p>
+                <p className="text-[11px] leading-none mb-0.5" style={{ color: THEME.muted }}>Welcome back,</p>
+                <p className="text-sm font-bold leading-none truncate" style={{ color: THEME.ink }}>{displayName}!</p>
               </div>
             )}
           </div>
@@ -184,7 +231,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             size="icon"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="rounded-xl border-border h-9 w-9 text-muted-foreground hover:text-red-500 hover:bg-red-50/50 flex-shrink-0"
+            className="rounded-xl h-9 w-9 flex-shrink-0 hover:text-red-500 hover:bg-red-50/50"
+            style={{ borderColor: THEME.hairline, color: THEME.muted }}
             aria-label="Logout"
             title="Logout"
           >
@@ -195,10 +243,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ═══ CONTENT AREA ═══ */}
       <main
-        className="min-h-screen py-6 transition-[padding] duration-200"
+        className="min-h-screen py-0 transition-[padding] duration-200"
         style={{
-          paddingLeft: `calc(${sidebarWidth}px + 1.75rem)`,
-          paddingRight: "1.75rem",
+          paddingLeft: isEditorPage ? sidebarWidth : `calc(${sidebarWidth}px + 1.75rem)`,
+          paddingRight: isEditorPage ? 0 : "1.75rem",
         }}
       >
         {children}
