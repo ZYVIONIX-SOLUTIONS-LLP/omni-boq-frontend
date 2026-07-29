@@ -11,9 +11,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { label: "Product Library", href: "/superadmin/Materials", exact: true },
   { label: "Manufacturers", href: "/superadmin/Materials/manufacturers" },
-  { label: "Series", href: "/superadmin/Materials/series" },
   { label: "Categories", href: "/superadmin/Materials/categories" },
-  { label: "Units & Tax", href: "/superadmin/Materials/settings" },
 ];
 
 export default function MaterialsLayout({ children }: { children: React.ReactNode }) {

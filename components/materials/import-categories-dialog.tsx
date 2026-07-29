@@ -16,15 +16,15 @@ import {
   commitImport,
   parseImportFile,
   validateImportRows,
-  type ImportSummary,
-  type ValidationResult,
-} from "@/app/lib/catalog/bulkImportExcel";
+  type CategoryImportSummary,
+  type CategoryValidationResult,
+} from "@/app/lib/catalog/bulkImportCategories";
 
 type Step = "pick" | "validating" | "review" | "importing" | "done";
 
 const MAX_ROWS_SHOWN = 50;
 
-export default function ImportDialog({
+export default function ImportCategoriesDialog({
   open,
   onClose,
   onImported,
@@ -35,8 +35,8 @@ export default function ImportDialog({
 }) {
   const [step, setStep] = useState<Step>("pick");
   const [fileName, setFileName] = useState("");
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [summary, setSummary] = useState<ImportSummary | null>(null);
+  const [validation, setValidation] = useState<CategoryValidationResult | null>(null);
+  const [summary, setSummary] = useState<CategoryImportSummary | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,10 +98,12 @@ export default function ImportDialog({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="w-[calc(100%-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Import Products from Excel or CSV</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Import Categories &amp; Specifications</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Use the same layout as Download Excel — Manufacturer, Series, Category and other names are
-            matched against your existing data; anything new is flagged before it's created.
+            One row per (Category, Specification) pair: Category Name, HSN Code, Default GST %,
+            Specification Name, Specification Type (Text/Number/Select/Boolean), Unit, Options
+            (semicolon-separated, Select only), Required (Yes/No). Leave the specification columns
+            blank on a row to just create the category.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,7 +115,7 @@ export default function ImportDialog({
           <div className="border-2 border-dashed border-border rounded-2xl p-8 text-center space-y-3">
             <Upload className="h-8 w-8 mx-auto text-muted-foreground/60" />
             <p className="text-sm text-muted-foreground">
-              Choose an .xlsx, .xls, or .csv file exported from (or matching) the Product Library.
+              Choose an .xlsx, .xls, or .csv file with the Category + Specification columns.
             </p>
             <input
               ref={fileInputRef}
@@ -121,7 +123,7 @@ export default function ImportDialog({
               accept=".xlsx,.xls,.csv"
               onChange={handleFileChange}
               className="hidden"
-              id="import-file-input"
+              id="import-categories-file-input"
             />
             <Button
               onClick={() => fileInputRef.current?.click()}
@@ -156,43 +158,13 @@ export default function ImportDialog({
               </div>
             </div>
 
-            {(validation.newManufacturers.length > 0 ||
-              validation.newSeries.length > 0 ||
-              validation.newCategories.length > 0 ||
-              validation.newSubCategories.length > 0 ||
-              validation.newUnits.length > 0) && (
+            {validation.newCategories.length > 0 && (
               <div className="rounded-xl border border-border p-3 space-y-1.5 bg-slate-50/50">
                 <p className="text-xs font-bold text-foreground">Will be created as new:</p>
-                {validation.newManufacturers.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Manufacturers:</span>{" "}
-                    {validation.newManufacturers.join(", ")}
-                  </p>
-                )}
-                {validation.newSeries.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Series:</span>{" "}
-                    {validation.newSeries.join(", ")}
-                  </p>
-                )}
-                {validation.newCategories.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Categories:</span>{" "}
-                    {validation.newCategories.join(", ")}
-                  </p>
-                )}
-                {validation.newSubCategories.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Sub-categories:</span>{" "}
-                    {validation.newSubCategories.join(", ")}
-                  </p>
-                )}
-                {validation.newUnits.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Units:</span>{" "}
-                    {validation.newUnits.join(", ")}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Categories:</span>{" "}
+                  {validation.newCategories.join(", ")}
+                </p>
               </div>
             )}
 
@@ -209,8 +181,12 @@ export default function ImportDialog({
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-foreground">
                           Row {row.raw.rowNumber}
-                          {row.raw.product && (
-                            <span className="font-normal text-muted-foreground"> — {row.raw.product}</span>
+                          {row.raw.categoryName && (
+                            <span className="font-normal text-muted-foreground">
+                              {" "}
+                              — {row.raw.categoryName}
+                              {row.raw.specName && ` / ${row.raw.specName}`}
+                            </span>
                           )}
                         </p>
                         <p className="text-[11px] text-muted-foreground">{row.messages.join("; ")}</p>
@@ -248,15 +224,11 @@ export default function ImportDialog({
               <p className="text-sm font-bold">Import complete</p>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <p><span className="font-semibold">{summary.productsCreated}</span> products created</p>
-              <p><span className="font-semibold">{summary.productsUpdated}</span> products updated</p>
-              <p><span className="font-semibold">{summary.variantsImported}</span> variants imported</p>
+              <p><span className="font-semibold">{summary.categoriesCreated}</span> categories created</p>
+              <p><span className="font-semibold">{summary.categoriesUpdated}</span> categories updated</p>
+              <p><span className="font-semibold">{summary.specsCreated}</span> specifications created</p>
+              <p><span className="font-semibold">{summary.specsSkippedExisting}</span> specs already existed (skipped)</p>
               <p><span className="font-semibold">{summary.rowsSkipped}</span> rows skipped (errors)</p>
-              <p><span className="font-semibold">{summary.manufacturersCreated}</span> new manufacturers</p>
-              <p><span className="font-semibold">{summary.seriesCreated}</span> new series</p>
-              <p><span className="font-semibold">{summary.categoriesCreated}</span> new categories</p>
-              <p><span className="font-semibold">{summary.subCategoriesCreated}</span> new sub-categories</p>
-              <p><span className="font-semibold">{summary.unitsCreated}</span> new units</p>
             </div>
           </div>
         )}

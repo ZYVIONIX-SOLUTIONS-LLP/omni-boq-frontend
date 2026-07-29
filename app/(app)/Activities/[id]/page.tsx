@@ -2,20 +2,17 @@
 
 import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Search, Hammer, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Search, Loader2, Sparkles, Trash2, Plus } from "lucide-react";
 
-import Spreadsheet from "@/components/spreadsheet/Spreadsheet";
-import { useSpreadsheetStore } from "@/components/spreadsheet/store/spreadsheetStore";
-import { cellKey } from "@/components/spreadsheet/utils/cellUtils";
-import { getActivity, updateActivity, Activity, ActivityRequirementOption, duplicateActivity } from "@/app/lib/api/activities";
+import { getActivity, updateActivity, Activity, ActivityCharge, duplicateActivity } from "@/app/lib/api/activities";
 import { getUser } from "@/app/lib/auth-storage";
 import {
   listProducts,
   manufacturersApi,
   categoriesApi,
-  seriesApi,
-} from "@/app/app/../../app/lib/catalog/api";
-import type { Manufacturer, CatalogCategory, ProductSeries } from "@/app/lib/catalog/types";
+  attributeDefsApi,
+} from "@/app/lib/catalog/api";
+import type { AttributeDef, AttributeValues, Manufacturer, CatalogCategory } from "@/app/lib/catalog/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,11 +27,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-interface FlattenedVariant {
+interface FlattenedProduct {
   id: string;
-  productId: string;
-  productName: string;
-  name: string;
   displayName: string;
   modelCode: string | null;
   mrp: number | null;
@@ -43,242 +37,158 @@ interface FlattenedVariant {
   categoryName: string;
   manufacturerId: string;
   manufacturerName: string;
-  seriesId: string;
-  seriesName: string;
+  attributes: AttributeValues;
 }
 
-/** One alternate make configured for a spreadsheet row, keyed by row index. Rows absent from
- *  this map behave exactly as before (a single plain material, no dropdown). */
+/** One alternate make configured for a requirement, if any. Requirements with an empty
+ *  options array are plain single-description lines with no switchable make. */
 interface RowMakeOption {
-  variantId: string;
+  productModelId: string;
   label: string;
+  modelCode: string | null;
   mrp: number | null;
 }
-interface RowMakes {
+
+interface RequirementRow {
+  key: string;
+  categoryId: string;
+  categoryName: string;
+  description: string;
+  unit: string;
+  quantity: number;
+  discountPercent: number;
+  taxPercent: number;
   options: RowMakeOption[];
-  defaultVariantId: string;
+  defaultProductModelId: string;
 }
 
-function makeLabel(variant: FlattenedVariant): string {
-  return `${variant.manufacturerName} — ${variant.displayName}`;
+interface ChargeRow {
+  key: string;
+  description: string;
+  amount: number;
+}
+
+function makeLabel(product: FlattenedProduct): string {
+  return product.displayName;
+}
+
+function rowMrp(row: RequirementRow): number {
+  return row.options.find((o) => o.productModelId === row.defaultProductModelId)?.mrp ?? 0;
+}
+function rowModelCode(row: RequirementRow): string {
+  return row.options.find((o) => o.productModelId === row.defaultProductModelId)?.modelCode ?? "—";
+}
+function rowDiscAmt(row: RequirementRow): number {
+  return (rowMrp(row) * row.discountPercent) / 100;
+}
+function rowUnitDiscountedPrice(row: RequirementRow): number {
+  return rowMrp(row) - rowDiscAmt(row);
+}
+function rowTaxAmt(row: RequirementRow): number {
+  return (rowUnitDiscountedPrice(row) * row.taxPercent) / 100;
+}
+function rowSubTotal(row: RequirementRow): number {
+  return rowUnitDiscountedPrice(row) + rowTaxAmt(row);
+}
+function rowTotal(row: RequirementRow): number {
+  return rowSubTotal(row) * row.quantity;
+}
+
+function inr(value: number): string {
+  return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
 export default function ActivityEditorPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const store = useSpreadsheetStore();
-  const pageRef = useRef<HTMLDivElement>(null);
 
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [flatVariants, setFlatVariants] = useState<FlattenedVariant[]>([]);
+  const [flatProducts, setFlatProducts] = useState<FlattenedProduct[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
-  const [seriesList, setSeriesList] = useState<ProductSeries[]>([]);
-  
+  const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("all");
   const [selectedMfr, setSelectedMfr] = useState("all");
-  const [selectedSeries, setSelectedSeries] = useState("all");
+  const [specFilters, setSpecFilters] = useState<Record<string, string>>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [rowMakes, setRowMakes] = useState<Map<number, RowMakes>>(new Map());
-  // The categoryId each loaded requirement row originally had, keyed by row index — used as
-  // the save-time fallback when a row's free-text description doesn't string-match any catalog
-  // variant's displayName (very common for hand-typed legacy descriptions), instead of a
-  // hardcoded category id that may not exist and would violate the categoryId FK constraint.
-  const originalCategoryByRow = useRef<Map<number, string>>(new Map());
+  const [requirements, setRequirements] = useState<RequirementRow[]>([]);
+  const [charges, setCharges] = useState<ChargeRow[]>([]);
+  const rowKeySeq = useRef(0);
+  const chargeKeySeq = useRef(0);
 
-  // Monitor fullscreen change for responsive styling
-  useEffect(() => {
-    const onChange = () => {
-      setIsFullscreen(document.fullscreenElement === pageRef.current);
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  // Load activity and master catalog data
   const initData = useCallback(async () => {
     setLoading(true);
     try {
-      const [actData, productsData, catData, mfrData, serData] = await Promise.all([
+      const [actData, productsData, mfrData, catData, defsData] = await Promise.all([
         getActivity(id),
         listProducts({ limit: 1000 }),
-        categoriesApi.list({ limit: 1000 }),
         manufacturersApi.list({ limit: 1000 }),
-        seriesApi.list({ limit: 1000 }),
+        categoriesApi.list({ limit: 1000 }),
+        attributeDefsApi.list({ limit: 1000 }),
       ]);
-
       setActivity(actData);
       setCategories(catData.items);
       setManufacturers(mfrData.items);
-      setSeriesList(serData.items);
+      setAttributeDefs(defsData.items.filter((d) => d.isActive));
 
-      // Flatten products to variants
-      const flattened: FlattenedVariant[] = [];
-      productsData.items.forEach((p) => {
-        const summaries = p.variantSummaries || [];
-        summaries.forEach((v) => {
-          const displayName =
-            v.name && v.name !== "Default" && v.name !== p.name
-              ? `${p.name} - ${v.name}`
-              : p.name;
-          flattened.push({
-            id: v.id,
-            productId: p.id,
-            productName: p.name,
-            name: v.name,
-            displayName,
-            modelCode: v.modelCode,
-            mrp: v.mrp,
-            unit: p.unitName || "NOS",
-            categoryId: p.categoryId || "",
-            categoryName: p.category?.name || p.categoryName || "—",
-            manufacturerId: p.manufacturerId || "",
-            manufacturerName: p.manufacturer?.name || p.manufacturerName || "—",
-            seriesId: p.seriesId || "",
-            seriesName: p.series?.name || "—",
-          });
-        });
+      const flattened: FlattenedProduct[] = productsData.items.map((p) => {
+        const displayName = [p.manufacturerName, p.series, p.categoryName, p.modelCode, p.color].filter(Boolean).join(" ");
+        return {
+          id: p.id,
+          displayName,
+          modelCode: p.modelCode || null,
+          mrp: p.mrp || null,
+          unit: p.unit || "NOS",
+          categoryId: p.categoryId || "",
+          categoryName: p.categoryName || p.category?.name || "—",
+          manufacturerId: p.manufacturerId || "",
+          manufacturerName: p.manufacturerName || p.manufacturer?.name || "—",
+          attributes: p.attributes ?? {},
+        };
       });
-      setFlatVariants(flattened);
+      setFlatProducts(flattened);
 
-      // Derive the multi-make dropdown state from the DB requirements regardless of which
-      // branch below actually loads the sheet — an activity reopened after a previous save
-      // still needs its configured makes restored, not just its raw sheetData cells.
-      const loadedRowMakes = new Map<number, RowMakes>();
-      const rowDefaults = new Map<number, { description: string; mrp: number }>();
-      const loadedCategoryByRow = new Map<number, string>();
-      (actData.requirements ?? []).forEach((req, idx) => {
-        const r = idx + 2;
-        loadedCategoryByRow.set(r, req.categoryId);
-        if (!req.options || req.options.length === 0) return;
-        const options: RowMakeOption[] = req.options
-          .filter((o) => o.variant)
+      const loadedRows: RequirementRow[] = (actData.requirements ?? []).map((req) => {
+        const options: RowMakeOption[] = (req.options ?? [])
+          .filter((o) => o.productModel)
           .map((o) => {
-            const v = o.variant!;
-            const manufacturerName = v.product?.manufacturer?.name ?? "—";
-            const productName = v.product?.name ?? "";
-            const displayName =
-              v.name && v.name !== "Default" && v.name !== productName
-                ? `${productName} - ${v.name}`
-                : productName;
+            const v = o.productModel!;
+            const manufacturerName = v.manufacturer?.name ?? v.manufacturerName ?? "—";
+            const label = [manufacturerName, v.series, v.modelCode].filter(Boolean).join(" ");
             return {
-              variantId: o.variantId,
-              label: `${manufacturerName} — ${displayName}`,
-              mrp: v.priceMrp != null ? Number(v.priceMrp) : null,
+              productModelId: o.productModelId,
+              label,
+              modelCode: v.modelCode ?? null,
+              mrp: v.mrp != null ? Number(v.mrp) : null,
             };
           });
-        const defaultOpt = req.options.find((o) => o.isDefault) ?? req.options[0];
-        if (options.length === 0 || !defaultOpt) return;
-        loadedRowMakes.set(r, { options, defaultVariantId: defaultOpt.variantId });
-        const defaultLabelOption = options.find((o) => o.variantId === defaultOpt.variantId);
-        if (defaultLabelOption) {
-          rowDefaults.set(r, {
-            description: defaultLabelOption.label,
-            mrp: defaultLabelOption.mrp ?? 0,
-          });
-        }
+        const defaultOpt = (req.options ?? []).find((o) => o.isDefault) ?? req.options?.[0];
+        return {
+          key: `r${++rowKeySeq.current}`,
+          categoryId: req.categoryId,
+          categoryName: req.category?.name ?? "—",
+          description: req.description,
+          unit: req.unit,
+          quantity: Number(req.quantity),
+          discountPercent: req.discountPercent != null ? Number(req.discountPercent) : 60,
+          taxPercent: req.taxPercent != null ? Number(req.taxPercent) : 16,
+          options,
+          defaultProductModelId: defaultOpt?.productModelId ?? "",
+        };
       });
-      setRowMakes(loadedRowMakes);
-      originalCategoryByRow.current = loadedCategoryByRow;
+      setRequirements(loadedRows);
 
-      // Initialize spreadsheet cells (handles both the current multi-sheet
-      // workbook shape and the single-sheet shape saved before sheet tabs existed)
-      const rawSheetData = actData.sheetData as { cells?: unknown; sheets?: unknown } | null | undefined;
-      if (rawSheetData && (rawSheetData.sheets || rawSheetData.cells)) {
-        store.loadWorkbook(actData.sheetData);
-      } else {
-        const newCells = new Map<string, any>(store.cells);
-
-        // Clear existing cells below row 0
-        newCells.forEach((_, key) => {
-          const [rStr] = key.split(",");
-          const r = parseInt(rStr, 10);
-          if (r > 0) newCells.delete(key);
-        });
-
-        // 1. Summary Row (Row 2 - index 1)
-        newCells.set(cellKey(1, 0), { value: "a", format: { bold: true, hAlign: "center" } });
-        newCells.set(cellKey(1, 1), {
-          value: actData.name,
-          format: { bold: true, hAlign: "left" },
-        });
-
-        newCells.set(cellKey(1, 11), {
-          value: "=SUM(L3:L100)",
-          format: { bold: true, hAlign: "right", numberFormat: "number2" },
-        });
-        newCells.set(cellKey(1, 12), {
-          value: "=SUM(M3:M100)",
-          format: { bold: true, hAlign: "right", numberFormat: "number2" },
-        });
-
-        // 2. Load existing requirements from DB if any
-        if (actData.requirements && actData.requirements.length > 0) {
-          actData.requirements.forEach((req, idx) => {
-            const r = idx + 2; // start at row index 2 (Row 3)
-
-            const defaults = rowDefaults.get(r);
-            let description = req.description;
-            let mrp = 0;
-            if (defaults) {
-              description = defaults.description;
-              mrp = defaults.mrp;
-            } else {
-              const matchedVar = flattened.find(
-                (v) => v.displayName.toLowerCase() === req.description.toLowerCase()
-              );
-              mrp = matchedVar ? Number(matchedVar.mrp) : 0;
-            }
-
-            newCells.set(cellKey(r, 0), { value: String(idx + 1), format: { hAlign: "center" } });
-            newCells.set(cellKey(r, 1), { value: description, format: { hAlign: "left" } });
-            newCells.set(cellKey(r, 2), { value: req.unit, format: { hAlign: "center" } });
-            newCells.set(cellKey(r, 3), {
-              value: String(req.quantity),
-              format: { hAlign: "center", numberFormat: "number2" },
-            });
-            newCells.set(cellKey(r, 5), {
-              value: String(mrp),
-              format: { hAlign: "right", numberFormat: "number2" },
-            });
-            newCells.set(cellKey(r, 6), {
-              value: "60.00",
-              format: { hAlign: "center", numberFormat: "number" },
-            });
-            newCells.set(cellKey(r, 7), {
-              value: `=F${r + 1}*(1-G${r + 1}/100)`,
-              format: { hAlign: "right", numberFormat: "number2" },
-            });
-            newCells.set(cellKey(r, 8), {
-              value: `=D${r + 1}`,
-              format: { hAlign: "center", numberFormat: "number2" },
-            });
-            newCells.set(cellKey(r, 9), {
-              value: `=H${r + 1}*I${r + 1}`,
-              format: { hAlign: "right", numberFormat: "number2" },
-            });
-            newCells.set(cellKey(r, 10), {
-              value: "1.16",
-              format: { hAlign: "center" },
-            });
-            newCells.set(cellKey(r, 11), {
-              value: `=J${r + 1}*K${r + 1}`,
-              format: { hAlign: "right", numberFormat: "number2" },
-            });
-            newCells.set(cellKey(r, 12), {
-              value: "0.00",
-              format: { hAlign: "right", numberFormat: "number2" },
-            });
-          });
-        }
-
-        store.loadSheet(newCells, store.rowCount, store.colCount);
-      }
+      const loadedCharges: ChargeRow[] = (actData.charges ?? []).map((c: ActivityCharge) => ({
+        key: `c${++chargeKeySeq.current}`,
+        description: c.description,
+        amount: Number(c.amount),
+      }));
+      setCharges(loadedCharges);
     } catch (err) {
       console.error(err);
     } finally {
@@ -290,88 +200,51 @@ export default function ActivityEditorPage({ params }: PageProps) {
     initData();
   }, [initData]);
 
-  // Save the spreadsheet state to activity API
   const handleSave = async () => {
     if (!activity) return;
     setSaving(true);
     setSaveSuccess(false);
-
-    // Requirements + material/labour costs are always read from the primary (first)
-    // sheet — if the user happened to be on a different tab, hop there first and
-    // back afterwards so Save doesn't silently read the wrong sheet's cells.
-    const primarySheetId = store.sheets[0]?.id;
-    const originalSheetId = store.activeSheetId;
-    if (primarySheetId && primarySheetId !== originalSheetId) {
-      store.switchToSheet(primarySheetId);
-    }
-
     try {
-      const allVars = flatVariants;
-      const requirementsList = [];
-
-      // Extract requirements from row 3 (index 2) onwards
-      for (let r = 2; r < 200; r++) {
-        const desc = store.getCellData(r, 1)?.value;
-        if (!desc || desc.trim() === "") continue;
-
-        const unit = store.getCellData(r, 2)?.value || "NOS";
-        const quantity = Number(store.getCellData(r, 3)?.value || 0);
-        const makes = rowMakes.get(r);
-
-        // Multi-make rows: resolve categoryId from the default variant directly, since the
-        // cell text ("Brand — Product - Variant") won't string-match flatVariants.displayName.
-        const matched = makes
-          ? allVars.find((v) => v.id === makes.defaultVariantId)
-          : allVars.find((v) => v.displayName.toLowerCase() === desc.toLowerCase());
-        // Fall back to whatever category this row already had (common for hand-typed
-        // descriptions that won't string-match a catalog variant), then to any real
-        // category as a last resort — never a hardcoded id, which may not exist and
-        // would violate the categoryId foreign key on save.
-        const categoryId =
-          matched?.categoryId ?? originalCategoryByRow.current.get(r) ?? categories[0]?.id ?? "";
-
-        requirementsList.push({
-          categoryId,
-          description: desc,
-          unit: unit as any,
-          quantity,
-          options: makes
-            ? makes.options.map((o) => ({
-                variantId: o.variantId,
-                isDefault: o.variantId === makes.defaultVariantId,
+      const requirementsList = requirements.map((row) => ({
+        categoryId: row.categoryId,
+        description: row.description,
+        unit: row.unit as any,
+        quantity: row.quantity,
+        discountPercent: row.discountPercent,
+        taxPercent: row.taxPercent,
+        options:
+          row.options.length > 0
+            ? row.options.map((o) => ({
+                productModelId: o.productModelId,
+                isDefault: o.productModelId === row.defaultProductModelId,
               }))
             : undefined,
-        });
-      }
+      }));
+      const chargesList = charges
+        .filter((c) => c.description.trim())
+        .map((c) => ({ description: c.description.trim(), amount: c.amount }));
 
-      // Persist whichever tab the user was actually looking at, not the primary
-      // sheet we hopped to above just to read costs/requirements.
-      const sheetData = { ...store.serializeWorkbook(), activeSheetId: originalSheetId };
-
-      const materialCost = Number(store.getEvaluatedCell(1, 11).raw || 0);
-      const labourCost = Number(store.getEvaluatedCell(1, 12).raw || 0);
+      const materialCost = requirements.reduce((sum, row) => sum + rowTotal(row), 0);
+      const labourCost = charges.reduce((sum, c) => sum + c.amount, 0);
 
       const user = getUser();
       const isSuper = user?.roles?.includes("SUPERADMIN");
       const isGlobalCopy = !activity.tenantId && !isSuper;
 
       let targetActivityId = activity.id;
-
       if (isGlobalCopy) {
-        // Create duplicate first to establish the new local DB record
         const dup = await duplicateActivity(activity.id, activity.name + " (Copy)");
         targetActivityId = dup.id;
       }
 
       const updated = await updateActivity(targetActivityId, {
         requirements: requirementsList,
-        sheetData,
+        charges: chargesList,
         materialCost,
         labourCost,
       });
 
       if (isGlobalCopy) {
-        // Redirect to the new activity ID so they are editing their copy going forward
         router.replace(`/Activities/${updated.id}`);
         return;
       }
@@ -382,94 +255,62 @@ export default function ActivityEditorPage({ params }: PageProps) {
     } catch (err) {
       console.error(err);
     } finally {
-      if (primarySheetId && primarySheetId !== originalSheetId) {
-        store.switchToSheet(originalSheetId);
-      }
       setSaving(false);
     }
   };
 
-  /** Adds the checked materials as ONE row (not one row each) — the first checked item
-   *  becomes the default make; all of them become switchable alternates for that line via
-   *  the "Configured Makes" panel. This is the only "add" path now: checking a single item
-   *  and adding it behaves the same as before (one row, no dropdown), and checking several
-   *  makes of the same requirement (e.g. Legrand/Schneider switch) combines them into one
-   *  row instead of creating separate, unlinked rows. */
-  const addSelectedAsAlternates = () => {
+  /** Adds the checked products as ONE requirement — the first checked item becomes the
+   *  default make; all of them become switchable alternates via the row's make dropdown. */
+  const addSelectedAsRequirement = () => {
     if (selectedIds.length === 0) return;
     const chosen = selectedIds
-      .map((vId) => flatVariants.find((v) => v.id === vId))
-      .filter((v): v is FlattenedVariant => Boolean(v));
+      .map((vId) => flatProducts.find((v) => v.id === vId))
+      .filter((v): v is FlattenedProduct => Boolean(v));
     if (chosen.length === 0) return;
 
-    const newCells = new Map(store.cells);
-    let r = 2;
-    while (true) {
-      const descVal = newCells.get(cellKey(r, 1))?.value;
-      if (!descVal || descVal.trim() === "") break;
-      r++;
-    }
-
-    const defaultVariant = chosen[0];
-    const slNo = r - 1;
-    newCells.set(cellKey(r, 0), { value: String(slNo), format: { hAlign: "center" } });
-    newCells.set(cellKey(r, 1), { value: makeLabel(defaultVariant), format: { hAlign: "left" } });
-    newCells.set(cellKey(r, 2), { value: defaultVariant.unit, format: { hAlign: "center" } });
-    newCells.set(cellKey(r, 3), { value: "1.00", format: { hAlign: "center", numberFormat: "number2" } });
-    newCells.set(cellKey(r, 5), {
-      value: String(defaultVariant.mrp || 0),
-      format: { hAlign: "right", numberFormat: "number2" },
-    });
-    newCells.set(cellKey(r, 6), { value: "60.00", format: { hAlign: "center", numberFormat: "number" } });
-    newCells.set(cellKey(r, 7), {
-      value: `=F${r + 1}*(1-G${r + 1}/100)`,
-      format: { hAlign: "right", numberFormat: "number2" },
-    });
-    newCells.set(cellKey(r, 8), { value: `=D${r + 1}`, format: { hAlign: "center", numberFormat: "number2" } });
-    newCells.set(cellKey(r, 9), {
-      value: `=H${r + 1}*I${r + 1}`,
-      format: { hAlign: "right", numberFormat: "number2" },
-    });
-    newCells.set(cellKey(r, 10), { value: "1.16", format: { hAlign: "center" } });
-    newCells.set(cellKey(r, 11), {
-      value: `=J${r + 1}*K${r + 1}`,
-      format: { hAlign: "right", numberFormat: "number2" },
-    });
-    newCells.set(cellKey(r, 12), { value: "0.00", format: { hAlign: "right", numberFormat: "number2" } });
-
-    store.loadSheet(newCells, store.rowCount, store.colCount);
-    setRowMakes((prev) => {
-      const next = new Map(prev);
-      next.set(r, {
-        defaultVariantId: defaultVariant.id,
-        options: chosen.map((v) => ({ variantId: v.id, label: makeLabel(v), mrp: v.mrp })),
-      });
-      return next;
-    });
+    const defaultProduct = chosen[0];
+    const row: RequirementRow = {
+      key: `r${++rowKeySeq.current}`,
+      categoryId: defaultProduct.categoryId,
+      categoryName: defaultProduct.categoryName,
+      description: makeLabel(defaultProduct),
+      unit: defaultProduct.unit,
+      quantity: 1,
+      discountPercent: 60,
+      taxPercent: 16,
+      options: chosen.map((v) => ({ productModelId: v.id, label: makeLabel(v), modelCode: v.modelCode, mrp: v.mrp })),
+      defaultProductModelId: defaultProduct.id,
+    };
+    setRequirements((prev) => [...prev, row]);
     setSelectedIds([]);
   };
 
-  /** Switches a configured row's default make — rewrites that row's description + price
-   *  cells to the newly-picked make, live, right in the activity editor. */
-  const switchRowDefaultMake = (row: number, variantId: string) => {
-    const makes = rowMakes.get(row);
-    if (!makes) return;
-    const option = makes.options.find((o) => o.variantId === variantId);
-    if (!option) return;
+  const updateRow = (key: string, patch: Partial<RequirementRow>) => {
+    setRequirements((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
 
-    const newCells = new Map(store.cells);
-    newCells.set(cellKey(row, 1), { value: option.label, format: { hAlign: "left" } });
-    newCells.set(cellKey(row, 5), {
-      value: String(option.mrp ?? 0),
-      format: { hAlign: "right", numberFormat: "number2" },
-    });
-    store.loadSheet(newCells, store.rowCount, store.colCount);
+  const switchRowDefaultMake = (key: string, productModelId: string) => {
+    setRequirements((prev) =>
+      prev.map((r) => {
+        if (r.key !== key) return r;
+        const option = r.options.find((o) => o.productModelId === productModelId);
+        return option ? { ...r, defaultProductModelId: productModelId, description: option.label } : r;
+      })
+    );
+  };
 
-    setRowMakes((prev) => {
-      const next = new Map(prev);
-      next.set(row, { ...makes, defaultVariantId: variantId });
-      return next;
-    });
+  const removeRow = (key: string) => {
+    setRequirements((prev) => prev.filter((r) => r.key !== key));
+  };
+
+  const addCharge = () => {
+    setCharges((prev) => [...prev, { key: `c${++chargeKeySeq.current}`, description: "", amount: 0 }]);
+  };
+  const updateCharge = (key: string, patch: Partial<ChargeRow>) => {
+    setCharges((prev) => prev.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+  };
+  const removeCharge = (key: string) => {
+    setCharges((prev) => prev.filter((c) => c.key !== key));
   };
 
   const handleToggleSelect = (id: string) => {
@@ -478,73 +319,69 @@ export default function ActivityEditorPage({ params }: PageProps) {
     );
   };
 
-  // Brand list scoped to whichever makes actually exist in the selected category (e.g. a
-  // "Switch" category with only Legrand + Schneider stock shows just those two brands).
   const availableManufacturers =
     selectedCat === "all"
       ? manufacturers
-      : manufacturers.filter((m) => flatVariants.some((v) => v.categoryId === selectedCat && v.manufacturerId === m.id));
+      : manufacturers.filter((m) => flatProducts.some((v) => v.categoryId === selectedCat && v.manufacturerName === m.name));
 
-  // Series list scoped to category + selected brand.
-  const filteredSeriesList = seriesList.filter((s) => {
-    if (selectedMfr !== "all" && s.manufacturerId !== selectedMfr) return false;
-    if (selectedCat === "all") return true;
-    return flatVariants.some(
-      (v) => v.categoryId === selectedCat && v.seriesId === s.id && (selectedMfr === "all" || v.manufacturerId === selectedMfr)
-    );
-  });
+  const categorySpecDefs =
+    selectedCat === "all"
+      ? []
+      : attributeDefs.filter((d) => d.categoryId === selectedCat).sort((a, b) => a.sortOrder - b.sortOrder);
 
-  // Filter materials catalog
-  const filteredVariants = flatVariants.filter((v) => {
+  const filteredProducts = flatProducts.filter((v) => {
     const searchTokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const matchesSearch =
       searchTokens.length === 0 ||
       searchTokens.every(
         (token) =>
           v.displayName.toLowerCase().includes(token) ||
-          v.productName.toLowerCase().includes(token) ||
-          (v.modelCode ?? "").toLowerCase().includes(token) ||
-          v.name.toLowerCase().includes(token)
+          (v.modelCode ?? "").toLowerCase().includes(token)
       );
     const matchesCat = selectedCat === "all" || v.categoryId === selectedCat;
-    const matchesMfr = selectedMfr === "all" || v.manufacturerId === selectedMfr;
-    const matchesSeries = selectedSeries === "all" || v.seriesId === selectedSeries;
-
-    return matchesSearch && matchesCat && matchesMfr && matchesSeries;
+    const matchesMfr = selectedMfr === "all" || v.manufacturerName === manufacturers.find(m => m.id === selectedMfr)?.name;
+    const matchesSpecs = categorySpecDefs.every((def) => {
+      const filterVal = specFilters[def.id];
+      if (!filterVal) return true;
+      const actual = v.attributes?.[def.id];
+      if (def.type === "BOOLEAN") return actual === true;
+      return String(actual ?? "").toLowerCase() === filterVal.toLowerCase();
+    });
+    return matchesSearch && matchesCat && matchesMfr && matchesSpecs;
   });
+
+  const totalSubTotal = requirements.reduce((sum, row) => sum + rowUnitDiscountedPrice(row) * row.quantity, 0);
+  const totalTax = requirements.reduce((sum, row) => sum + rowTaxAmt(row) * row.quantity, 0);
+  const totalMaterial = totalSubTotal + totalTax;
+  const totalCharges = charges.reduce((sum, c) => sum + c.amount, 0);
+  const grandTotal = totalMaterial + totalCharges;
 
   if (loading) {
     return (
       <div className="flex h-[calc(100vh-0rem)] items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          <p className="text-sm font-semibold text-muted-foreground">Loading activity sheet...</p>
+          <p className="text-sm font-semibold text-muted-foreground">Loading activity...</p>
         </div>
       </div>
     );
   }
 
+  const thClass = "px-2.5 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap";
+  const tdClass = "px-2.5 py-2 align-top";
+
   return (
-    <div
-      ref={pageRef}
-      className={`flex flex-col bg-white overflow-hidden ${
-        isFullscreen ? "w-screen h-screen p-2" : "h-[calc(100vh-0rem)] w-full"
-      }`}
-    >
+    <div className="flex flex-col bg-white overflow-hidden h-[calc(100vh-0rem)] w-full">
       {/* Sub Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-white px-4 py-2">
         <div className="flex items-center gap-2">
-          {!isFullscreen && (
-            <>
-              <button
-                onClick={() => router.push("/Activities")}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-primary transition-colors"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
-              </button>
-              <div className="h-4 w-px bg-border mx-1" />
-            </>
-          )}
+          <button
+            onClick={() => router.push("/Activities")}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-primary transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
+          </button>
+          <div className="h-4 w-px bg-border mx-1" />
           <h2 className="text-sm font-bold text-foreground">
             {activity?.code} — <span className="text-muted-foreground font-medium">{activity?.name}</span>
           </h2>
@@ -563,11 +400,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
             disabled={saving}
             className="gap-2 rounded-xl h-9 px-4 font-semibold bg-primary text-white hover:bg-primary/95 transition-all shadow-md shadow-primary/10 disabled:opacity-50"
           >
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Activity
           </Button>
         </div>
@@ -575,9 +408,168 @@ export default function ActivityEditorPage({ params }: PageProps) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Spreadsheet Component */}
-        <div className="flex-1 min-w-0 h-full relative">
-          <Spreadsheet fullscreenElementRef={pageRef} />
+        {/* Requirements + Charges */}
+        <div className="flex-1 min-w-0 h-full overflow-y-auto bg-slate-50/40 p-4 space-y-4">
+          {/* Requirements table */}
+          <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-primary/5 border-b border-border">
+                    <th className={thClass}>Item Code</th>
+                    <th className={thClass}>Item Name / Spec</th>
+                    <th className={thClass}>Qty</th>
+                    <th className={thClass}>Rate</th>
+                    <th className={thClass}>Disc %</th>
+                    <th className={thClass}>Tax %</th>
+                    <th className={thClass}>Tax Amt</th>
+                    <th className={thClass}>Sub Total</th>
+                    <th className={thClass}>Total</th>
+                    <th className={thClass}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requirements.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="text-center py-10 text-muted-foreground">
+                        No requirements yet — pick a category on the right, check the make(s) you want, and add them here.
+                      </td>
+                    </tr>
+                  )}
+                  {requirements.map((row) => (
+                    <tr key={row.key} className="border-b border-border last:border-0 hover:bg-slate-50/60">
+                      <td className={`${tdClass} font-mono text-[11px] text-muted-foreground whitespace-nowrap`}>
+                        {rowModelCode(row)}
+                      </td>
+                      <td className={`${tdClass} min-w-[180px]`}>
+                        <p className="font-semibold text-foreground">{row.description}</p>
+                        <p className="text-[10px] text-primary">{row.categoryName}</p>
+                        {row.options.length > 1 && (
+                          <select
+                            value={row.defaultProductModelId}
+                            onChange={(e) => switchRowDefaultMake(row.key, e.target.value)}
+                            className="mt-1 h-6 w-full rounded-md border border-border bg-slate-50 text-[10px] px-1"
+                          >
+                            {row.options.map((o) => (
+                              <option key={o.productModelId} value={o.productModelId}>
+                                {o.label} — {inr(o.mrp ?? 0)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td className={tdClass}>
+                        <Input
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) || 0 })}
+                          className="h-7 w-16 rounded-md border-border text-xs px-1.5"
+                        />
+                      </td>
+                      <td className={`${tdClass} whitespace-nowrap`}>{inr(rowMrp(row))}</td>
+                      <td className={tdClass}>
+                        <Input
+                          type="number"
+                          value={row.discountPercent}
+                          onChange={(e) => updateRow(row.key, { discountPercent: Number(e.target.value) || 0 })}
+                          className="h-7 w-16 rounded-md border-border text-xs px-1.5"
+                        />
+                      </td>
+                      <td className={tdClass}>
+                        <Input
+                          type="number"
+                          value={row.taxPercent}
+                          onChange={(e) => updateRow(row.key, { taxPercent: Number(e.target.value) || 0 })}
+                          className="h-7 w-16 rounded-md border-border text-xs px-1.5"
+                        />
+                      </td>
+                      <td className={`${tdClass} whitespace-nowrap`}>{inr(rowTaxAmt(row))}</td>
+                      <td className={`${tdClass} whitespace-nowrap`}>{inr(rowSubTotal(row))}</td>
+                      <td className={`${tdClass} whitespace-nowrap font-bold`}>{inr(rowTotal(row))}</td>
+                      <td className={tdClass}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeRow(row.key)}
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+                          aria-label="Remove requirement"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {requirements.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-slate-50/70 border-t border-border font-semibold">
+                      <td colSpan={6} className={`${tdClass} text-right text-muted-foreground`}>Totals</td>
+                      <td className={tdClass}>{inr(totalTax)}</td>
+                      <td className={tdClass}>{inr(totalSubTotal)}</td>
+                      <td className={tdClass}>{inr(totalMaterial)}</td>
+                      <td className={tdClass} />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+
+          {/* Charges table */}
+          <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
+            <div className="px-3 py-2 border-b border-border bg-primary/5">
+              <p className="text-[11px] font-bold text-foreground">Charges</p>
+              <p className="text-[10px] text-muted-foreground">Labour, delivery, testing — any flat cost not tied to a material.</p>
+            </div>
+            {charges.length > 0 && (
+              <table className="w-full text-xs border-collapse">
+                <tbody>
+                  {charges.map((c) => (
+                    <tr key={c.key} className="border-b border-border last:border-0">
+                      <td className={`${tdClass} w-full`}>
+                        <Input
+                          placeholder="Description (e.g. Labour)"
+                          value={c.description}
+                          onChange={(e) => updateCharge(c.key, { description: e.target.value })}
+                          className="h-7 rounded-md border-border text-xs"
+                        />
+                      </td>
+                      <td className={tdClass}>
+                        <Input
+                          type="number"
+                          placeholder="Amount"
+                          value={c.amount}
+                          onChange={(e) => updateCharge(c.key, { amount: Number(e.target.value) || 0 })}
+                          className="h-7 w-28 rounded-md border-border text-xs"
+                        />
+                      </td>
+                      <td className={tdClass}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeCharge(c.key)}
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+                          aria-label="Remove charge"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div className="p-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addCharge}
+                className="gap-1.5 rounded-lg text-xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Charge
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Vertical Divider */}
@@ -590,17 +582,15 @@ export default function ActivityEditorPage({ params }: PageProps) {
               <Search className="h-3.5 w-3.5 text-muted-foreground" />
               Material Catalog
             </h3>
-            
-            {/* Search Input */}
+
             <Input
               placeholder="Search code, product, SKU..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8.5 rounded-lg bg-slate-50 border-border text-xs focus-visible:ring-primary/20"
             />
-            
-            {/* Horizontal Filter Grid */}
-            <div className="grid grid-cols-3 gap-1.5">
+
+            <div className="grid grid-cols-2 gap-1.5">
               <Select
                 value={selectedCat}
                 items={{ all: "Category", ...Object.fromEntries(categories.map((c) => [c.id, c.name])) }}
@@ -608,16 +598,14 @@ export default function ActivityEditorPage({ params }: PageProps) {
                   const nextCat = val || "all";
                   setSelectedCat(nextCat);
                   setSelectedIds([]);
-                  // Brand/Series may no longer apply under the new category — reset them
-                  // rather than silently filtering to an empty list.
+                  setSpecFilters({});
                   if (
                     selectedMfr !== "all" &&
                     !manufacturers.some(
-                      (m) => m.id === selectedMfr && flatVariants.some((v) => v.categoryId === nextCat && v.manufacturerId === m.id)
+                      (m) => m.id === selectedMfr && flatProducts.some((v) => v.categoryId === nextCat && v.manufacturerName === m.name)
                     )
                   ) {
                     setSelectedMfr("all");
-                    setSelectedSeries("all");
                   }
                 }}
               >
@@ -639,7 +627,6 @@ export default function ActivityEditorPage({ params }: PageProps) {
                 items={{ all: "Brand", ...Object.fromEntries(availableManufacturers.map((m) => [m.id, m.name])) }}
                 onValueChange={(val) => {
                   setSelectedMfr(val || "all");
-                  setSelectedSeries("all");
                 }}
               >
                 <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
@@ -654,25 +641,53 @@ export default function ActivityEditorPage({ params }: PageProps) {
                   ))}
                 </SelectContent>
               </Select>
-
-              <Select
-                value={selectedSeries}
-                items={{ all: "Series", ...Object.fromEntries(filteredSeriesList.map((s) => [s.id, s.name])) }}
-                onValueChange={(val) => setSelectedSeries(val || "all")}
-              >
-                <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
-                  <SelectValue placeholder="Series" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-border text-xs">
-                  <SelectItem value="all">Series</SelectItem>
-                  {filteredSeriesList.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
+
+            {categorySpecDefs.length > 0 && (
+              <div className="grid grid-cols-2 gap-1.5">
+                {categorySpecDefs.map((def) =>
+                  def.type === "BOOLEAN" ? (
+                    <label
+                      key={def.id}
+                      className="flex items-center gap-1.5 h-8 rounded-lg bg-slate-50 border border-border text-[10px] px-1.5 select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={specFilters[def.id] === "true"}
+                        onChange={(e) =>
+                          setSpecFilters((prev) => ({ ...prev, [def.id]: e.target.checked ? "true" : "" }))
+                        }
+                        className="h-3 w-3 rounded border-gray-300"
+                      />
+                      {def.name}
+                    </label>
+                  ) : def.type === "SELECT" ? (
+                    <select
+                      key={def.id}
+                      value={specFilters[def.id] ?? ""}
+                      onChange={(e) => setSpecFilters((prev) => ({ ...prev, [def.id]: e.target.value }))}
+                      className="h-8 rounded-lg bg-slate-50 border border-border text-[10px] px-1.5"
+                    >
+                      <option value="">{def.name}</option>
+                      {def.options.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      key={def.id}
+                      type={def.type === "NUMBER" ? "number" : "text"}
+                      placeholder={def.name}
+                      value={specFilters[def.id] ?? ""}
+                      onChange={(e) => setSpecFilters((prev) => ({ ...prev, [def.id]: e.target.value }))}
+                      className="h-8 rounded-lg bg-slate-50 border border-border text-[10px] px-1.5"
+                    />
+                  )
+                )}
+              </div>
+            )}
 
             {selectedCat === "all" && (
               <p className="text-[10px] text-muted-foreground bg-slate-50 border border-border rounded-lg px-2 py-1.5">
@@ -680,55 +695,25 @@ export default function ActivityEditorPage({ params }: PageProps) {
               </p>
             )}
 
-            {/* Add selected checkbox(es) as one row — 1 checked = a plain line, 2+ checked =
-                one line with switchable alternate makes (all from the same category/series filter). */}
             {selectedIds.length > 0 && (
               <Button
-                onClick={addSelectedAsAlternates}
+                onClick={addSelectedAsRequirement}
                 className="w-full h-8.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/95 transition-all shadow-sm flex items-center justify-center gap-1.5 mt-2"
               >
                 {selectedIds.length === 1
-                  ? "Add to Sheet"
-                  : `Add to Sheet — ${selectedIds.length} Makes`}
+                  ? "Add Requirement"
+                  : `Add Requirement — ${selectedIds.length} Makes`}
               </Button>
             )}
           </div>
 
-          {/* Configured multi-make rows */}
-          {rowMakes.size > 0 && (
-            <div className="border-b border-border bg-white shrink-0 p-3 space-y-2 max-h-48 overflow-y-auto">
-              <h3 className="text-xs font-bold text-foreground">Configured Makes</h3>
-              {Array.from(rowMakes.entries())
-                .sort(([a], [b]) => a - b)
-                .map(([row, makes]) => (
-                  <div key={row} className="rounded-lg border border-border bg-slate-50/50 p-2 space-y-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground">
-                      Row {row - 1} · {makes.options.length} makes
-                    </p>
-                    <select
-                      value={makes.defaultVariantId}
-                      onChange={(e) => switchRowDefaultMake(row, e.target.value)}
-                      className="w-full h-7 rounded-md border border-border bg-white text-[11px] px-1.5"
-                    >
-                      {makes.options.map((o) => (
-                        <option key={o.variantId} value={o.variantId}>
-                          {o.label} — ₹{(o.mrp ?? 0).toLocaleString("en-IN")}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-            </div>
-          )}
-
-          {/* List area */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-            {filteredVariants.length === 0 ? (
+            {filteredProducts.length === 0 ? (
               <div className="text-center py-8 text-xs text-muted-foreground">
                 No materials found matching filters
               </div>
             ) : (
-              filteredVariants.map((v) => (
+              filteredProducts.map((v) => (
                 <div
                   key={v.id}
                   className="flex items-start gap-2.5 rounded-xl border border-border bg-white p-2.5 shadow-sm hover:border-primary/20 transition-all"
@@ -748,12 +733,12 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         Code: {v.modelCode || "—"} • Unit: {v.unit}
                       </p>
                       <p className="text-[9px] text-muted-foreground mt-0.5">
-                        Brand: {v.manufacturerName} • Series: {v.seriesName}
+                        Brand: {v.manufacturerName}
                       </p>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-primary">
-                        MRP: ₹{Number(v.mrp || 0).toLocaleString("en-IN")}
+                        MRP: {inr(Number(v.mrp || 0))}
                       </span>
                     </div>
                   </div>
@@ -762,6 +747,19 @@ export default function ActivityEditorPage({ params }: PageProps) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Totals footer */}
+      <div className="shrink-0 border-t border-border bg-white px-4 py-2.5 flex items-center justify-end gap-6">
+        <span className="text-xs text-muted-foreground">
+          Materials: <span className="font-bold text-foreground">{inr(totalMaterial)}</span>
+        </span>
+        <span className="text-xs text-muted-foreground">
+          Charges: <span className="font-bold text-foreground">{inr(totalCharges)}</span>
+        </span>
+        <span className="text-xs text-muted-foreground">
+          Grand Total: <span className="font-bold text-primary">{inr(grandTotal)}</span>
+        </span>
       </div>
     </div>
   );

@@ -7,8 +7,9 @@
 // 1MD). These specs appear automatically in the Add Product wizard.
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckSquare, FolderTree, Pencil, Plus, Search, Trash2, Type } from "lucide-react";
+import { CheckSquare, FolderTree, Pencil, Plus, Search, Trash2, Type, Upload } from "lucide-react";
 
+import ImportCategoriesDialog from "@/components/materials/import-categories-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,9 +31,14 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { attributeDefsApi, categoriesApi, countProductsBy } from "@/app/lib/catalog/api";
-import type { AttributeDef, CatalogCategory } from "@/app/lib/catalog/types";
+import type { AttributeDef, AttributeType, CatalogCategory } from "@/app/lib/catalog/types";
 
-const SPEC_TYPE_LABELS = { text: "Value", boolean: "Yes / No" } as const;
+const SPEC_TYPE_LABELS: Record<AttributeType, string> = {
+  TEXT: "Value",
+  NUMBER: "Number",
+  SELECT: "Choice list",
+  BOOLEAN: "Yes / No",
+};
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
@@ -51,12 +57,25 @@ export default function CategoriesPage() {
 
   // Spec add form
   const [newSpecName, setNewSpecName] = useState("");
-  const [newSpecType, setNewSpecType] = useState<"text" | "boolean">("text");
+  const [newSpecType, setNewSpecType] = useState<AttributeType>("TEXT");
   const [newSpecUnit, setNewSpecUnit] = useState("");
+  const [newSpecOptions, setNewSpecOptions] = useState("");
+  const [newSpecRequired, setNewSpecRequired] = useState(false);
   const [specError, setSpecError] = useState("");
 
+  // Spec edit dialog
+  const [editingSpec, setEditingSpec] = useState<AttributeDef | null>(null);
+  const [specFormName, setSpecFormName] = useState("");
+  const [specFormType, setSpecFormType] = useState<AttributeType>("TEXT");
+  const [specFormUnit, setSpecFormUnit] = useState("");
+  const [specFormOptions, setSpecFormOptions] = useState("");
+  const [specFormRequired, setSpecFormRequired] = useState(false);
+  const [specFormError, setSpecFormError] = useState("");
+
   const [deletingCat, setDeletingCat] = useState<CatalogCategory | null>(null);
+  const [deleteCatError, setDeleteCatError] = useState("");
   const [deletingSpec, setDeletingSpec] = useState<AttributeDef | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     const result = await categoriesApi.list({ search: search || undefined, limit: 500 });
@@ -120,23 +139,74 @@ export default function CategoriesPage() {
 
   const addSpec = async () => {
     if (!selected || !newSpecName.trim()) return;
+    if (newSpecType === "SELECT" && !newSpecOptions.trim()) {
+      setSpecError("Add at least one option (semicolon-separated)");
+      return;
+    }
     setSpecError("");
     try {
       await attributeDefsApi.create({
         name: newSpecName,
         categoryId: selected.id,
         type: newSpecType,
-        unit: newSpecType === "text" ? newSpecUnit.trim() || null : null,
-        options: [],
-        required: false,
+        unit: newSpecType === "NUMBER" ? newSpecUnit.trim() || null : null,
+        options:
+          newSpecType === "SELECT"
+            ? newSpecOptions
+                .split(";")
+                .map((o) => o.trim())
+                .filter(Boolean)
+            : [],
+        required: newSpecRequired,
         sortOrder: specs.length ? Math.max(...specs.map((s) => s.sortOrder)) + 1 : 0,
       });
       setNewSpecName("");
       setNewSpecUnit("");
+      setNewSpecOptions("");
+      setNewSpecRequired(false);
       loadSpecs();
       load();
     } catch (err) {
       setSpecError(err instanceof Error ? err.message : "Failed to add specification");
+    }
+  };
+
+  const openSpecEdit = (s: AttributeDef) => {
+    setEditingSpec(s);
+    setSpecFormName(s.name);
+    setSpecFormType(s.type);
+    setSpecFormUnit(s.unit ?? "");
+    setSpecFormOptions(s.options.join("; "));
+    setSpecFormRequired(s.required);
+    setSpecFormError("");
+  };
+
+  const submitSpecEdit = async () => {
+    if (!editingSpec || !specFormName.trim()) return;
+    if (specFormType === "SELECT" && !specFormOptions.trim()) {
+      setSpecFormError("Add at least one option (semicolon-separated)");
+      return;
+    }
+    setSpecFormError("");
+    try {
+      await attributeDefsApi.update(editingSpec.id, {
+        name: specFormName.trim(),
+        type: specFormType,
+        unit: specFormType === "NUMBER" ? specFormUnit.trim() || null : null,
+        options:
+          specFormType === "SELECT"
+            ? specFormOptions
+                .split(";")
+                .map((o) => o.trim())
+                .filter(Boolean)
+            : [],
+        required: specFormRequired,
+      });
+      setEditingSpec(null);
+      loadSpecs();
+      load();
+    } catch (err) {
+      setSpecFormError(err instanceof Error ? err.message : "Failed to update specification");
     }
   };
 
@@ -152,12 +222,21 @@ export default function CategoriesPage() {
             className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
           />
         </div>
-        <Button
-          onClick={() => openCatForm(null)}
-          className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white"
-        >
-          <Plus className="h-4 w-4" /> Add Category
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 rounded-xl h-10 px-4 font-semibold border-border bg-white"
+          >
+            <Upload className="h-4 w-4" /> Import Excel
+          </Button>
+          <Button
+            onClick={() => openCatForm(null)}
+            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white"
+          >
+            <Plus className="h-4 w-4" /> Add Category
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(300px,2fr)_3fr] gap-5 items-start">
@@ -265,7 +344,7 @@ export default function CategoriesPage() {
                     className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2"
                   >
                     <span className="text-muted-foreground">
-                      {s.type === "boolean" ? (
+                      {s.type === "BOOLEAN" ? (
                         <CheckSquare className="h-3.5 w-3.5" />
                       ) : (
                         <Type className="h-3.5 w-3.5" />
@@ -273,22 +352,40 @@ export default function CategoriesPage() {
                     </span>
                     <p className="text-sm font-semibold flex-1 min-w-0 truncate">
                       {s.name}
+                      {s.required && (
+                        <span className="text-red-500"> *</span>
+                      )}
                       {s.unit && (
                         <span className="text-xs text-muted-foreground font-normal">
                           {" "}
                           ({s.unit})
                         </span>
                       )}
+                      {s.type === "SELECT" && s.options.length > 0 && (
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {" "}
+                          ({s.options.join(", ")})
+                        </span>
+                      )}
                     </p>
                     <Badge
                       className={
-                        s.type === "boolean"
+                        s.type === "BOOLEAN"
                           ? "bg-amber-100 text-amber-700 border-0 rounded-full text-[10px] font-semibold"
                           : "bg-primary/10 text-primary border-0 rounded-full text-[10px] font-semibold"
                       }
                     >
-                      {SPEC_TYPE_LABELS[s.type === "boolean" ? "boolean" : "text"]}
+                      {SPEC_TYPE_LABELS[s.type]}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openSpecEdit(s)}
+                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary shrink-0"
+                      aria-label={`Edit ${s.name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -316,17 +413,19 @@ export default function CategoriesPage() {
                   <Select
                     value={newSpecType}
                     items={SPEC_TYPE_LABELS}
-                    onValueChange={(v) => v && setNewSpecType(v as "text" | "boolean")}
+                    onValueChange={(v) => v && setNewSpecType(v as AttributeType)}
                   >
-                    <SelectTrigger className="rounded-xl border-border h-9 w-[120px]">
+                    <SelectTrigger className="rounded-xl border-border h-9 w-[130px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-border">
-                      <SelectItem value="text">Value</SelectItem>
-                      <SelectItem value="boolean">Yes / No</SelectItem>
+                      <SelectItem value="TEXT">Value</SelectItem>
+                      <SelectItem value="NUMBER">Number</SelectItem>
+                      <SelectItem value="SELECT">Choice list</SelectItem>
+                      <SelectItem value="BOOLEAN">Yes / No</SelectItem>
                     </SelectContent>
                   </Select>
-                  {newSpecType === "text" && (
+                  {newSpecType === "NUMBER" && (
                     <Input
                       placeholder="Unit"
                       value={newSpecUnit}
@@ -335,6 +434,24 @@ export default function CategoriesPage() {
                       className="rounded-xl border-border h-9 w-20"
                     />
                   )}
+                  {newSpecType === "SELECT" && (
+                    <Input
+                      placeholder="Options (e.g. 1 Way; 2 Way; 3 Way)"
+                      value={newSpecOptions}
+                      onChange={(e) => setNewSpecOptions(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addSpec()}
+                      className="rounded-xl border-border h-9 flex-1 min-w-[180px]"
+                    />
+                  )}
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
+                    <input
+                      type="checkbox"
+                      checked={newSpecRequired}
+                      onChange={(e) => setNewSpecRequired(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-border"
+                    />
+                    Required
+                  </label>
                   <Button
                     size="icon"
                     onClick={addSpec}
@@ -395,7 +512,15 @@ export default function CategoriesPage() {
       </Dialog>
 
       {/* Delete category */}
-      <Dialog open={Boolean(deletingCat)} onOpenChange={(open) => !open && setDeletingCat(null)}>
+      <Dialog
+        open={Boolean(deletingCat)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingCat(null);
+            setDeleteCatError("");
+          }
+        }}
+      >
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Category</DialogTitle>
@@ -404,20 +529,104 @@ export default function CategoriesPage() {
               and stop offering its specifications?
             </DialogDescription>
           </DialogHeader>
+          {deleteCatError && <p className="text-xs text-red-500">{deleteCatError}</p>}
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setDeletingCat(null)}>
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => {
+                setDeletingCat(null);
+                setDeleteCatError("");
+              }}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               className="rounded-xl"
               onClick={async () => {
-                if (deletingCat) await categoriesApi.remove(deletingCat.id);
-                setDeletingCat(null);
-                load();
+                if (!deletingCat) return;
+                setDeleteCatError("");
+                try {
+                  await categoriesApi.remove(deletingCat.id);
+                  setDeletingCat(null);
+                  load();
+                } catch (err) {
+                  setDeleteCatError(err instanceof Error ? err.message : "Failed to delete category");
+                }
               }}
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit spec */}
+      <Dialog open={Boolean(editingSpec)} onOpenChange={(open) => !open && setEditingSpec(null)}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Edit Specification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Name"
+              value={specFormName}
+              onChange={(e) => setSpecFormName(e.target.value)}
+              className="rounded-xl border-border"
+            />
+            <Select
+              value={specFormType}
+              items={SPEC_TYPE_LABELS}
+              onValueChange={(v) => v && setSpecFormType(v as AttributeType)}
+            >
+              <SelectTrigger className="rounded-xl border-border h-9 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border">
+                <SelectItem value="TEXT">Value</SelectItem>
+                <SelectItem value="NUMBER">Number</SelectItem>
+                <SelectItem value="SELECT">Choice list</SelectItem>
+                <SelectItem value="BOOLEAN">Yes / No</SelectItem>
+              </SelectContent>
+            </Select>
+            {specFormType === "NUMBER" && (
+              <Input
+                placeholder="Unit"
+                value={specFormUnit}
+                onChange={(e) => setSpecFormUnit(e.target.value)}
+                className="rounded-xl border-border"
+              />
+            )}
+            {specFormType === "SELECT" && (
+              <Input
+                placeholder="Options (semicolon-separated, e.g. 1 Way; 2 Way; Intermediate)"
+                value={specFormOptions}
+                onChange={(e) => setSpecFormOptions(e.target.value)}
+                className="rounded-xl border-border"
+              />
+            )}
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
+              <input
+                type="checkbox"
+                checked={specFormRequired}
+                onChange={(e) => setSpecFormRequired(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border"
+              />
+              Required
+            </label>
+            {specFormError && <p className="text-xs text-red-500">{specFormError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setEditingSpec(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="rounded-xl bg-primary text-white"
+              onClick={submitSpecEdit}
+              disabled={!specFormName.trim()}
+            >
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -452,6 +661,18 @@ export default function CategoriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importOpen && (
+        <ImportCategoriesDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            setImportOpen(false);
+            load();
+            loadSpecs();
+          }}
+        />
+      )}
     </div>
   );
 }

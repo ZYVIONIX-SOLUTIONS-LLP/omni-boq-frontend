@@ -13,10 +13,9 @@ import {
   listProducts,
   manufacturersApi,
   categoriesApi,
-  seriesApi,
   matchesSpecKeyword,
 } from "@/app/lib/catalog/api";
-import type { Manufacturer, CatalogCategory, ProductSeries } from "@/app/lib/catalog/types";
+import type { Manufacturer, CatalogCategory } from "@/app/lib/catalog/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,10 +30,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-interface FlattenedVariant {
+interface FlattenedProduct {
   id: string;
-  productId: string;
-  name: string;
   displayName: string;
   modelCode: string | null;
   mrp: number | null;
@@ -43,8 +40,7 @@ interface FlattenedVariant {
   categoryName: string;
   manufacturerId: string;
   manufacturerName: string;
-  seriesId: string;
-  seriesName: string;
+  series: string;
 }
 
 function escapeHtml(s: string): string {
@@ -62,11 +58,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const pageRef = useRef<HTMLDivElement>(null);
 
   const [quotation, setQuotation] = useState<Quotation | null>(null);
-  const [flatVariants, setFlatVariants] = useState<FlattenedVariant[]>([]);
+  const [flatProducts, setFlatProducts] = useState<FlattenedProduct[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
-  const [seriesList, setSeriesList] = useState<ProductSeries[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,20 +69,18 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const [activeTab, setActiveTab] = useState<"material" | "activity">("material");
   const [selectedCat, setSelectedCat] = useState("all");
   const [selectedMfr, setSelectedMfr] = useState("all");
-  const [selectedSeries, setSelectedSeries] = useState("all");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Preferred manufacturer (+ optional series) per catalog category — drives which
   // configured make wins when an Activity's multi-make requirement is added below.
-  type BrandPreferences = Record<string, { manufacturerId: string; seriesId?: string | null }>;
+  type BrandPreferences = Record<string, { manufacturerId: string; }>;
   const [brandPreferences, setBrandPreferences] = useState<BrandPreferences>({});
 
   // "Add a preference" mini-form state (sidebar panel)
   const [prefCatId, setPrefCatId] = useState("");
   const [prefMfrId, setPrefMfrId] = useState("");
-  const [prefSeriesId, setPrefSeriesId] = useState("");
 
   // Per-row activity tags ("header" | "detail"), keyed by row index. Lets
   // detail-row detection (brand swap, PDF export filtering) rely on real
@@ -156,20 +149,18 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const initData = useCallback(async () => {
     setLoading(true);
     try {
-      const [quoData, productsData, activitiesData, catData, mfrData, serData] = await Promise.all([
+      const [quoData, productsData, activitiesData, catData, mfrData] = await Promise.all([
         getQuotation(id),
         listProducts({ limit: 1000 }),
         listActivities({ limit: 1000 }),
         categoriesApi.list({ limit: 1000 }),
         manufacturersApi.list({ limit: 1000 }),
-        seriesApi.list({ limit: 1000 }),
       ]);
 
       setQuotation(quoData);
       setActivities(activitiesData.items);
       setCategories(catData.items);
       setManufacturers(mfrData.items);
-      setSeriesList(serData.items);
 
       if (quoData.brandPreferences) {
         setBrandPreferences(quoData.brandPreferences);
@@ -182,33 +173,23 @@ export default function QuotationEditorPage({ params }: PageProps) {
         setActivityRowTags(tags);
       }
 
-      // Flatten products to variants
-      const flattened: FlattenedVariant[] = [];
-      productsData.items.forEach((p) => {
-        const summaries = p.variantSummaries || [];
-        summaries.forEach((v) => {
-          const displayName =
-            v.name && v.name !== "Default" && v.name !== p.name
-              ? `${p.name} - ${v.name}`
-              : p.name;
-          flattened.push({
-            id: v.id,
-            productId: p.id,
-            name: v.name,
-            displayName,
-            modelCode: v.modelCode,
-            mrp: v.mrp,
-            unit: p.unitName || "NOS",
-            categoryId: p.categoryId || "",
-            categoryName: p.category?.name || p.categoryName || "—",
-            manufacturerId: p.manufacturerId || "",
-            manufacturerName: p.manufacturer?.name || p.manufacturerName || "—",
-            seriesId: p.seriesId || "",
-            seriesName: p.series?.name || "—",
-          });
-        });
+      // Flatten products to UI shape
+      const flattened: FlattenedProduct[] = productsData.items.map((p) => {
+        const displayName = [p.manufacturerName, p.series, p.categoryName, p.modelCode, p.color].filter(Boolean).join(" ");
+        return {
+          id: p.id,
+          displayName,
+          modelCode: p.modelCode || null,
+          mrp: p.mrp || null,
+          unit: p.unit || "NOS",
+          categoryId: p.categoryId || "",
+          categoryName: p.categoryName || p.category?.name || "—",
+          manufacturerId: p.manufacturerId || "",
+          manufacturerName: p.manufacturerName || p.manufacturer?.name || "—",
+          series: p.series || "—",
+        };
       });
-      setFlatVariants(flattened);
+      setFlatProducts(flattened);
 
       // Initialize spreadsheet cells (handles both the current multi-sheet
       // workbook shape and the single-sheet shape saved before sheet tabs existed)
@@ -398,7 +379,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
   };
 
   // Add a material row to spreadsheet
-  const addMaterialRow = (newCells: Map<string, any>, r: number, variant: FlattenedVariant) => {
+  const addMaterialRow = (newCells: Map<string, any>, r: number, variant: FlattenedProduct) => {
     const slNo = r - 1;
     newCells.set(cellKey(r, 0), { value: String(slNo), format: { hAlign: "center" } });
     newCells.set(cellKey(r, 1), { value: variant.displayName, format: { hAlign: "left" } });
@@ -446,21 +427,21 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const resolveRequirementVariant = (
     req: { categoryId: string; description: string; options?: ActivityRequirementOption[] },
     prefs: BrandPreferences,
-    variants: FlattenedVariant[]
+    variants: FlattenedProduct[]
   ) => {
     const pref = prefs[req.categoryId];
 
     // Requirement has configured alternate makes (e.g. Switch: Legrand/Schneider) — pick the
-    // one matching the category's preferred brand/series among THOSE options only; fall back
+    // one matching the category's preferred brand among THOSE options only; fall back
     // to whichever the Activity itself marked as default.
     if (req.options && req.options.length > 0) {
       const optionVariants = req.options
-        .map((o) => ({ opt: o, v: variants.find((fv) => fv.id === o.variantId) }))
-        .filter((x): x is { opt: ActivityRequirementOption; v: FlattenedVariant } => Boolean(x.v));
+        .map((o) => ({ opt: o, v: variants.find((fv) => fv.id === o.productModelId) }))
+        .filter((x): x is { opt: ActivityRequirementOption; v: FlattenedProduct } => Boolean(x.v));
 
       if (pref) {
         const matched = optionVariants.find(
-          ({ v }) => v.manufacturerId === pref.manufacturerId && (!pref.seriesId || v.seriesId === pref.seriesId)
+          ({ v }) => v.manufacturerId === pref.manufacturerId
         );
         if (matched) return matched.v;
       }
@@ -476,7 +457,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
     if (pref) {
       const brandVars = variants.filter((v) => {
         if (v.categoryId !== catId || v.manufacturerId !== pref.manufacturerId) return false;
-        if (pref.seriesId && v.seriesId !== pref.seriesId) return false;
         return true;
       });
       const matched = brandVars.find((v) => matchesSpecKeyword(v.displayName, req.description));
@@ -528,7 +508,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
       const variant = resolveRequirementVariant(
         { categoryId: req.categoryId, description: req.description, options: req.options },
         brandPreferences,
-        flatVariants
+        flatProducts
       );
       const displayName = variant
         ? `  ↳ ${variant.manufacturerName} ${variant.displayName}`
@@ -600,7 +580,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
     if (type === "material" && isDetailRow) {
       // Overwrite/swap brand make of selected child row
-      const variant = flatVariants.find((v) => v.id === id);
+      const variant = flatProducts.find((v) => v.id === id);
       if (variant) {
         newCells.set(cellKey(activeRow, 1), {
           value: `  ↳ ${variant.manufacturerName} ${variant.displayName}`,
@@ -627,7 +607,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
     }
 
     if (type === "material") {
-      const variant = flatVariants.find((v) => v.id === id);
+      const variant = flatProducts.find((v) => v.id === id);
       if (variant) addMaterialRow(newCells, r, variant);
     } else {
       const act = activities.find((a) => a.id === id);
@@ -658,7 +638,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
     let mergedTags: Record<number, "header" | "detail"> = {};
     selectedIds.forEach((sid) => {
       if (activeTab === "material") {
-        const variant = flatVariants.find((v) => v.id === sid);
+        const variant = flatProducts.find((v) => v.id === sid);
         if (variant) {
           addMaterialRow(newCells, r, variant);
           r++;
@@ -691,38 +671,29 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const availableManufacturers =
     selectedCat === "all"
       ? manufacturers
-      : manufacturers.filter((m) => flatVariants.some((v) => v.categoryId === selectedCat && v.manufacturerId === m.id));
+      : manufacturers.filter((m) => flatProducts.some((v) => v.categoryId === selectedCat && v.manufacturerName === m.name));
 
-  const filteredSeriesList = seriesList.filter((s) => {
-    if (selectedMfr !== "all" && s.manufacturerId !== selectedMfr) return false;
-    if (selectedCat === "all") return true;
-    return flatVariants.some(
-      (v) => v.categoryId === selectedCat && v.seriesId === s.id && (selectedMfr === "all" || v.manufacturerId === selectedMfr)
-    );
-  });
+
 
   // Same category-scoping for the "Preferred Brands" add-form.
   const prefAvailableManufacturers = !prefCatId
     ? manufacturers
-    : manufacturers.filter((m) => flatVariants.some((v) => v.categoryId === prefCatId && v.manufacturerId === m.id));
-  const prefAvailableSeries = seriesList.filter((s) => {
-    if (prefMfrId && s.manufacturerId !== prefMfrId) return false;
-    if (!prefCatId) return true;
-    return flatVariants.some(
-      (v) => v.categoryId === prefCatId && v.seriesId === s.id && (!prefMfrId || v.manufacturerId === prefMfrId)
-    );
-  });
+    : manufacturers.filter((m) => flatProducts.some((v) => v.categoryId === prefCatId && v.manufacturerName === m.name));
 
-  // Filter lists
-  const filteredVariants = flatVariants.filter((v) => {
+
+  // Filter materials catalog
+  const filteredProducts = flatProducts.filter((v) => {
+    const searchTokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const matchesSearch =
-      v.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      (v.modelCode ?? "").toLowerCase().includes(search.toLowerCase());
+      searchTokens.length === 0 ||
+      searchTokens.every(
+        (token) =>
+          v.displayName.toLowerCase().includes(token) ||
+          (v.modelCode ?? "").toLowerCase().includes(token)
+      );
     const matchesCat = selectedCat === "all" || v.categoryId === selectedCat;
-    const matchesMfr = selectedMfr === "all" || v.manufacturerId === selectedMfr;
-    const matchesSeries = selectedSeries === "all" || v.seriesId === selectedSeries;
-
-    return matchesSearch && matchesCat && matchesMfr && matchesSeries;
+    const matchesMfr = selectedMfr === "all" || v.manufacturerName === manufacturers.find(m => m.id === selectedMfr)?.name;
+    return matchesSearch && matchesCat && matchesMfr;
   });
 
   const filteredActivities = activities.filter((a) => {
@@ -785,6 +756,14 @@ export default function QuotationEditorPage({ params }: PageProps) {
           )}
           <Button
             variant="outline"
+            onClick={() => router.push(`/Quotations/${id}/ai`)}
+            className="gap-2 rounded-xl h-9 px-4 font-semibold border-border bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 hover:from-indigo-100 hover:to-purple-100 transition-all shadow-sm"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI Workspace
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleExportPdf}
             className="gap-2 rounded-xl h-9 px-4 font-semibold border-border"
           >
@@ -842,7 +821,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 {Object.entries(brandPreferences).map(([catId, pref]) => {
                   const cat = categories.find((c) => c.id === catId);
                   const mfr = manufacturers.find((m) => m.id === pref.manufacturerId);
-                  const ser = pref.seriesId ? seriesList.find((s) => s.id === pref.seriesId) : null;
                   return (
                     <div
                       key={catId}
@@ -851,7 +829,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       <span className="text-[10px] font-semibold text-foreground truncate">
                         {cat?.name ?? catId}:{" "}
                         <span className="text-primary">{mfr?.name ?? pref.manufacturerId}</span>
-                        {ser && <span className="text-muted-foreground"> — {ser.name}</span>}
                       </span>
                       <button
                         onClick={() =>
@@ -884,10 +861,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
                   if (
                     prefMfrId &&
                     nextCat &&
-                    !flatVariants.some((v) => v.categoryId === nextCat && v.manufacturerId === prefMfrId)
+                    !flatProducts.some((v) => v.categoryId === nextCat && v.manufacturerId === prefMfrId)
                   ) {
                     setPrefMfrId("");
-                    setPrefSeriesId("");
                   }
                 }}
               >
@@ -908,7 +884,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 items={Object.fromEntries(prefAvailableManufacturers.map((m) => [m.id, m.name]))}
                 onValueChange={(val) => {
                   setPrefMfrId(val || "");
-                  setPrefSeriesId("");
                 }}
               >
                 <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
@@ -922,24 +897,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
                   ))}
                 </SelectContent>
               </Select>
-
-              <Select
-                value={prefSeriesId}
-                items={Object.fromEntries(prefAvailableSeries.map((s) => [s.id, s.name]))}
-                onValueChange={(val) => setPrefSeriesId(val || "")}
-                disabled={!prefMfrId}
-              >
-                <SelectTrigger className="h-7.5 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
-                  <SelectValue placeholder="Series" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-border text-xs">
-                  {prefAvailableSeries.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <Button
@@ -947,11 +904,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 if (!prefCatId || !prefMfrId) return;
                 setBrandPreferences((prev) => ({
                   ...prev,
-                  [prefCatId]: { manufacturerId: prefMfrId, seriesId: prefSeriesId || null },
+                  [prefCatId]: { manufacturerId: prefMfrId, seriesId: null },
                 }));
                 setPrefCatId("");
                 setPrefMfrId("");
-                setPrefSeriesId("");
               }}
               disabled={!prefCatId || !prefMfrId}
               variant="outline"
@@ -1017,11 +973,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     if (
                       selectedMfr !== "all" &&
                       !manufacturers.some(
-                        (m) => m.id === selectedMfr && flatVariants.some((v) => v.categoryId === nextCat && v.manufacturerId === m.id)
+                        (m) => m.id === selectedMfr && flatProducts.some((v) => v.categoryId === nextCat && v.manufacturerName === m.name)
                       )
                     ) {
                       setSelectedMfr("all");
-                      setSelectedSeries("all");
                     }
                   }}
                 >
@@ -1043,7 +998,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
                   items={{ all: "Brand", ...Object.fromEntries(availableManufacturers.map((m) => [m.id, m.name])) }}
                   onValueChange={(val) => {
                     setSelectedMfr(val || "all");
-                    setSelectedSeries("all");
                   }}
                 >
                   <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
@@ -1059,23 +1013,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                   </SelectContent>
                 </Select>
 
-                <Select
-                  value={selectedSeries}
-                  items={{ all: "Series", ...Object.fromEntries(filteredSeriesList.map((s) => [s.id, s.name])) }}
-                  onValueChange={(val) => setSelectedSeries(val || "all")}
-                >
-                  <SelectTrigger className="h-8 rounded-lg bg-slate-50 border-border text-[10px] px-1.5">
-                    <SelectValue placeholder="Series" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-border text-xs">
-                    <SelectItem value="all">Series</SelectItem>
-                    {filteredSeriesList.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
               </div>
             )}
 
@@ -1091,14 +1029,14 @@ export default function QuotationEditorPage({ params }: PageProps) {
           </div>
 
           {/* List Area */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0 bg-white">
             {activeTab === "material" ? (
-              filteredVariants.length === 0 ? (
+              filteredProducts.length === 0 ? (
                 <div className="text-center py-8 text-xs text-muted-foreground">
-                  No materials found
+                  No materials found matching filters
                 </div>
               ) : (
-                filteredVariants.map((v) => (
+                filteredProducts.map((v) => (
                   <div
                     key={v.id}
                     className="flex items-start gap-2.5 rounded-xl border border-border bg-white p-2.5 shadow-sm hover:border-primary/20 transition-all"
@@ -1118,7 +1056,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           Code: {v.modelCode || "—"} • Unit: {v.unit}
                         </p>
                         <p className="text-[9px] text-muted-foreground mt-0.5">
-                          Brand: {v.manufacturerName} • Series: {v.seriesName}
+                          Brand: {v.manufacturerName} • Series: {v.series}
                         </p>
                       </div>
                       <div className="flex items-center justify-between">

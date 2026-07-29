@@ -58,14 +58,17 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log("Form submitted. isSignUp:", isSignUp);
     setLoading(true);
     setError("");
     setSuccess("");
 
     if (isSignUp) {
       // Handle Sign Up
+      console.log("Attempting to register with:", { username, firstName, lastName, companyName });
       try {
         await register({ username, password, firstName, lastName, companyName });
+        console.log("Registration successful");
         setSuccess("Registration submitted! A Super Admin will review and verify your account shortly.");
         setLoading(false);
         setIsSignUp(false);
@@ -75,6 +78,7 @@ export default function Login() {
         setFirstName("");
         setLastName("");
       } catch (err: any) {
+        console.error("Registration error:", err);
         setError(err.message || "Registration failed");
         setLoading(false);
       }
@@ -82,10 +86,13 @@ export default function Login() {
     }
 
     // Handle Login
+    console.log("Attempting to login with role:", role);
     try {
       await login({ username, password, role: role.toUpperCase() as "STAFF" | "ADMIN" });
+      console.log("Login successful");
       router.push("/Dashboard");
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message || "Invalid credentials");
     } finally {
       setLoading(false);

@@ -307,7 +307,13 @@ export default function QuotationsPage() {
       <QuotationCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={(id) => openQuotation(id)}
+        onCreated={(id, mode) => {
+          if (mode === "ai") {
+            router.push(`/Quotations/${id}/ai`);
+          } else {
+            openQuotation(id);
+          }
+        }}
       />
 
       {/* Delete confirmation */}

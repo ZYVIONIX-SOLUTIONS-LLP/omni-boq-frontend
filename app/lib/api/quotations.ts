@@ -121,3 +121,7 @@ export function updateQuotation(id: string, payload: Partial<Quotation>): Promis
 export function deleteQuotation(id: string): Promise<void> {
     return apiDelete(`/quotations/${id}`);
 }
+
+export function generateQuotationDraft(id: string, prompt: string): Promise<any[]> {
+    return apiPost(`/quotations/${id}/ai-generate`, { prompt });
+}

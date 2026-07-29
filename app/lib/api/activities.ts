@@ -45,18 +45,16 @@ export const ACTIVITY_CATEGORIES: Record<WiringType, string[]> = {
 /** One alternate "make" (a specific catalog variant) a requirement can be fulfilled with. */
 export interface ActivityRequirementOption {
     id?: string;
-    variantId: string;
+    productModelId: string;
     isDefault: boolean;
     sortOrder?: number;
-    variant?: {
+    productModel?: {
         id: string;
-        name: string;
+        manufacturerName?: string | null;
+        series?: string | null;
         modelCode?: string | null;
-        priceMrp?: string | number | null;
-        product?: {
-            name: string;
-            manufacturer?: { id: string; name: string } | null;
-        } | null;
+        mrp?: string | number | null;
+        manufacturer?: { id: string; name: string } | null;
     } | null;
 }
 
@@ -67,10 +65,20 @@ export interface ActivityRequirement {
     description: string;
     unit: UnitOfMeasure;
     quantity: string | number;
+    discountPercent?: string | number;
+    taxPercent?: string | number;
     sortOrder?: number;
     /** Alternate makes for this requirement — empty/absent means the plain single-description
      *  behavior (no dropdown, no default make). */
     options?: ActivityRequirementOption[];
+}
+
+/** A standalone cost line not tied to any category/product — labour, delivery, testing, etc. */
+export interface ActivityCharge {
+    id?: string;
+    description: string;
+    amount: string | number;
+    sortOrder?: number;
 }
 
 export interface Activity {
@@ -85,10 +93,7 @@ export interface Activity {
     tenantId?: string | null;
     isActive: boolean;
     requirements: ActivityRequirement[];
-    /** Opaque spreadsheet workbook blob (shape owned by the spreadsheet store —
-     *  either the current multi-sheet form or, for older records, the single-sheet
-     *  form saved before sheet tabs existed; `store.loadWorkbook` handles both). */
-    sheetData?: unknown;
+    charges: ActivityCharge[];
     materialCost?: number | null;
     labourCost?: number | null;
 }
@@ -105,12 +110,11 @@ export interface ActivityPayload {
         description: string;
         unit: UnitOfMeasure;
         quantity: number;
-        options?: Array<{ variantId: string; isDefault?: boolean }>;
+        discountPercent?: number;
+        taxPercent?: number;
+        options?: Array<{ productModelId: string; isDefault?: boolean }>;
     }>;
-    /** Opaque spreadsheet workbook blob (shape owned by the spreadsheet store —
-     *  either the current multi-sheet form or, for older records, the single-sheet
-     *  form saved before sheet tabs existed; `store.loadWorkbook` handles both). */
-    sheetData?: unknown;
+    charges?: Array<{ description: string; amount: number }>;
     materialCost?: number | null;
     labourCost?: number | null;
 }

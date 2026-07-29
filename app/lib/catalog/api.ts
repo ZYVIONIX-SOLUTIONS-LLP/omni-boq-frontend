@@ -10,17 +10,10 @@ import type {
   AttributeDef,
   BaseEntity,
   CatalogCategory,
-  Division,
-  HsnCode,
   Manufacturer,
   ProductModel,
-  ProductSeries,
-  ProductWithVariants,
+  ProductStatus,
   SubCategory,
-  TaxRate,
-  UnitDef,
-  Variant,
-  VariantStatus,
 } from "./types";
 
 export type { PageMeta };
@@ -83,17 +76,9 @@ function makeStore<T extends BaseEntity>(basePath: string): EntityStore<T> {
 // ── Hierarchy stores ─────────────────────────────────────────────────────────
 
 export const manufacturersApi = makeStore<Manufacturer>("/catalog/manufacturers");
-export const divisionsApi = makeStore<Division>("/catalog/divisions");
-export const seriesApi = makeStore<ProductSeries>("/catalog/series");
 export const categoriesApi = makeStore<CatalogCategory>("/catalog/categories");
 export const subCategoriesApi = makeStore<SubCategory>("/catalog/sub-categories");
 export const attributeDefsApi = makeStore<AttributeDef>("/catalog/attribute-defs");
-
-// ── Reference data stores ────────────────────────────────────────────────────
-
-export const unitsApi = makeStore<UnitDef>("/catalog/units");
-export const taxRatesApi = makeStore<TaxRate>("/catalog/tax-rates");
-export const hsnCodesApi = makeStore<HsnCode>("/catalog/hsn-codes");
 
 // ── Products & variants ──────────────────────────────────────────────────────
 
@@ -107,23 +92,7 @@ export interface ListProductsParams {
   scope?: 'global' | 'local' | 'all';
 }
 
-export interface VariantSummary {
-  id: string;
-  name: string;
-  modelCode: string | null;
-  mrp: number | null;
-  gstRate: number | null;
-  status: VariantStatus;
-}
-
-export interface ProductListRow extends ProductModel {
-  /** Lightweight per-variant info for the list table — name + its own model code. */
-  variantSummaries: VariantSummary[];
-  variantCount: number;
-  /** Lowest / highest variant MRP for the price-range column. */
-  minMrp: number | null;
-  maxMrp: number | null;
-}
+export interface ProductListRow extends ProductModel {}
 
 export function listProducts(
   params: ListProductsParams = {}
@@ -131,15 +100,9 @@ export function listProducts(
   return apiGet(`/catalog/products${toQueryString(params)}`);
 }
 
-/** Does a catalog variant's display name plausibly match a free-text
- *  requirement description (e.g. "FR Wire 1.5 sq.mm" -> "1.5 sq.mm")?
- *  Pulls a size/rating keyword out of the requirement text (sq.mm, mm,
- *  Module, Way, Step) and substring-matches it against the variant name;
- *  falls back to the requirement's first two words if no keyword pattern
- *  is found. Used to auto-resolve an Activity's generic material
- *  requirements to a specific brand's variant. Pure string matching, no
- *  data dependency, so it stays client-side unchanged. */
-export function matchesSpecKeyword(variantName: string, requirementDescription: string): boolean {
+/** Does a catalog item's series or model code plausibly match a free-text
+ *  requirement description? */
+export function matchesSpecKeyword(productName: string, requirementDescription: string): boolean {
   const specPatterns = [
     /\d+(\.\d+)?\s*sq\.?\s*mm/i,
     /\d+(\.\d+)?\s*mm/i,
@@ -158,28 +121,25 @@ export function matchesSpecKeyword(variantName: string, requirementDescription: 
   if (!reqKeyword) {
     reqKeyword = requirementDescription.split(" ").slice(0, 2).join(" ");
   }
-  const v = variantName.toLowerCase();
+  const v = productName.toLowerCase();
   const kw = reqKeyword.toLowerCase();
   return v.includes(kw) || v.includes(kw.replace(/\s+/g, ""));
 }
 
 export interface ProductExportRow {
   modelCode: string;
-  productName: string;
-  variantName: string;
   manufacturer: string;
   series: string;
+  voltageClass: string;
   category: string;
   subCategory: string;
+  color: string;
   unit: string;
   hsnCode: string;
   gstRate: number | null;
   mrp: number | null;
-  dealer: number | null;
-  distributor: number | null;
-  contractor: number | null;
-  purchase: number | null;
-  status: VariantStatus;
+  discountPercent: number | null;
+  status: ProductStatus;
   specifications: string;
 }
 
@@ -193,27 +153,18 @@ export function exportProductRows(
   return apiGet(`/catalog/products/export${toQueryString(params)}`);
 }
 
-export function getProduct(id: string): Promise<ProductWithVariants | null> {
+export function getProduct(id: string): Promise<ProductModel | null> {
   return apiGet(`/catalog/products/${id}`);
 }
-
-export type VariantInput = Omit<Variant, "id" | "productId" | "createdAt" | "updatedAt"> & {
-  id?: string;
-};
 
 export type ProductInput = Omit<ProductModel, "id" | "createdAt" | "updatedAt"> & {
   id?: string;
 };
 
-/** Create or update a product model together with its full variant list.
- *  Denormalised name refs (manufacturer/division/series/category/subCategory/
- *  unitName) are resolved server-side now, so the input doesn't need them. */
 export function saveProduct(
-  input: ProductInput,
-  variantInputs: VariantInput[]
-): Promise<ProductWithVariants> {
-  const body = { ...input, variants: variantInputs };
-  return input.id ? apiPatch(`/catalog/products/${input.id}`, body) : apiPost(`/catalog/products`, body);
+  input: ProductInput
+): Promise<ProductModel> {
+  return input.id ? apiPatch(`/catalog/products/${input.id}`, input) : apiPost(`/catalog/products`, input);
 }
 
 export function deleteProduct(id: string): Promise<void> {
@@ -226,7 +177,7 @@ export function deleteAllProducts(): Promise<void> {
 
 /** Counts for the management dashboards (e.g. products per manufacturer). */
 export async function countProductsBy(
-  field: "manufacturerId" | "categoryId" | "seriesId"
+  field: "manufacturerId" | "categoryId"
 ): Promise<Map<string, number>> {
   const { items } = await listProducts({ limit: 5000 });
   const counts = new Map<string, number>();

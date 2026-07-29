@@ -44,7 +44,7 @@ export default function QuotationCreateDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: (quotationId: string) => void;
+  onCreated: (quotationId: string, mode: "manual" | "ai") => void;
 }) {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -61,7 +61,7 @@ export default function QuotationCreateDialog({
     setError("");
   };
 
-  const submit = async () => {
+  const submit = async (mode: "manual" | "ai") => {
     if (!clientName.trim() || !projectName.trim()) {
       setError("Client name and project name are required");
       return;
@@ -77,7 +77,7 @@ export default function QuotationCreateDialog({
       });
       reset();
       onOpenChange(false);
-      onCreated(quotation.id);
+      onCreated(quotation.id, mode);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create quotation");
     } finally {
@@ -135,22 +135,32 @@ export default function QuotationCreateDialog({
           </Field>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between items-center w-full">
           <Button
-            variant="outline"
-            className="rounded-xl"
+            variant="ghost"
+            className="rounded-xl px-2 text-muted-foreground hover:text-foreground"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
             Cancel
           </Button>
-          <Button
-            className="rounded-xl bg-primary text-white"
-            onClick={submit}
-            disabled={saving}
-          >
-            {saving ? "Creating..." : "Create & Open"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl border-primary/20 text-primary hover:bg-primary/5"
+              onClick={() => submit("manual")}
+              disabled={saving}
+            >
+              {saving ? "Creating..." : "Manual Entry"}
+            </Button>
+            <Button
+              className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md hover:from-indigo-600 hover:to-purple-700 transition-all"
+              onClick={() => submit("ai")}
+              disabled={saving}
+            >
+              {saving ? "Creating..." : "AI Workspace ✨"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -5,9 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx";
 import {
-  Download,
   Eye,
   Package,
   Pencil,
@@ -15,10 +13,9 @@ import {
   RefreshCw,
   Search,
   Trash2,
-  Upload as UploadIcon,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import ImportDialog from "@/components/materials/import-dialog";
+import { getUser } from "@/app/lib/auth-storage";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +29,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import SearchableCombo, { ComboPage } from "@/components/ui/searchable-combo";
 import {
   Table,
   TableBody,
@@ -43,18 +39,14 @@ import {
 } from "@/components/ui/table";
 import {
   attributeDefsApi,
-  categoriesApi,
   deleteProduct,
-  exportProductRows,
   getProduct,
   listProducts,
   deleteAllProducts,
-  manufacturersApi,
   PageMeta,
   ProductListRow,
-  VariantSummary,
 } from "@/app/lib/catalog/api";
-import type { AttributeDef, ProductWithVariants } from "@/app/lib/catalog/types";
+import type { AttributeDef, ProductModel } from "@/app/lib/catalog/types";
 
 const PAGE_SIZE = 12;
 
@@ -72,7 +64,7 @@ function ProductDetailDialog({
   productId: string | null;
   onClose: () => void;
 }) {
-  const [product, setProduct] = useState<ProductWithVariants | null>(null);
+  const [product, setProduct] = useState<ProductModel | null>(null);
   const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
 
   useEffect(() => {
@@ -104,14 +96,15 @@ function ProductDetailDialog({
         {product && (
           <>
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold">{product.name}</DialogTitle>
+              <DialogTitle className="text-lg font-bold">
+                {product.name || product.modelCode || "Product Details"}
+              </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {[
-                  product.manufacturer?.name,
-                  product.division?.name,
-                  product.series?.name,
-                  product.category?.name,
-                  product.subCategory?.name,
+                  product.manufacturer?.name ?? product.manufacturerName,
+                  product.series,
+                  product.category?.name ?? product.categoryName,
+                  product.subCategory?.name ?? product.subCategoryName,
                 ]
                   .filter(Boolean)
                   .join(" › ")}
@@ -136,42 +129,34 @@ function ProductDetailDialog({
                 </div>
               )}
 
-              {/* Variants + pricing */}
+              {/* Pricing */}
               <div>
-                <p className="text-xs font-bold mb-2">
-                  Variants ({product.variants.length})
-                </p>
-                <div className="overflow-x-auto rounded-xl border border-border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/40 hover:bg-muted/40">
-                        <TableHead className="text-xs font-bold">Variant</TableHead>
-                        <TableHead className="text-xs font-bold">Model Code</TableHead>
-                        <TableHead className="text-xs font-bold text-right">MRP</TableHead>
-                        <TableHead className="text-xs font-bold text-right">GST %</TableHead>
-                        <TableHead className="text-xs font-bold text-right">Disc %</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {product.variants.map((v) => (
-                        <TableRow key={v.id}>
-                          <TableCell className="text-xs font-semibold whitespace-nowrap">
-                            {v.name}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                            {v.modelCode || "—"}
-                          </TableCell>
-                          <TableCell className="text-xs text-right whitespace-nowrap">
-                            {inr(v.prices.mrp)}
-                          </TableCell>
-                          <TableCell className="text-xs text-right">{v.gstRate ?? "—"}</TableCell>
-                          <TableCell className="text-xs text-right">
-                            {v.discountPercent ?? "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <p className="text-xs font-bold mb-2">Pricing</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1.5">
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">MRP: </span>
+                    <span className="font-semibold">{inr(product.mrp)}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">GST %: </span>
+                    <span className="font-semibold">{product.gstRate ?? "—"}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Discount %: </span>
+                    <span className="font-semibold">{product.discountPercent ?? "—"}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Unit: </span>
+                    <span className="font-semibold">{product.unit || "—"}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">HSN Code: </span>
+                    <span className="font-semibold">{product.hsnCode || "—"}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Model Code: </span>
+                    <span className="font-semibold">{product.modelCode || "—"}</span>
+                  </p>
                 </div>
               </div>
 
@@ -188,7 +173,7 @@ function ProductDetailDialog({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={product.images.primary.dataUrl}
-                        alt={product.name}
+                        alt={product.modelCode || "Product Image"}
                         className="h-20 w-20 rounded-xl object-cover border border-border"
                       />
                     )}
@@ -236,16 +221,12 @@ export default function ProductLibraryPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [manufacturerFilter, setManufacturerFilter] = useState<{ id: string; name: string } | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [viewing, setViewing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ProductListRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
@@ -258,27 +239,6 @@ export default function ProductLibraryPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const manufacturerLoader = useCallback(
-    async (s: string, p: number, ps: number): Promise<ComboPage> => {
-      const r = await manufacturersApi.list({ search: s, page: p, limit: ps });
-      return {
-        items: r.items.map(({ id, name }) => ({ id, name })),
-        hasMore: r.meta.hasNextPage,
-      };
-    },
-    []
-  );
-  const categoryLoader = useCallback(
-    async (s: string, p: number, ps: number): Promise<ComboPage> => {
-      const r = await categoriesApi.list({ search: s, page: p, limit: ps });
-      return {
-        items: r.items.map(({ id, name }) => ({ id, name })),
-        hasMore: r.meta.hasNextPage,
-      };
-    },
-    []
-  );
-
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -287,8 +247,7 @@ export default function ProductLibraryPage() {
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
-        manufacturerId: manufacturerFilter?.id,
-        categoryId: categoryFilter?.id,
+        scope: "global",
       });
       setItems(result.items);
       setMeta(result.meta);
@@ -298,57 +257,11 @@ export default function ProductLibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, manufacturerFilter, categoryFilter]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleExport = async () => {
-    setExporting(true);
-    setError("");
-    try {
-      const rows = await exportProductRows({
-        search: debouncedSearch || undefined,
-        manufacturerId: manufacturerFilter?.id,
-        categoryId: categoryFilter?.id,
-      });
-      const sheetRows = rows.map((r) => ({
-        "Model Code": r.modelCode,
-        Product: r.productName,
-        Variant: r.variantName,
-        Manufacturer: r.manufacturer,
-        Series: r.series,
-        Category: r.category,
-        "Sub Category": r.subCategory,
-        Unit: r.unit,
-        "HSN Code": r.hsnCode,
-        "GST %": r.gstRate ?? "",
-        MRP: r.mrp ?? "",
-        Dealer: r.dealer ?? "",
-        Distributor: r.distributor ?? "",
-        Contractor: r.contractor ?? "",
-        Purchase: r.purchase ?? "",
-        Status: r.status,
-        Specifications: r.specifications,
-      }));
-      const ws = XLSX.utils.json_to_sheet(sheetRows);
-      ws["!cols"] = [
-        { wch: 18 }, { wch: 32 }, { wch: 20 }, { wch: 16 }, { wch: 16 },
-        { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 10 }, { wch: 8 },
-        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
-        { wch: 40 },
-      ];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Products");
-      const stamp = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `product-library-${stamp}.xlsx`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to export products");
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -450,41 +363,17 @@ export default function ProductLibraryPage() {
           />
         </div>
 
-        <SearchableCombo
-          className="w-[190px]"
-          value={manufacturerFilter?.id ?? ""}
-          valueLabel={manufacturerFilter?.name}
-          placeholder="All manufacturers"
-          allowClear
-          loadOptions={manufacturerLoader}
-          onSelect={(item) => {
-            setManufacturerFilter(item);
-            setPage(1);
-          }}
-        />
-
-        <SearchableCombo
-          className="w-[180px]"
-          value={categoryFilter?.id ?? ""}
-          valueLabel={categoryFilter?.name}
-          placeholder="All categories"
-          allowClear
-          loadOptions={categoryLoader}
-          onSelect={(item) => {
-            setCategoryFilter(item);
-            setPage(1);
-          }}
-        />
-
         <div className="flex items-center gap-2 ml-auto">
-          <Button
-            variant="destructive"
-            onClick={handleDeleteAll}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete All
-          </Button>
+          {getUser()?.roles.includes("SUPERADMIN") && (
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAll}
+              className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete All
+            </Button>
+          )}
           {selectedIds.size > 0 && (
             <Button
               variant="destructive"
@@ -503,23 +392,6 @@ export default function ProductLibraryPage() {
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={exporting}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold border-border"
-          >
-            <Download className="h-4 w-4" />
-            {exporting ? "Exporting..." : "Download Excel"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold border-border"
-          >
-            <UploadIcon className="h-4 w-4" />
-            Import Excel
           </Button>
           <Button
             onClick={() => router.push("/superadmin/Materials/new")}
@@ -547,7 +419,6 @@ export default function ProductLibraryPage() {
                   className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                 />
               </TableHead>
-              <TableHead className="font-bold text-xs">Model Code</TableHead>
               <TableHead className="font-bold text-xs">Product</TableHead>
               <TableHead className="font-bold text-xs">Manufacturer</TableHead>
               <TableHead className="font-bold text-xs">Series</TableHead>
@@ -576,56 +447,60 @@ export default function ProductLibraryPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              // Every variant is its own material line — full row, own model
-              // code, no merging with siblings even when they share a product.
-              items.flatMap((p) => {
-                const rows: (VariantSummary | null)[] =
-                  p.variantSummaries.length > 0 ? p.variantSummaries : [null];
-                return rows.map((v) => (
-                  <TableRow key={`${p.id}-${v?.id ?? "none"}`} className="hover:bg-muted/30">
+              items.map((p) => {
+                const isGlobal = !p.tenantId;
+                return (
+                  <TableRow key={p.id} className="hover:bg-muted/30">
                     <TableCell className="pl-5">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
-                        aria-label={`Select ${p.name}`}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        disabled={isGlobal}
+                        aria-label={`Select ${p.name || p.modelCode}`}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-30"
                       />
                     </TableCell>
-                    <TableCell className="text-sm font-semibold whitespace-nowrap">
-                      {v?.modelCode || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm font-semibold max-w-[220px] truncate" title={p.name}>
-                        {p.name}
-                      </p>
-                      {v && (
-                        <p className="text-[11px] text-muted-foreground truncate">{v.name}</p>
+                    <TableCell className="whitespace-nowrap">
+                      <p className="text-sm font-semibold">{p.name || p.modelCode || "—"}</p>
+                      {p.name && p.modelCode && (
+                        <p className="text-xs text-muted-foreground">{p.modelCode}</p>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{p.manufacturer?.name || "—"}</TableCell>
-                    <TableCell className="text-sm">{p.series?.name || "—"}</TableCell>
                     <TableCell>
-                      {p.category?.name ? (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold max-w-[220px] truncate" title={p.manufacturer?.name ?? p.manufacturerName ?? "—"}>
+                          {p.manufacturer?.name ?? p.manufacturerName ?? "—"}
+                        </p>
+                        {isGlobal && (
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">
+                            Global
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{p.series ?? "—"}</TableCell>
+                    <TableCell>
+                      {p.category?.name ?? p.categoryName ? (
                         <Badge className="bg-[#6c63ff]/12 text-[#6c63ff] border-0 font-semibold rounded-full px-3 whitespace-nowrap">
-                          {p.category.name}
+                          {p.category?.name ?? p.categoryName}
                         </Badge>
                       ) : (
                         "—"
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-right font-semibold whitespace-nowrap">
-                      {v?.mrp != null ? inr(v.mrp) : "—"}
+                      {p.mrp != null ? inr(p.mrp) : "—"}
                     </TableCell>
                     <TableCell>
                       <Badge
                         className={
-                          (v?.status ?? p.status) === "ACTIVE"
+                          p.status === "ACTIVE"
                             ? "bg-emerald-100 text-emerald-700 border-0 rounded-full text-[10px]"
                             : "bg-slate-200 text-slate-600 border-0 rounded-full text-[10px]"
                         }
                       >
-                        {v?.status ?? p.status}
+                        {p.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="pr-5">
@@ -635,7 +510,7 @@ export default function ProductLibraryPage() {
                           size="icon"
                           onClick={() => setViewing(p.id)}
                           className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
-                          aria-label={`View ${p.name}`}
+                          aria-label={`View ${p.name || p.modelCode}`}
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
@@ -644,23 +519,25 @@ export default function ProductLibraryPage() {
                           size="icon"
                           onClick={() => router.push(`/superadmin/Materials/new?id=${p.id}`)}
                           className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
-                          aria-label={`Edit ${p.name}`}
+                          aria-label={`Edit ${p.name || p.modelCode}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleting(p)}
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
-                          aria-label={`Delete ${p.name}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {!isGlobal && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleting(p)}
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
+                            aria-label={`Delete ${p.name || p.modelCode}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
-                ));
+                );
               })
             )}
           </TableBody>
@@ -702,20 +579,13 @@ export default function ProductLibraryPage() {
 
       <ProductDetailDialog productId={viewing} onClose={() => setViewing(null)} />
 
-      <ImportDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImported={load}
-      />
-
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Product</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Delete <span className="font-semibold text-foreground">{deleting?.name}</span> and
-              its {deleting?.variantCount} variant(s)? This cannot be undone.
+              Delete <span className="font-semibold text-foreground">{deleting?.name || deleting?.modelCode}</span>? This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
