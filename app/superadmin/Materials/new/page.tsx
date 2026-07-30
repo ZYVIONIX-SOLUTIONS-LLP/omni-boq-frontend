@@ -119,6 +119,7 @@ function ProductFormInner() {
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
+  const [defsLoadedFor, setDefsLoadedFor] = useState<string | null>(null);
 
   // Classification
   const [voltageClass, setVoltageClass] = useState<VoltageClass | "">("");
@@ -194,14 +195,17 @@ function ProductFormInner() {
   useEffect(() => {
     if (!categoryId) {
       setAttributeDefs([]);
+      setDefsLoadedFor(null);
       return;
     }
+    setDefsLoadedFor(null);
     attributeDefsApi
       .list({ filter: { categoryId } as Partial<AttributeDef>, limit: 200 })
       .then((res) => {
         setAttributeDefs(
           res.items.filter((d) => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder)
         );
+        setDefsLoadedFor(categoryId);
       });
   }, [categoryId]);
 
@@ -209,6 +213,8 @@ function ProductFormInner() {
   //     attributes into structured spec values vs. ad-hoc custom specs. ──
   useEffect(() => {
     if (pendingAttributes == null) return;
+    if (categoryId && defsLoadedFor !== categoryId) return;
+
     const nextSpecValues: Record<string, string> = {};
     const customRows: CustomSpec[] = [];
     for (const [key, value] of Object.entries(pendingAttributes)) {

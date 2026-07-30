@@ -216,32 +216,6 @@ export default function ActivitiesPage() {
         width: 100,
       },
       {
-        field: "materialCost",
-        headerName: "Material Cost (₹)",
-        width: 150,
-        type: "numericColumn",
-        valueFormatter: (p) => inr(p.value),
-      },
-      {
-        field: "labourCost",
-        headerName: "Labour Cost (₹)",
-        width: 140,
-        type: "numericColumn",
-        valueFormatter: (p) => inr(p.value),
-      },
-      {
-        headerName: "Total Price (₹)",
-        width: 140,
-        type: "numericColumn",
-        valueGetter: (p) => {
-          if (!p.data) return 0;
-          const mat = p.data.materialCost || 0;
-          const lab = p.data.labourCost || 0;
-          return mat + lab;
-        },
-        valueFormatter: (p) => inr(p.value),
-      },
-      {
         headerName: "",
         width: 175,
         sortable: false,

@@ -12,7 +12,7 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Trash2,
+  Trash2, FileSpreadsheet,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { getUser } from "@/app/lib/auth-storage";
@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import MaterialImportDialog from "@/components/materials/MaterialImportDialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -230,6 +231,7 @@ export default function ProductLibraryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -400,6 +402,13 @@ export default function ProductLibraryPage() {
             <Plus className="h-4 w-4" />
             Add Product
           </Button>
+          <Button
+            onClick={() => setImportOpen(true)}
+            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-emerald-500/25 bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Import Excel
+          </Button>
         </div>
       </div>
 
@@ -456,7 +465,6 @@ export default function ProductLibraryPage() {
                         type="checkbox"
                         checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
-                        disabled={isGlobal}
                         aria-label={`Select ${p.name || p.modelCode}`}
                         className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-30"
                       />
@@ -523,17 +531,15 @@ export default function ProductLibraryPage() {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        {!isGlobal && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleting(p)}
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
-                            aria-label={`Delete ${p.name || p.modelCode}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleting(p)}
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
+                          aria-label={`Delete ${p.name || p.modelCode}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -641,6 +647,15 @@ export default function ProductLibraryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MaterialImportDialog 
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onComplete={() => {
+          setImportOpen(false);
+          load();
+        }}
+      />
     </div>
   );
 }
