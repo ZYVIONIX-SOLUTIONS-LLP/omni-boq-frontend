@@ -91,26 +91,48 @@ export default function MaterialImportDialog({
   };
 
   const downloadTemplate = () => {
-    const ws = XLSX.utils.json_to_sheet([
-      {
-        Manufacturer: "Legrand",
-        Category: "Switch",
-        SubCategory: "",
-        Series: "Myrius",
-        ModelCode: "673001",
-        Name: "1 Way Switch",
-        Color: "White",
-        MRP: 150,
-        "Discount %": 50,
-        "GST Rate": 18,
-        Unit: "NOS",
-        HSN: "8536",
-        Module: "1M",
-        Ampere: "6A",
-        Way: "1 Way",
-        Indicator: "No",
-      },
-    ]);
+    const standardCols = [
+      "Manufacturer",
+      "Category",
+      "SubCategory",
+      "Series",
+      "ModelCode",
+      "Name",
+      "Color",
+      "Voltage Class",
+      "MRP",
+      "Discount %",
+      "GST Rate",
+      "Unit",
+      "HSN",
+    ];
+
+    const dynamicCols = Array.from(new Set(attributeDefs.map((d) => d.name)));
+    const allCols = [...standardCols, ...dynamicCols];
+
+    const dummyRow: Record<string, any> = {
+      Manufacturer: "Legrand",
+      Category: "Switch",
+      SubCategory: "",
+      Series: "Myrius",
+      ModelCode: "673001",
+      Name: "1 Way Switch",
+      Color: "White",
+      "Voltage Class": "LV",
+      MRP: 150,
+      "Discount %": 50,
+      "GST Rate": 18,
+      Unit: "NOS",
+      HSN: "8536",
+    };
+
+    // Add dummy values for specific well-known dynamic columns if they exist
+    if (dynamicCols.includes("Module")) dummyRow["Module"] = 1;
+    if (dynamicCols.includes("Ampere")) dummyRow["Ampere"] = 6;
+    if (dynamicCols.includes("Way")) dummyRow["Way"] = 1;
+    if (dynamicCols.includes("Indicator")) dummyRow["Indicator"] = "No";
+
+    const ws = XLSX.utils.json_to_sheet([dummyRow], { header: allCols });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "Material_Import_Template.xlsx");
@@ -219,8 +241,35 @@ export default function MaterialImportDialog({
       if (errors.length === 0 && mfr && cat) {
         const series = String(row["Series"] || "").trim();
         const modelCode = String(row["ModelCode"] || "").trim();
-        const name = String(row["Name"] || "").trim();
+        let name = String(row["Name"] || "").trim();
         const color = String(row["Color"] || "").trim();
+        
+        const voltageClassRaw = String(row["Voltage Class"] || "").trim();
+        const voltageClass = ["LV", "MV", "HV", "EHV"].includes(voltageClassRaw) 
+          ? (voltageClassRaw as "LV" | "MV" | "HV" | "EHV") 
+          : null;
+
+        if (!name) {
+          const parts: string[] = [];
+          if (mfr.name) parts.push(mfr.name);
+          if (series) parts.push(series);
+          if (cat.name) parts.push(cat.name);
+          
+          const catAttrDefs = attributeDefs.filter((d) => d.categoryId === cat.id);
+          for (const def of catAttrDefs) {
+             const val = attributes[def.id];
+             if (val === undefined || val === null || val === "") continue;
+             if (def.type === "BOOLEAN") {
+               if (val === true) parts.push(def.name);
+             } else if (def.type === "NUMBER") {
+               parts.push(def.unit ? `${val}${def.unit}` : String(val));
+             } else {
+               parts.push(String(val));
+             }
+          }
+          if (color) parts.push(color);
+          name = parts.join(" ");
+        }
 
         productInput = {
           manufacturerId: mfr.id,
@@ -233,6 +282,7 @@ export default function MaterialImportDialog({
           modelCode,
           name,
           color,
+          voltageClass,
           mrp,
           discountPercent: row["Discount %"] ? Number(row["Discount %"]) : undefined,
           gstRate: row["GST Rate"] ? Number(row["GST Rate"]) : undefined,
