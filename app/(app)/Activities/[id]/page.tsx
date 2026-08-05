@@ -31,7 +31,6 @@ interface RequirementRow {
   categoryId: string;
   categoryName: string;
   subCategoryId?: string;
-  subCategoryName?: string;
   description: string;
   unit: string;
   quantity: number;
@@ -89,7 +88,6 @@ export default function ActivityEditorPage({ params }: PageProps) {
         categoryId: req.categoryId,
         categoryName: req.category?.name ?? "—",
         subCategoryId: req.subCategoryId,
-        subCategoryName: req.subCategory?.name ?? "—",
         description: req.description,
         unit: req.unit,
         quantity: Number(req.quantity),
@@ -188,7 +186,6 @@ export default function ActivityEditorPage({ params }: PageProps) {
       categoryId: cat.id,
       categoryName: cat.name,
       subCategoryId: sub?.id,
-      subCategoryName: sub?.name,
       description: reqDescription || sub?.name || cat.name,
       unit: reqUnit || "NOS",
       quantity: reqQuantity || 1,
@@ -311,7 +308,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         <p className="font-semibold text-foreground">{row.categoryName}</p>
                       </td>
                       <td className={`${tdClass} min-w-[120px]`}>
-                         <p className="text-muted-foreground">{row.subCategoryName || "—"}</p>
+                         <p className="text-muted-foreground">{subCategories.find(s => s.id === row.subCategoryId)?.name || "—"}</p>
                       </td>
                       <td className={`${tdClass} min-w-[180px]`}>
                         <Input

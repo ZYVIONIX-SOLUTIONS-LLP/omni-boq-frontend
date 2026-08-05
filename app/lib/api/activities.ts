@@ -62,6 +62,9 @@ export interface ActivityRequirement {
     id?: string;
     categoryId: string;
     category?: { id: string; name: string } | null;
+    subCategoryId?: string | null;
+    subCategory?: { id: string; name: string } | null;
+    requiredAttributes?: Record<string, any> | null;
     description: string;
     unit: UnitOfMeasure;
     quantity: string | number;
@@ -107,6 +110,8 @@ export interface ActivityPayload {
     description?: string;
     requirements: Array<{
         categoryId: string;
+        subCategoryId?: string;
+        requiredAttributes?: Record<string, any>;
         description: string;
         unit: UnitOfMeasure;
         quantity: number;

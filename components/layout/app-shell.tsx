@@ -19,15 +19,15 @@ const SIDEBAR_COLLAPSE_KEY = "omni.sidebarCollapsed";
 // Deepwater: #0E6656 (primary/brand)      Voltage: #F0A93B (sparing accent)
 // Hairline:  #DEE6E2
 const THEME = {
-  canvas: "#F5F7F5",
+  canvas: "#F8F7FA",
   surface: "#FFFFFF",
-  ink: "#14231F",
-  muted: "#62726C",
-  deepwater: "#0E6656",
-  deepwaterDark: "#0B4F42",
-  voltage: "#F0A93B",
-  hairline: "#DEE6E2",
-  hoverTint: "#EAF2EF",
+  ink: "#1D1929",
+  muted: "#6A6282",
+  deepwater: "#7C3AED", // violet-600 (matches purple theme)
+  deepwaterDark: "#5B21B6", // violet-800
+  voltage: "#F59E0B", // keep orange accent
+  hairline: "#E9E5F2", // light purple border
+  hoverTint: "#F3F0FA",
 };
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen" style={{ backgroundColor: THEME.canvas }}>
       {/* ═══ FIXED SIDEBAR ═══ */}
       <aside
-        className="fixed left-0 top-0 z-30 h-screen flex flex-col py-5 transition-[width] duration-200"
+        className="fixed left-0 top-0 z-30 h-screen flex flex-col py-5 transition-[width] duration-200 print:hidden"
         style={{ width: sidebarWidth, backgroundColor: THEME.surface, borderRight: `1px solid ${THEME.hairline}` }}
       >
         {/* Brand + collapse toggle */}
@@ -243,7 +243,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ═══ CONTENT AREA ═══ */}
       <main
-        className="min-h-screen py-0 transition-[padding] duration-200"
+        className="min-h-screen py-0 transition-[padding] duration-200 print:!px-0 print:!pt-0"
         style={{
           paddingLeft: isEditorPage ? sidebarWidth : `calc(${sidebarWidth}px + 1.75rem)`,
           paddingRight: isEditorPage ? 0 : "1.75rem",

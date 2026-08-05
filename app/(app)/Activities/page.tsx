@@ -355,7 +355,7 @@ export default function ActivitiesPage() {
               headerHeight={38}
               animateRows
               suppressCellFocus
-              rowSelection={{ mode: "multiRow", headerCheckbox: true, enableClickSelection: false }}
+              rowSelection={scope === "global" ? undefined : { mode: "multiRow", headerCheckbox: true, enableClickSelection: false }}
               isRowSelectable={(rowNode) => rowNode.data ? !!rowNode.data.tenantId : false}
               onSelectionChanged={onSelectionChanged}
               onRowDoubleClicked={(e) => e.data && openActivity(e.data.id)}

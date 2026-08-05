@@ -10,8 +10,9 @@ import {
   categoriesApi,
   subCategoriesApi,
   attributeDefsApi,
+  listProducts,
 } from "@/app/lib/catalog/api";
-import type { AttributeDef, CatalogCategory, SubCategory } from "@/app/lib/catalog/types";
+import type { AttributeDef, CatalogCategory, SubCategory, ProductModel } from "@/app/lib/catalog/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +32,6 @@ interface RequirementRow {
   categoryId: string;
   categoryName: string;
   subCategoryId?: string;
-  subCategoryName?: string;
   description: string;
   unit: string;
   quantity: number;
@@ -69,6 +69,28 @@ export default function ActivityEditorPage({ params }: PageProps) {
   const [reqQuantity, setReqQuantity] = useState(1);
   const [reqUnit, setReqUnit] = useState("NOS");
   const [reqDescription, setReqDescription] = useState("");
+  const [catProducts, setCatProducts] = useState<ProductModel[]>([]);
+
+  useEffect(() => {
+    if (!selectedCat) {
+      setCatProducts([]);
+      return;
+    }
+    listProducts({ categoryId: selectedCat, limit: 5000 }).then(res => {
+      setCatProducts(res.items);
+    }).catch(err => console.error(err));
+  }, [selectedCat]);
+
+  const getDistinctValues = useCallback((attrId: string) => {
+    const vals = new Set<string>();
+    catProducts.forEach(p => {
+      const val = p.attributes?.[attrId];
+      if (val !== undefined && val !== null && val !== "") {
+        vals.add(String(val));
+      }
+    });
+    return Array.from(vals).sort();
+  }, [catProducts]);
 
   const initData = useCallback(async () => {
     setLoading(true);
@@ -89,7 +111,6 @@ export default function ActivityEditorPage({ params }: PageProps) {
         categoryId: req.categoryId,
         categoryName: req.category?.name ?? "—",
         subCategoryId: req.subCategoryId,
-        subCategoryName: req.subCategory?.name ?? "—",
         description: req.description,
         unit: req.unit,
         quantity: Number(req.quantity),
@@ -188,7 +209,6 @@ export default function ActivityEditorPage({ params }: PageProps) {
       categoryId: cat.id,
       categoryName: cat.name,
       subCategoryId: sub?.id,
-      subCategoryName: sub?.name,
       description: reqDescription || sub?.name || cat.name,
       unit: reqUnit || "NOS",
       quantity: reqQuantity || 1,
@@ -311,7 +331,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         <p className="font-semibold text-foreground">{row.categoryName}</p>
                       </td>
                       <td className={`${tdClass} min-w-[120px]`}>
-                         <p className="text-muted-foreground">{row.subCategoryName || "—"}</p>
+                         <p className="text-muted-foreground">{subCategories.find(s => s.id === row.subCategoryId)?.name || "—"}</p>
                       </td>
                       <td className={`${tdClass} min-w-[180px]`}>
                         <Input
@@ -456,10 +476,11 @@ export default function ActivityEditorPage({ params }: PageProps) {
 
             {categorySpecDefs.length > 0 && (
               <div className="space-y-2">
-                 <label className="text-xs font-semibold">Required Specifications</label>
-                 <div className="grid grid-cols-2 gap-2">
-                  {categorySpecDefs.map((def) =>
-                    def.type === "BOOLEAN" ? (
+                <label className="text-xs font-semibold">Required Specifications</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {categorySpecDefs.map((def) => {
+                    const distinctOptions = getDistinctValues(def.id);
+                    return def.type === "BOOLEAN" ? (
                       <label key={def.id} className="flex items-center gap-1.5 text-[10px]">
                         <input
                           type="checkbox"
@@ -469,7 +490,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         />
                         {def.name}
                       </label>
-                    ) : def.type === "SELECT" ? (
+                    ) : def.type === "SELECT" || distinctOptions.length > 0 ? (
                       <select
                         key={def.id}
                         value={specFilters[def.id] ?? ""}
@@ -477,7 +498,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         className="h-8 rounded-lg bg-white border border-border text-[10px] px-1.5"
                       >
                         <option value="">{def.name}</option>
-                        {def.options.map(o => <option key={o} value={o}>{o}</option>)}
+                        {(def.type === "SELECT" ? def.options : distinctOptions).map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : (
                       <input
@@ -488,9 +509,9 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         onChange={(e) => setSpecFilters(prev => ({ ...prev, [def.id]: e.target.value }))}
                         className="h-8 rounded-lg bg-white border border-border text-[10px] px-1.5"
                       />
-                    )
-                  )}
-                 </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

@@ -27,6 +27,7 @@ export interface QuotationItem {
     taxRate: string | number;
     amount: string | number;
     sortOrder: number;
+    snapshotData?: any;
 }
 export interface Quotation {
     id: string;
