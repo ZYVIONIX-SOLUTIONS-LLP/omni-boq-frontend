@@ -753,7 +753,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           </td>
                           <td className={tdClass}>
                             <Input
-                              type="number"
+                              
                               value={it.quantity}
                               onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
                               className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-2 text-right"

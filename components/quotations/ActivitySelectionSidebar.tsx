@@ -57,7 +57,7 @@ export function ActivitySelectionSidebar({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
           <div className="space-y-3">
             {activities.length === 0 ? (
               <div className="text-center py-10 text-sm text-slate-500 font-medium bg-white rounded-xl border border-slate-100 border-dashed">
@@ -69,7 +69,7 @@ export function ActivitySelectionSidebar({
                   key={activity.id}
                   className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                     selectedIds.has(activity.id)
-                      ? "bg-emerald-50/50 border-emerald-200 shadow-sm"
+                      ? "bg-blue-50/70 border-blue-200 shadow-sm"
                       : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow"
                   }`}
                 >
@@ -77,7 +77,7 @@ export function ActivitySelectionSidebar({
                     <Checkbox
                       checked={selectedIds.has(activity.id)}
                       onCheckedChange={(checked) => handleToggle(activity.id, !!checked)}
-                      className="border-slate-300 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                      className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -97,13 +97,13 @@ export function ActivitySelectionSidebar({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="p-4 bg-white border-t border-slate-100 flex-shrink-0 mt-auto">
           <Button
             onClick={handleAdd}
             disabled={selectedIds.size === 0}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md font-semibold h-11 rounded-xl transition-all disabled:opacity-50 disabled:shadow-none"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md font-semibold h-11 rounded-xl transition-all disabled:opacity-50 disabled:shadow-none"
           >
             Add Selected to Quotation ({selectedIds.size})
           </Button>

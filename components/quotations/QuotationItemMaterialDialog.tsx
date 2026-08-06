@@ -38,27 +38,33 @@ function CascadingMaterialSelect({
   onChange: (val: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [hoveredMake, setHoveredMake] = useState<string | null>(null);
+  const [activeMake, setActiveMake] = useState<string | null>(null);
+  const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setActiveMake(null);
+        setActiveSeries(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const makes = useMemo(() => {
-    const groups: Record<string, ProductModel[]> = {};
+  // Tree: Make (Manufacturer) -> Series -> ProductModel[]
+  const tree = useMemo(() => {
+    const root: Record<string, Record<string, ProductModel[]>> = {};
     validProducts.forEach(p => {
       const make = p.manufacturerName || "Other Makes";
-      if (!groups[make]) groups[make] = [];
-      groups[make].push(p);
+      const series = p.series || "Standard / General";
+      if (!root[make]) root[make] = {};
+      if (!root[make][series]) root[make][series] = [];
+      root[make][series].push(p);
     });
-    return groups;
+    return root;
   }, [validProducts]);
 
   const selectedProduct = validProducts.find(p => p.id === value);
@@ -66,7 +72,13 @@ function CascadingMaterialSelect({
   return (
     <div className="relative w-full" ref={containerRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (isOpen) {
+            setActiveMake(null);
+            setActiveSeries(null);
+          }
+        }}
         className="w-full h-auto min-h-8 py-1.5 px-2 text-left text-xs bg-white border border-slate-200 hover:border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-primary text-wrap break-words"
       >
         {selectedProduct ? `${selectedProduct.manufacturerName ? selectedProduct.manufacturerName + ' ' : ''}${selectedProduct.name}` : "Select Material..."}
@@ -74,38 +86,70 @@ function CascadingMaterialSelect({
 
       {isOpen && (
         <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-md shadow-lg z-50 py-1">
-          {Object.keys(makes).length > 0 ? Object.keys(makes).map(make => (
-            <div
-              key={make}
-              className="relative group"
-              onMouseEnter={() => setHoveredMake(make)}
-            >
-              <div className="px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 cursor-pointer flex justify-between items-center">
-                <span>{make}</span>
-                <ChevronRight className="w-3 h-3 text-slate-400" />
-              </div>
-              
-              {hoveredMake === make && (
-                <div className="absolute left-full top-0 ml-0.5 w-64 bg-white border border-slate-200 rounded-md shadow-lg py-1 min-h-full">
-                  {makes[make].map(p => (
-                    <div
-                      key={p.id}
-                      onClick={() => {
-                        onChange(p.id);
-                        setIsOpen(false);
-                      }}
-                      className="px-3 py-1.5 hover:bg-slate-100 cursor-pointer flex flex-col"
-                    >
-                      <span className="text-xs font-medium text-slate-800">{p.name}</span>
-                      <span className="text-[10px] text-slate-500">
-                        MRP: ₹{p.mrp} {p.discountPercent ? `(${p.discountPercent}% OFF)` : ""}
-                      </span>
-                    </div>
-                  ))}
+          {Object.keys(tree).length > 0 ? (
+            Object.keys(tree).map(make => (
+              <div key={make} className="relative">
+                {/* ── Level 1: Make (Manufacturer) ── */}
+                <div
+                  onClick={() => {
+                    setActiveMake(prev => (prev === make ? null : make));
+                    setActiveSeries(null);
+                  }}
+                  className={`px-3 py-1.5 text-xs cursor-pointer flex justify-between items-center transition-colors ${
+                    activeMake === make ? "bg-slate-100 font-semibold text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>{make}</span>
+                  <ChevronRight className={`w-3 h-3 transition-transform ${activeMake === make ? "rotate-90 text-slate-600" : "text-slate-400"}`} />
                 </div>
-              )}
-            </div>
-          )) : (
+                
+                {/* ── Level 2: Series Selection Dropdown ── */}
+                {activeMake === make && (
+                  <div className="absolute left-full top-0 ml-0.5 w-44 bg-white border border-slate-200 rounded-md shadow-xl py-1 z-[60]">
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                      Series
+                    </div>
+                    {Object.keys(tree[make]).map(series => (
+                      <div key={series} className="relative">
+                        <div
+                          onClick={() => setActiveSeries(prev => (prev === series ? null : series))}
+                          className={`px-3 py-1.5 text-xs cursor-pointer flex justify-between items-center transition-colors ${
+                            activeSeries === series ? "bg-purple-50 font-semibold text-purple-700" : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="truncate">{series}</span>
+                          <ChevronRight className={`w-3 h-3 transition-transform ${activeSeries === series ? "rotate-90 text-purple-600" : "text-slate-400"}`} />
+                        </div>
+
+                        {/* ── Level 3: Materials filtered by active Make + active Series ── */}
+                        {activeSeries === series && (
+                          <div className="absolute left-full bottom-0 ml-0.5 min-w-[320px] max-w-[520px] w-max max-h-[280px] overflow-y-auto bg-white border border-slate-200 rounded-md shadow-2xl py-1 z-[100]">
+                            {tree[make][series].map(p => (
+                              <div
+                                key={p.id}
+                                onClick={() => {
+                                  onChange(p.id);
+                                  setIsOpen(false);
+                                  setActiveMake(null);
+                                  setActiveSeries(null);
+                                }}
+                                className="px-3.5 py-2 hover:bg-slate-100 cursor-pointer flex flex-col border-b border-slate-50 last:border-b-0"
+                              >
+                                <span className="text-xs font-medium text-slate-800 leading-snug whitespace-normal break-words">{p.name}</span>
+                                <span className="text-[10px] text-slate-500 mt-0.5">
+                                  MRP: ₹{p.mrp} {p.discountPercent ? `(${p.discountPercent}% OFF)` : ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
              <div className="px-3 py-2 text-xs text-red-500 font-medium">No matching specs found</div>
           )}
         </div>
@@ -235,7 +279,7 @@ export function QuotationItemMaterialDialog({
         <DialogHeader className="px-6 py-5 bg-white border-b border-slate-100 flex flex-row items-center justify-between">
           <div>
             <DialogTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-emerald-600" />
+              <Settings className="w-5 h-5 text-blue-600" />
               Configure Materials
             </DialogTitle>
             <DialogDescription className="text-slate-500 font-medium mt-1">
@@ -246,7 +290,7 @@ export function QuotationItemMaterialDialog({
 
         <ScrollArea className="max-h-[70vh]">
           <div className="p-6">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-x-auto">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full overflow-x-auto min-h-[380px] pb-36">
               <table className="w-full text-left text-sm whitespace-nowrap min-w-[1000px]">
                 <thead className="bg-slate-50/80 border-b border-slate-200">
                   <tr>

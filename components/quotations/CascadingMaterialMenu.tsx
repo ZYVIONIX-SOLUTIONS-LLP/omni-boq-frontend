@@ -179,14 +179,14 @@ export function CascadingMaterialMenu({
           )}
 
           {!search.trim() && hoveredCategory && hoveredMake && hoveredSeries && (
-            <div className="absolute left-[calc(100%+28rem+12px)] top-0 w-[320px] bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-h-[100px] max-h-[60vh] overflow-y-auto z-50">
+            <div className="absolute left-[calc(100%+28rem+12px)] top-0 min-w-[320px] max-w-[520px] w-max bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-h-[100px] max-h-[60vh] overflow-y-auto z-50">
               {tree[hoveredCategory][hoveredMake][hoveredSeries].map(p => (
                 <div 
                   key={p.id}
                   onClick={() => handleSelect(p)}
                   className="px-4 py-2 text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-700 cursor-pointer border-b border-slate-50 last:border-0"
                 >
-                  <div className="font-medium line-clamp-2 leading-snug mb-1">{p.name}</div>
+                  <div className="font-medium whitespace-normal break-words leading-snug mb-1">{p.name}</div>
                   <div className="flex justify-between text-[10px] text-slate-500 font-normal">
                     <span>MRP: ₹{p.mrp}</span>
                     {p.discountPercent ? <span className="text-purple-600">({p.discountPercent}% OFF)</span> : null}

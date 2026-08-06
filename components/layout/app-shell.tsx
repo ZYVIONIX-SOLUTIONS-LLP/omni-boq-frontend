@@ -137,14 +137,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Brand + collapse toggle */}
         <div className={`flex items-center mb-6 px-4 ${collapsed ? "flex-col gap-2" : "justify-between gap-2"}`}>
           <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{
-                background: `linear-gradient(135deg, ${THEME.deepwater}, ${THEME.deepwaterDark})`,
-                boxShadow: `0 0 18px -4px ${THEME.voltage}80`,
-              }}
-            >
-              <BoltIcon />
+            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <img
+                src="/Untitled - July 10, 2026 at 16.11.37.png"
+                alt="Zyvionix Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             {!collapsed && (
               <div className="leading-tight min-w-0">

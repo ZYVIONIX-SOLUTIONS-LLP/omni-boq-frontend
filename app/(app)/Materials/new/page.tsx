@@ -91,14 +91,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div ref={sectionRef} className="scroll-mt-32">
-      <Card className="rounded-2xl border-border p-6">
-        <div className="mb-4">
-          <h3 className="text-sm font-bold">{title}</h3>
-          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
-        </div>
-        {children}
-      </Card>
+    <div ref={sectionRef} className="scroll-mt-32 border-b border-border/60 pb-8 last:border-b-0 last:pb-0">
+      <div className="mb-4">
+        <h3 className="text-base font-bold tracking-tight text-foreground">{title}</h3>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+      </div>
+      {children}
     </div>
   );
 }
@@ -431,298 +429,308 @@ function ProductFormInner() {
         <p className="mb-4 text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{saveError}</p>
       )}
 
-      <div className="max-w-4xl space-y-5">
-        {/* ── Classification ── */}
-        <Section
-          sectionRef={sectionRefs.classification}
-          title="Classification"
-          subtitle="Category and Manufacturer determine which specification fields appear below."
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Voltage Class">
-              <select
-                className={selectClass}
-                value={voltageClass}
-                onChange={(e) => setVoltageClass(e.target.value as VoltageClass | "")}
-              >
-                <option value="">Select Voltage Class...</option>
-                <option value="LV">LV (Low Voltage)</option>
-                <option value="MV">MV (Medium Voltage)</option>
-                <option value="HV">HV (High Voltage)</option>
-                <option value="EHV">EHV (Extra High Voltage)</option>
-              </select>
-            </Field>
-            <div />
-            <Field label="Category" required>
-              <select
-                className={selectClass}
-                value={categoryId}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-              >
-                <option value="">Select Category...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Manufacturer" required>
-              <select
-                className={selectClass}
-                value={manufacturerId}
-                onChange={(e) => setManufacturerId(e.target.value)}
-              >
-                <option value="">Select Manufacturer...</option>
-                {manufacturers.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Product Series" className="md:col-span-2">
-              <Input
-                value={series}
-                onChange={(e) => setSeries(e.target.value)}
-                placeholder="Optional — e.g. Livia, Myrius, Acti 9..."
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-          </div>
-        </Section>
-
-        {/* ── Product Detail ── */}
-        <Section sectionRef={sectionRefs.model} title="Product Detail">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Model Code">
-              <Input
-                value={modelCode}
-                onChange={(e) => setModelCode(e.target.value)}
-                placeholder="e.g. SW-10A-1W"
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-            <Field label="Color">
-              <Input
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                placeholder="Optional — e.g. White"
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-            <Field label="Unit of Measure">
-              <Input
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="Nos, Meter, Roll, Box..."
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-            <Field label="HSN Code">
-              <Input
-                value={selectedCategory?.hsnCode || ""}
-                readOnly
-                disabled
-                className="rounded-xl border-border h-10 bg-muted cursor-not-allowed text-muted-foreground"
-              />
-            </Field>
-          </div>
-        </Section>
-
-        {/* ── Specifications ── */}
-        <Section
-          sectionRef={sectionRefs.specs}
-          title="Specifications"
-          subtitle={
-            selectedCategory
-              ? `Fields defined for "${selectedCategory.name}" — add anything else below.`
-              : "Select a category above to see its specification fields."
-          }
-        >
-          <div className="space-y-4">
-            {attributeDefs.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {attributeDefs.map((def) => (
-                  <Field key={def.id} label={def.unit ? `${def.name} (${def.unit})` : def.name} required={def.required}>
-                    {def.type === "BOOLEAN" ? (
-                      <label className="flex items-center gap-2 h-10">
-                        <input
-                          type="checkbox"
-                          checked={specValues[def.id] === "true"}
-                          onChange={(e) =>
-                            setSpecValues((prev) => ({
-                              ...prev,
-                              [def.id]: e.target.checked ? "true" : "false",
-                            }))
-                          }
-                          className="h-4 w-4 rounded border-border"
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          {specValues[def.id] === "true" ? "Yes" : "No"}
-                        </span>
-                      </label>
-                    ) : def.type === "SELECT" ? (
-                      <select
-                        className={selectClass}
-                        value={specValues[def.id] ?? ""}
-                        onChange={(e) =>
-                          setSpecValues((prev) => ({ ...prev, [def.id]: e.target.value }))
-                        }
-                      >
-                        <option value="">Select...</option>
-                        {def.options.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        type={def.type === "NUMBER" ? "number" : "text"}
-                        value={specValues[def.id] ?? ""}
-                        onChange={(e) =>
-                          setSpecValues((prev) => ({ ...prev, [def.id]: e.target.value }))
-                        }
-                        className="rounded-xl border-border h-10"
-                      />
-                    )}
-                  </Field>
-                ))}
-              </div>
-            )}
-
-            <div className="rounded-xl border border-dashed border-border p-3 space-y-2">
-              <p className="text-xs font-bold">Additional Specifications</p>
-              {customSpecs.map((row) => (
-                <div key={row.key} className="flex items-center gap-2">
-                  <Input
-                    placeholder="Name (e.g. Finish)"
-                    value={row.name}
-                    onChange={(e) =>
-                      setCustomSpecs((prev) =>
-                        prev.map((r) => (r.key === row.key ? { ...r, name: e.target.value } : r))
-                      )
-                    }
-                    className="rounded-xl border-border h-9 w-48"
-                  />
-                  <Input
-                    placeholder="Value (e.g. Matt White)"
-                    value={row.value}
-                    onChange={(e) =>
-                      setCustomSpecs((prev) =>
-                        prev.map((r) => (r.key === row.key ? { ...r, value: e.target.value } : r))
-                      )
-                    }
-                    className="rounded-xl border-border h-9 flex-1"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCustomSpecs((prev) => prev.filter((r) => r.key !== row.key))}
-                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500 shrink-0"
-                    aria-label="Remove specification"
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* ── Left: Main Form Fields ── */}
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+          <Card className="rounded-2xl border border-border p-6 md:p-8 space-y-8 bg-card shadow-sm">
+            {/* ── Classification ── */}
+            <Section
+              sectionRef={sectionRefs.classification}
+              title="Classification"
+              subtitle="Category and Manufacturer determine which specification fields appear below."
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Field label="Voltage Class">
+                  <select
+                    className={selectClass}
+                    value={voltageClass}
+                    onChange={(e) => setVoltageClass(e.target.value as VoltageClass | "")}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <option value="">Select Voltage Class...</option>
+                    <option value="LV">LV (Low Voltage)</option>
+                    <option value="MV">MV (Medium Voltage)</option>
+                    <option value="HV">HV (High Voltage)</option>
+                    <option value="EHV">EHV (Extra High Voltage)</option>
+                  </select>
+                </Field>
+                <Field label="Category" required>
+                  <select
+                    className={selectClass}
+                    value={categoryId}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                  >
+                    <option value="">Select Category...</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Manufacturer" required>
+                  <select
+                    className={selectClass}
+                    value={manufacturerId}
+                    onChange={(e) => setManufacturerId(e.target.value)}
+                  >
+                    <option value="">Select Manufacturer...</option>
+                    {manufacturers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Product Series">
+                  <Input
+                    value={series}
+                    onChange={(e) => setSeries(e.target.value)}
+                    placeholder="e.g. Livia, Myrius..."
+                    className="rounded-xl border-border h-10"
+                  />
+                </Field>
+              </div>
+            </Section>
+
+            {/* ── Product Detail ── */}
+            <Section sectionRef={sectionRefs.model} title="Product Detail">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Field label="Model Code">
+                  <Input
+                    value={modelCode}
+                    onChange={(e) => setModelCode(e.target.value)}
+                    placeholder="e.g. SW-10A-1W"
+                    className="rounded-xl border-border h-10"
+                  />
+                </Field>
+                <Field label="Color">
+                  <Input
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    placeholder="Optional — e.g. White"
+                    className="rounded-xl border-border h-10"
+                  />
+                </Field>
+                <Field label="Unit of Measure">
+                  <Input
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    placeholder="Nos, Meter, Roll, Box..."
+                    className="rounded-xl border-border h-10"
+                  />
+                </Field>
+                <Field label="HSN Code">
+                  <Input
+                    value={selectedCategory?.hsnCode || ""}
+                    readOnly
+                    disabled
+                    className="rounded-xl border-border h-10 bg-muted cursor-not-allowed text-muted-foreground"
+                  />
+                </Field>
+              </div>
+            </Section>
+
+            {/* ── Specifications ── */}
+            <Section
+              sectionRef={sectionRefs.specs}
+              title="Specifications"
+              subtitle={
+                selectedCategory
+                  ? `Fields defined for "${selectedCategory.name}" — add anything else below.`
+                  : "Select a category above to see its specification fields."
+              }
+            >
+              <div className="space-y-4">
+                {attributeDefs.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {attributeDefs.map((def) => (
+                      <Field key={def.id} label={def.unit ? `${def.name} (${def.unit})` : def.name} required={def.required}>
+                        {def.type === "BOOLEAN" ? (
+                          <label className="flex items-center gap-2 h-10">
+                            <input
+                              type="checkbox"
+                              checked={specValues[def.id] === "true"}
+                              onChange={(e) =>
+                                setSpecValues((prev) => ({
+                                  ...prev,
+                                  [def.id]: e.target.checked ? "true" : "false",
+                                }))
+                              }
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {specValues[def.id] === "true" ? "Yes" : "No"}
+                            </span>
+                          </label>
+                        ) : def.type === "SELECT" ? (
+                          <select
+                            className={selectClass}
+                            value={specValues[def.id] ?? ""}
+                            onChange={(e) =>
+                              setSpecValues((prev) => ({ ...prev, [def.id]: e.target.value }))
+                            }
+                          >
+                            <option value="">Select...</option>
+                            {def.options.map((o) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Input
+                            type={def.type === "NUMBER" ? "number" : "text"}
+                            value={specValues[def.id] ?? ""}
+                            onChange={(e) =>
+                              setSpecValues((prev) => ({ ...prev, [def.id]: e.target.value }))
+                            }
+                            className="rounded-xl border-border h-10"
+                          />
+                        )}
+                      </Field>
+                    ))}
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-dashed border-border p-3 space-y-2">
+                  <p className="text-xs font-bold">Additional Specifications</p>
+                  {customSpecs.map((row) => (
+                    <div key={row.key} className="flex items-center gap-2">
+                      <Input
+                        placeholder="Name (e.g. Finish)"
+                        value={row.name}
+                        onChange={(e) =>
+                          setCustomSpecs((prev) =>
+                            prev.map((r) => (r.key === row.key ? { ...r, name: e.target.value } : r))
+                          )
+                        }
+                        className="rounded-xl border-border h-9 w-48"
+                      />
+                      <Input
+                        placeholder="Value (e.g. Matt White)"
+                        value={row.value}
+                        onChange={(e) =>
+                          setCustomSpecs((prev) =>
+                            prev.map((r) => (r.key === row.key ? { ...r, value: e.target.value } : r))
+                          )
+                        }
+                        className="rounded-xl border-border h-9 flex-1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCustomSpecs((prev) => prev.filter((r) => r.key !== row.key))}
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500 shrink-0"
+                        aria-label="Remove specification"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-1.5"
+                    onClick={() =>
+                      setCustomSpecs((prev) => [...prev, { key: `c${++customSpecSeq}`, name: "", value: "" }])
+                    }
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add Specification
                   </Button>
                 </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1.5"
-                onClick={() =>
-                  setCustomSpecs((prev) => [...prev, { key: `c${++customSpecSeq}`, name: "", value: "" }])
-                }
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Specification
-              </Button>
-            </div>
-          </div>
-        </Section>
-
-        {/* ── Pricing ── */}
-        <Section
-          sectionRef={sectionRefs.pricing}
-          title="Pricing"
-          subtitle="Prices and discounts for this material."
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <Field label="MRP (₹)">
-              <Input
-                type="number"
-                value={mrp}
-                onChange={(e) => setMrp(e.target.value)}
-                placeholder="e.g. 500"
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-            <Field label="Discount Percent (%)">
-              <Input
-                type="number"
-                value={discountPercent}
-                onChange={(e) => setDiscountPercent(e.target.value)}
-                placeholder="e.g. 10"
-                className="rounded-xl border-border h-10"
-              />
-            </Field>
-          </div>
-        </Section>
-
-        {/* ── Review ── */}
-        <Section sectionRef={sectionRefs.review} title="Review">
-          <div className="space-y-4">
-            <div>
-              <p className="text-lg font-bold">{computedName || "—"}</p>
-              {modelCode && <p className="text-xs text-muted-foreground">{modelCode}</p>}
-              <p className="text-xs text-muted-foreground">
-                {hierarchy
-                  .filter((h) => h.value)
-                  .map((h) => h.value)
-                  .join(" › ") || "Fill in the classification above"}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
-              <p className="text-xs">
-                <span className="text-muted-foreground">Unit: </span>
-                <span className="font-semibold">{unit || "—"}</span>
-              </p>
-              <p className="text-xs">
-                <span className="text-muted-foreground">HSN: </span>
-                <span className="font-semibold">{selectedCategory?.hsnCode || "—"}</span>
-              </p>
-              <p className="text-xs">
-                <span className="text-muted-foreground">GST (from category): </span>
-                <span className="font-semibold">
-                  {selectedCategory?.defaultGstRate != null ? `${selectedCategory.defaultGstRate}%` : "—"}
-                </span>
-              </p>
-              <p className="text-xs">
-                <span className="text-muted-foreground">MRP: </span>
-                <span className="font-semibold">{mrp ? `₹${mrp}` : "—"}</span>
-              </p>
-              <p className="text-xs">
-                <span className="text-muted-foreground">Discount: </span>
-                <span className="font-semibold">{discountPercent ? `${discountPercent}%` : "—"}</span>
-              </p>
-            </div>
-            {specRows.length > 0 && (
-              <div>
-                <p className="text-xs font-bold mb-1.5">Specifications</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
-                  {specRows.map((row, i) => (
-                    <p key={i} className="text-xs">
-                      <span className="text-muted-foreground">{row.label}: </span>
-                      <span className="font-semibold">{row.value}</span>
-                    </p>
-                  ))}
-                </div>
               </div>
-            )}
-          </div>
-        </Section>
+            </Section>
 
-        <div className="flex justify-end pb-8">{saveButton}</div>
+            {/* ── Pricing ── */}
+            <Section
+              sectionRef={sectionRefs.pricing}
+              title="Pricing"
+              subtitle="Prices and discounts for this material."
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="MRP (₹)">
+                  <Input
+                    type="number"
+                    value={mrp}
+                    onChange={(e) => setMrp(e.target.value)}
+                    placeholder="e.g. 500"
+                    className="rounded-xl border-border h-10"
+                  />
+                </Field>
+                <Field label="Discount Percent (%)">
+                  <Input
+                    type="number"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    placeholder="e.g. 10"
+                    className="rounded-xl border-border h-10"
+                  />
+                </Field>
+              </div>
+            </Section>
+          </Card>
+        </div>
+
+        {/* ── Right: Live Review & Save Sticky Sidebar ── */}
+        <div className="lg:col-span-4 xl:col-span-3">
+          <div className="sticky top-28" ref={sectionRefs.review}>
+            <Card className="rounded-2xl border border-border p-6 bg-card shadow-sm space-y-4">
+              <h3 className="text-sm font-bold border-b border-border pb-2">Product Summary</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-base font-bold leading-tight">{computedName || "—"}</p>
+                  {modelCode && <p className="text-xs text-muted-foreground mt-0.5">{modelCode}</p>}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {hierarchy
+                      .filter((h) => h.value)
+                      .map((h) => h.value)
+                      .join(" › ") || "Fill in classification"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-2 pt-1 border-t border-border/60">
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Unit: </span>
+                    <span className="font-semibold">{unit || "—"}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">HSN: </span>
+                    <span className="font-semibold">{selectedCategory?.hsnCode || "—"}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">GST: </span>
+                    <span className="font-semibold">
+                      {selectedCategory?.defaultGstRate != null ? `${selectedCategory.defaultGstRate}%` : "—"}
+                    </span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">MRP: </span>
+                    <span className="font-semibold">{mrp ? `₹${mrp}` : "—"}</span>
+                  </p>
+                  <p className="text-xs col-span-2">
+                    <span className="text-muted-foreground">Discount: </span>
+                    <span className="font-semibold">{discountPercent ? `${discountPercent}%` : "—"}</span>
+                  </p>
+                </div>
+                {specRows.length > 0 && (
+                  <div className="pt-2 border-t border-border/60">
+                    <p className="text-xs font-bold mb-1.5">Specifications</p>
+                    <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                      {specRows.map((row, i) => (
+                        <p key={i} className="text-xs flex justify-between gap-1">
+                          <span className="text-muted-foreground truncate">{row.label}:</span>
+                          <span className="font-semibold shrink-0">{row.value}</span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="pt-3 border-t border-border w-full flex flex-col gap-2">
+                {saveButton}
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
