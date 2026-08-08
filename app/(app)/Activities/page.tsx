@@ -30,6 +30,7 @@ import {
 } from "@/app/lib/api/activities";
 import ActivityCreateDialog from "./activity-create-dialog";
 import ActivityImportDialog from "@/components/activities/activity-import-dialog";
+import ActivityTypesDialog from "@/components/activities/activity-types-dialog";
 import { getUser } from "@/app/lib/auth-storage";
 
 function inr(value: number | null | undefined): string {
@@ -46,6 +47,7 @@ export default function ActivitiesPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [typesOpen, setTypesOpen] = useState(false);
   const [deleting, setDeleting] = useState<Activity | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [duplicating, setDuplicating] = useState<Activity | null>(null);
@@ -263,12 +265,12 @@ export default function ActivitiesPage() {
   );
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
       <div className="flex items-center justify-between">
         <Tabs value={scope} onValueChange={(val) => setScope(val as any)}>
-          <TabsList>
-            <TabsTrigger value="local" className="px-6">My Activities</TabsTrigger>
-            <TabsTrigger value="global" className="px-6">Global Activities</TabsTrigger>
+          <TabsList className="bg-white/80 backdrop-blur-md border border-purple-200/80 p-1 rounded-none shadow-xs">
+            <TabsTrigger value="local" className="px-6 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold transition-all">My Activities</TabsTrigger>
+            <TabsTrigger value="global" className="px-6 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold transition-all">Global Activities</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -280,7 +282,7 @@ export default function ActivitiesPage() {
             placeholder="Search code or activity name"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -288,7 +290,7 @@ export default function ActivitiesPage() {
             <Button
               variant="destructive"
               onClick={handleDeleteAll}
-              className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2 bg-red-600 hover:bg-red-700 text-white"
+              className="gap-2 rounded-none h-10 px-4 font-semibold mr-2 bg-red-600 hover:bg-red-700 text-white shadow-xs"
             >
               <Trash2 className="h-4 w-4" />
               Delete All
@@ -298,7 +300,7 @@ export default function ActivitiesPage() {
             <Button
               variant="outline"
               onClick={() => setBulkDeleteOpen(true)}
-              className="gap-2 rounded-xl h-10 px-4 font-semibold border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+              className="gap-2 rounded-none h-10 px-4 font-semibold border-red-200 bg-red-50 text-red-600 hover:bg-red-100 shadow-xs"
             >
               <Trash2 className="h-4 w-4" />
               Delete Selected ({selectedRows.length})
@@ -308,22 +310,30 @@ export default function ActivitiesPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-xl border-border h-10 w-10 bg-white"
+            className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-10 w-10 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold border-border bg-white"
+            onClick={() => setTypesOpen(true)}
+            className="gap-2 rounded-none h-10 px-4 font-semibold border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 shadow-xs"
           >
-            <Upload className="h-4 w-4" />
+            <Hammer className="h-4 w-4 text-purple-600" />
+            Manage Types
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 rounded-none h-10 px-4 font-semibold border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 shadow-xs"
+          >
+            <Upload className="h-4 w-4 text-purple-600" />
             Import Excel
           </Button>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all"
+            className="gap-2 rounded-none h-10 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
           >
             <Plus className="h-4 w-4" />
             New Activity
@@ -333,7 +343,7 @@ export default function ActivitiesPage() {
 
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
 
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
         {loading ? (
           <p className="text-center py-14 text-sm text-muted-foreground">Loading activities...</p>
         ) : items.length === 0 ? (
@@ -376,9 +386,14 @@ export default function ActivitiesPage() {
         onImported={load}
       />
 
+      <ActivityTypesDialog
+        open={typesOpen}
+        onClose={() => setTypesOpen(false)}
+      />
+
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-none border-purple-200 bg-white shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Activity</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -388,7 +403,7 @@ export default function ActivitiesPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -396,7 +411,7 @@ export default function ActivitiesPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-none bg-red-600 hover:bg-red-700 text-white"
               onClick={confirmDelete}
               disabled={deleteBusy}
             >
@@ -408,7 +423,7 @@ export default function ActivitiesPage() {
 
       {/* Bulk delete confirmation */}
       <Dialog open={bulkDeleteOpen} onOpenChange={(open) => !open && !bulkDeleteBusy && setBulkDeleteOpen(false)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-none border-purple-200 bg-white shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete {selectedRows.length} Activities</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -418,7 +433,7 @@ export default function ActivitiesPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setBulkDeleteOpen(false)}
               disabled={bulkDeleteBusy}
             >
@@ -426,7 +441,7 @@ export default function ActivitiesPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-none bg-red-600 hover:bg-red-700 text-white"
               onClick={confirmBulkDelete}
               disabled={bulkDeleteBusy}
             >
@@ -441,7 +456,7 @@ export default function ActivitiesPage() {
         open={Boolean(duplicating)}
         onOpenChange={(open) => !open && !duplicateBusy && setDuplicating(null)}
       >
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-none border-purple-200 bg-white shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Duplicate Activity</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -453,7 +468,7 @@ export default function ActivitiesPage() {
             <Input
               value={duplicateName}
               onChange={(e) => setDuplicateName(e.target.value)}
-              className="rounded-xl border-border h-10 bg-white mt-1.5"
+              className="rounded-none border-purple-200 h-10 bg-white mt-1.5 focus-visible:ring-purple-500"
               autoFocus
             />
             {duplicateError && (
@@ -463,14 +478,14 @@ export default function ActivitiesPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setDuplicating(null)}
               disabled={duplicateBusy}
             >
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-primary text-white hover:bg-primary/95"
+              className="rounded-none bg-purple-700 text-white hover:bg-purple-800"
               onClick={confirmDuplicate}
               disabled={duplicateBusy}
             >

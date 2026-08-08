@@ -3,211 +3,30 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { 
+  FileDigit, FileText, Clock, CheckSquare, ChevronDown, 
+  PlusCircle, Boxes, Users, FileArchive, FileSpreadsheet,
+  Calendar
+} from "lucide-react";
 
-// ── shadcn components ──────────────────────────────────────────────────────────
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+// API
+import { listQuotations, Quotation } from "@/app/lib/api/quotations";
 
-// ── API ────────────────────────────────────────────────────────────────────────
-import { listQuotations, Quotation, QuotationStatus } from "@/app/lib/api/quotations";
-import { listUsers } from "@/app/lib/api/auth";
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
 function inr(value: number | null | undefined): string {
-  if (value == null) return "₹0.00";
-  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (value == null) return "₹0";
+  return `₹ ${value.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-// ── Status Badge ───────────────────────────────────────────────────────────────
-function QuoteStatusBadge({ status }: { status: QuotationStatus }) {
-  if (status === "SENT") {
-    return (
-      <Badge className="bg-[#6c63ff]/15 text-[#6c63ff] border-0 hover:bg-[#6c63ff]/25 font-semibold rounded-full px-3">
-        Sent
-      </Badge>
-    );
-  }
-  if (status === "ACCEPTED") {
-    return (
-      <Badge className="bg-[#d4d0fa] text-[#4a3fcc] border-0 hover:bg-[#c4c0f8] font-semibold rounded-full px-3">
-        Accepted
-      </Badge>
-    );
-  }
-  if (status === "DRAFT") {
-    return (
-      <Badge variant="secondary" className="rounded-full px-3 font-semibold">
-        Draft
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="destructive" className="rounded-full px-3 font-semibold">
-      {status === "REJECTED" ? "Rejected" : "Expired"}
-    </Badge>
-  );
-}
-
-// ── Donut Chart (pure SVG — no extra deps) ─────────────────────────────────────
-function DonutChart({ quotations }: { quotations: Quotation[] }) {
-  const total = quotations.length || 1; // avoid division by zero
-  const count = (status: QuotationStatus) => quotations.filter(q => q.status === status).length;
-  
-  const segments = [
-    { pct: (count("SENT") / total) * 100, color: "#6c63ff", label: "Sent" },
-    { pct: (count("ACCEPTED") / total) * 100, color: "#a5a0f5", label: "Accepted" },
-    { pct: (count("DRAFT") / total) * 100, color: "#d4d0fa", label: "Draft" },
-    { pct: ((count("EXPIRED") + count("REJECTED")) / total) * 100, color: "#e8e6fb", label: "Failed" },
-  ];
-  
-  const r = 58;
-  const cx = 75;
-  const cy = 75;
-  const circ = 2 * Math.PI * r;
-  const gap = 2;
-  let offset = 0;
-
-  const arcs = segments.map((seg, i) => {
-    if (seg.pct === 0) return null;
-    const dash = (seg.pct / 100) * circ - gap;
-    const space = circ - dash;
-    const node = (
-      <circle
-        key={i}
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        stroke={seg.color}
-        strokeWidth={24}
-        strokeDasharray={`${dash} ${space}`}
-        strokeDashoffset={-offset}
-        style={{ transform: "rotate(-90deg)", transformOrigin: `${cx}px ${cy}px` }}
-      />
-    );
-    offset += (seg.pct / 100) * circ;
-    return node;
-  });
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <svg width={150} height={150} viewBox="0 0 150 150">
-        {arcs}
-        <circle cx={cx} cy={cy} r={46} fill="white" />
-      </svg>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-2 w-full px-1">
-        {segments.map((seg) => (
-          <span key={seg.label} className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: seg.color }} />
-            {seg.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Stat-card Illustrations ────────────────────────────────────────────────────
-function QuotationIllustration() {
-  return (
-    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-      <rect x="10" y="6" width="38" height="50" rx="4" fill="#ede9ff" />
-      <rect x="16" y="14" width="26" height="3" rx="1.5" fill="#a5a0f5" />
-      <rect x="16" y="21" width="20" height="3" rx="1.5" fill="#c4c0f8" />
-      <rect x="16" y="28" width="24" height="3" rx="1.5" fill="#c4c0f8" />
-      <rect x="16" y="35" width="16" height="3" rx="1.5" fill="#d4d0fa" />
-      <rect x="36" y="30" width="16" height="20" rx="3" fill="#6c63ff" opacity="0.2" />
-      <path d="M41 44l3 3 5-6" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function ValueIllustration() {
-  return (
-    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-      <circle cx="32" cy="32" r="26" fill="#ede9ff" />
-      <circle cx="32" cy="32" r="20" fill="#d4d0fa" />
-      <text x="32" y="39" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#6c63ff">₹</text>
-      <circle cx="48" cy="16" r="8" fill="#6c63ff" opacity="0.25" />
-      <circle cx="48" cy="16" r="5" fill="#6c63ff" opacity="0.45" />
-    </svg>
-  );
-}
-function PendingIllustration() {
-  return (
-    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-      <rect x="8" y="18" width="32" height="30" rx="3" fill="#ede9ff" />
-      <rect x="14" y="26" width="18" height="2.5" rx="1" fill="#a5a0f5" />
-      <rect x="14" y="32" width="14" height="2.5" rx="1" fill="#c4c0f8" />
-      <rect x="14" y="38" width="10" height="2.5" rx="1" fill="#d4d0fa" />
-      <circle cx="46" cy="20" r="10" fill="#fef3c7" />
-      <text x="46" y="25" textAnchor="middle" fontSize="13">⚠️</text>
-    </svg>
-  );
-}
-function StaffIllustration() {
-  return (
-    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-      <circle cx="24" cy="22" r="10" fill="#ede9ff" />
-      <circle cx="24" cy="22" r="7" fill="#c4c0f8" />
-      <path d="M10 46c0-7.732 6.268-14 14-14s14 6.268 14 14" fill="#d4d0fa" />
-      <circle cx="42" cy="26" r="8" fill="#a5a0f5" opacity="0.5" />
-      <circle cx="42" cy="26" r="5" fill="#6c63ff" opacity="0.4" />
-    </svg>
-  );
-}
-function ClipboardIllustration() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 64 64" fill="none">
-      <rect x="12" y="10" width="36" height="46" rx="4" fill="#ede9ff" />
-      <rect x="20" y="6" width="20" height="8" rx="4" fill="#c4c0f8" />
-      <rect x="18" y="22" width="24" height="3" rx="1.5" fill="#a5a0f5" />
-      <rect x="18" y="29" width="18" height="3" rx="1.5" fill="#c4c0f8" />
-      <rect x="18" y="36" width="20" height="3" rx="1.5" fill="#c4c0f8" />
-      <rect x="18" y="43" width="14" height="3" rx="1.5" fill="#d4d0fa" />
-    </svg>
-  );
-}
-
-// ── SVG Icons ──────────────────────────────────────────────────────────────────
-function SearchIcon() {
-  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
-}
-function PencilIcon() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
-}
-
-// ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
-  
   const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [totalStaff, setTotalStaff] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [qRes, uRes] = await Promise.all([
-          listQuotations({ limit: 500 }),
-          listUsers(),
-        ]);
+        const qRes = await listQuotations({ limit: 100 });
         setQuotations(qRes.items);
-        setTotalStaff(uRes.filter((u) => u.role === "STAFF").length);
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       } finally {
@@ -217,284 +36,175 @@ export default function Dashboard() {
     loadData();
   }, []);
 
-  const filtered = quotations.filter((q) => {
-    const s = search.toLowerCase();
-    const clientMatch = q.customer?.name?.toLowerCase().includes(s);
-    const projectMatch = q.project?.name?.toLowerCase().includes(s);
-    const codeMatch = q.code?.toLowerCase().includes(s);
-    return clientMatch || projectMatch || codeMatch || q.status.toLowerCase().includes(s);
-  });
+  const totalQuotations = quotations.length;
+  const totalValue = quotations.reduce((acc, q) => acc + Number(q.grandTotal || 0), 0);
+  const inProgress = quotations.filter(q => q.status === "DRAFT" || q.status === "SENT").length;
+  const completed = quotations.filter(q => q.status === "ACCEPTED").length;
 
-  const totalQuotedValue = quotations.reduce((acc, q) => acc + Number(q.grandTotal || 0), 0);
-  const pendingCount = quotations.filter(q => q.status === "SENT").length;
+  const recentQuotations = [...quotations]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 4);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ACCEPTED": return "bg-[#10B981]/10 text-[#10B981]";
+      case "SENT":
+      case "DRAFT": return "bg-[#38BDF8]/10 text-[#38BDF8]";
+      case "REJECTED":
+      case "EXPIRED": return "bg-[#F59E0B]/10 text-[#F59E0B]";
+      default: return "bg-[#64748B]/10 text-[#64748B]";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "ACCEPTED": return "Approved";
+      case "SENT":
+      case "DRAFT": return "In Progress";
+      case "REJECTED": return "Rejected";
+      case "EXPIRED": return "Expired";
+      default: return "Pending";
+    }
+  };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-0rem)]">
-      <div className="px-7 py-5 space-y-5 flex-1">
+    <div className="h-[calc(100vh-80px)] w-full overflow-hidden bg-[#F8FAFC] p-6 font-sans flex flex-col">
+      {/* Top Header */}
+      <div className="flex justify-between items-center mb-6">
+         <h3 className="text-[20px] font-bold text-[#0F172A]">Dashboard</h3>
+         <div className="flex items-center gap-2 px-3 py-1.5 border border-[#E2E8F0] bg-white rounded-md text-[11px] font-bold text-[#64748B]">
+           <Calendar className="h-3.5 w-3.5" /> This Month <ChevronDown className="h-3 w-3 ml-1" />
+         </div>
+      </div>
+      
+      {/* Stat Cards Row */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {[
+          { icon: FileDigit, label: "Total Quotations", val: loading ? "..." : totalQuotations, trend: "+16%", period: "This Month" },
+          { icon: FileText, label: "Total Value", val: loading ? "..." : inr(totalValue), trend: "+12%", period: "This Month" },
+          { icon: Clock, label: "In Progress", val: loading ? "..." : inProgress, trend: "+8%", period: "This Month" },
+          { icon: CheckSquare, label: "Completed", val: loading ? "..." : completed, trend: "+20%", period: "This Month" }
+        ].map((stat, i) => (
+          <div key={i} className="border border-[#F1F5F9] bg-white rounded-xl p-4 shadow-sm flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-[#0066FF]">
+               <div className="p-1.5 bg-[#EFF6FF] rounded"><stat.icon className="h-4 w-4" /></div>
+               <span className="text-[11px] font-bold text-[#64748B]">{stat.label}</span>
+            </div>
+            <div className="flex items-end justify-between mt-1">
+              <div className="text-[20px] font-bold text-[#0F172A]">{stat.val}</div>
+              <div className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#10B981]/10 text-[#10B981]">{stat.trend}</div>
+            </div>
+            <div className="text-[9px] font-medium text-[#94A3B8]">{stat.period}</div>
+          </div>
+        ))}
+      </div>
 
-        {/* Search */}
-        <div className="relative max-w-xs">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-            <SearchIcon />
-          </span>
-          <Input
-            id="dashboard-search"
-            type="text"
-            placeholder="Search quotations..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-muted/50 border-border focus-visible:ring-primary/30"
-          />
+      {/* Chart & Recent Row */}
+      <div className="flex gap-4 mb-6 flex-1 min-h-[220px]">
+        {/* Chart Area */}
+        <div className="flex-[1.5] border border-[#F1F5F9] bg-white rounded-xl p-4 flex flex-col shadow-sm relative">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[12px] font-bold text-[#0F172A]">Quotation Overview</div>
+            <div className="flex items-center gap-1 text-[10px] font-bold text-[#64748B] border border-slate-200 px-2 py-1 rounded">
+              This Month <ChevronDown className="h-3 w-3" />
+            </div>
+          </div>
+          {/* Fake Chart Lines */}
+          <div className="flex-1 relative mt-1 border-l border-b border-slate-100 flex items-end ml-4 mb-3">
+             {/* Y-axis labels */}
+             <div className="absolute left-[-20px] h-full flex flex-col justify-between text-[9px] text-[#94A3B8] font-medium">
+               <span>25</span><span>20</span><span>15</span><span>10</span><span>5</span><span>0</span>
+             </div>
+             {/* X-axis labels */}
+             <div className="absolute bottom-[-20px] w-full flex justify-between text-[9px] text-[#94A3B8] font-medium px-1">
+               <span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span>
+             </div>
+             {/* SVG Area Chart */}
+             <div className="absolute inset-0">
+               <svg viewBox="0 0 400 150" className="w-full h-full overflow-hidden" preserveAspectRatio="none">
+               <defs>
+                 <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="0%" stopColor="#0066FF" stopOpacity="0.2"/>
+                   <stop offset="100%" stopColor="#0066FF" stopOpacity="0"/>
+                 </linearGradient>
+               </defs>
+               <path d="M0,120 L30,90 L60,100 L90,60 L120,70 L150,50 L180,90 L210,60 L240,70 L270,40 L300,50 L330,20 L360,40 L400,10 L400,150 L0,150 Z" fill="url(#chartGrad)" />
+               <path d="M0,120 L30,90 L60,100 L90,60 L120,70 L150,50 L180,90 L210,60 L240,70 L270,40 L300,50 L330,20 L360,40 L400,10" fill="none" stroke="#0066FF" strokeWidth="2.5" />
+               <circle cx="90" cy="60" r="2.5" fill="#fff" stroke="#0066FF" strokeWidth="2" />
+               <circle cx="150" cy="50" r="2.5" fill="#fff" stroke="#0066FF" strokeWidth="2" />
+               <circle cx="270" cy="40" r="2.5" fill="#fff" stroke="#0066FF" strokeWidth="2" />
+               <circle cx="330" cy="20" r="2.5" fill="#fff" stroke="#0066FF" strokeWidth="2" />
+               <circle cx="400" cy="10" r="2.5" fill="#fff" stroke="#0066FF" strokeWidth="2" />
+               </svg>
+             </div>
+          </div>
         </div>
 
-        {/* ── Stat Cards (shadcn Card) ─────────────────────────── */}
-        <div className="grid grid-cols-4 gap-4">
-
-          {/* Total Quotations */}
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-border">
-            <CardHeader className="pb-0">
-              <CardTitle className="text-xs font-semibold text-muted-foreground">
-                Total Quotations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-1">
-              <p className="text-3xl font-extrabold text-foreground leading-tight">
-                {loading ? "..." : quotations.length}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Generated across all time
-              </p>
-              <div className="flex justify-end mt-2">
-                <QuotationIllustration />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Total Quoted Value */}
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-border">
-            <CardHeader className="pb-0">
-              <CardTitle className="text-xs font-semibold text-muted-foreground">
-                Total Quoted Value
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-1">
-              <p className="text-3xl font-extrabold text-foreground leading-tight truncate" title={inr(totalQuotedValue)}>
-                {loading ? "..." : inr(totalQuotedValue)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Cumulative value
-              </p>
-              <div className="flex justify-end mt-2">
-                <ValueIllustration />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pending Approvals */}
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-border">
-            <CardHeader className="pb-0">
-              <CardTitle className="text-xs font-semibold text-muted-foreground">
-                Pending Approvals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-1">
-              <p className="text-3xl font-extrabold text-foreground leading-tight">
-                {loading ? "..." : pendingCount}{" "}
-                <span className="text-lg font-bold text-muted-foreground">Quotes</span>
-              </p>
-              <p className="text-xs text-amber-500 mt-1">⚠️ Awaiting response</p>
-              <div className="flex justify-end mt-2">
-                <PendingIllustration />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Total Staff */}
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow border-border">
-            <CardHeader className="pb-0">
-              <CardTitle className="text-xs font-semibold text-muted-foreground">
-                Total Staff
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-1">
-              <p className="text-3xl font-extrabold text-foreground leading-tight">
-                {loading ? "..." : totalStaff}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Active staff members
-              </p>
-              <div className="flex justify-end mt-2">
-                <StaffIllustration />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ── Bottom section ───────────────────────────────────── */}
-        <div className="flex gap-4 items-start">
-
-          {/* Recent Quotations Table (shadcn Card + Table) */}
-          <Card className="flex-1 min-w-0 rounded-2xl shadow-sm border-border overflow-hidden">
-            <CardHeader className="flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base font-bold">Recent Quotations</CardTitle>
-              <ClipboardIllustration />
-            </CardHeader>
-            <CardContent className="p-0 max-h-[400px] overflow-y-auto">
-              <Table>
-                <TableHeader className="sticky top-0 bg-white z-10 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="px-5 text-xs font-semibold text-muted-foreground w-[115px]">
-                      Date
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-semibold text-muted-foreground">
-                      Quote #
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-semibold text-muted-foreground">
-                      Client
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-semibold text-muted-foreground">
-                      Project
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-semibold text-muted-foreground text-right">
-                      Value
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-semibold text-muted-foreground">
-                      Status
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-semibold text-muted-foreground">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Loading...
-                      </TableCell>
-                    </TableRow>
-                  ) : filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No quotations found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.map((q) => (
-                      <TableRow
-                        key={q.id}
-                        className="hover:bg-accent/40 transition-colors border-b border-border/50"
-                      >
-                        <TableCell className="px-5 text-xs font-medium text-muted-foreground">
-                          {new Date(q.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="px-4 font-semibold text-primary">
-                          {q.code}
-                        </TableCell>
-                        <TableCell className="px-4 font-medium text-foreground">
-                          {q.customer?.name || "—"}
-                        </TableCell>
-                        <TableCell className="px-4 text-muted-foreground">
-                          {q.project?.name || "—"}
-                        </TableCell>
-                        <TableCell className="px-4 font-semibold text-foreground text-right">
-                          {inr(Number(q.grandTotal))}
-                        </TableCell>
-                        <TableCell className="px-4">
-                          <QuoteStatusBadge status={q.status} />
-                        </TableCell>
-                        <TableCell className="px-4">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-7 h-7 text-muted-foreground hover:text-primary rounded-lg"
-                              aria-label="Edit"
-                              onClick={() => router.push(`/Quotations/${q.id}`)}
-                            >
-                              <PencilIcon />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Right panel */}
-          <div className="w-[230px] flex-shrink-0 flex flex-col gap-4">
-
-            {/* Quote Status Breakdown (shadcn Card) */}
-            <Card className="rounded-2xl shadow-sm border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold">Quote Status Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DonutChart quotations={quotations} />
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions (shadcn Card + Button) */}
-            <Card className="rounded-2xl shadow-sm border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Create New Quotation */}
-                <Link href="/Quotations">
-                  <Button
-                    variant="outline"
-                    className="w-full h-auto p-4 rounded-xl justify-between hover:bg-accent hover:border-primary/30 transition-all group"
-                  >
-                    <span className="flex items-center justify-between w-full">
-                      <span className="text-sm font-bold text-foreground group-hover:text-primary leading-tight text-left">
-                        Manage<br />Quotations
-                      </span>
-                      <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
-                        <rect x="4" y="4" width="40" height="40" rx="10" fill="#ede9ff" />
-                        <rect x="15" y="14" width="4" height="8" rx="2" fill="#a5a0f5" />
-                        <rect x="29" y="14" width="4" height="8" rx="2" fill="#a5a0f5" />
-                        <path d="M14 22h20v4a10 10 0 0 1-20 0v-4z" fill="#6c63ff" opacity="0.7" />
-                        <rect x="20" y="36" width="8" height="6" rx="2" fill="#6c63ff" opacity="0.5" />
-                      </svg>
-                    </span>
-                  </Button>
-                </Link>
-                
-                {/* Manage Staff */}
-                <Link href="/Staff">
-                  <Button
-                    variant="outline"
-                    className="w-full h-auto p-4 rounded-xl justify-between hover:bg-accent hover:border-primary/30 transition-all group"
-                  >
-                    <span className="flex items-center justify-between w-full">
-                      <span className="text-sm font-bold text-foreground group-hover:text-primary leading-tight text-left">
-                        Manage<br />Staff
-                      </span>
-                      <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
-                        <rect x="4" y="4" width="40" height="40" rx="10" fill="#ede9ff" />
-                        <circle cx="24" cy="24" r="12" fill="#a5a0f5" opacity="0.5" />
-                        <circle cx="24" cy="24" r="8" fill="#6c63ff" opacity="0.3" />
-                        <circle cx="24" cy="24" r="4" fill="#6c63ff" opacity="0.6" />
-                        <path d="M36 24 Q42 18 44 24" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round" fill="none" />
-                      </svg>
-                    </span>
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+        {/* Recent Quotations */}
+        <div className="flex-[1] border border-[#F1F5F9] bg-white rounded-xl p-4 flex flex-col shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+             <div className="text-[12px] font-bold text-[#0F172A]">Recent Quotations</div>
+             <Link href="/Quotations" className="text-[10px] font-bold text-[#0066FF] hover:underline">View All</Link>
+          </div>
+          <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-2">
+            {loading ? (
+               <div className="text-xs text-muted-foreground">Loading...</div>
+            ) : recentQuotations.length === 0 ? (
+               <div className="text-xs text-muted-foreground">No recent quotations</div>
+            ) : (
+              recentQuotations.map((q, i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="text-[11px] font-bold text-[#0F172A] truncate" title={q.code}>{q.code || "N/A"}</div>
+                    <div className="text-[9px] text-[#64748B] truncate" title={q.customer?.name}>{q.customer?.name || "Unknown"}</div>
+                  </div>
+                  <div className="text-right flex items-center gap-2 shrink-0">
+                    <div className="text-[11px] font-bold text-[#0F172A]">{inr(Number(q.grandTotal || 0))}</div>
+                    <div className={`text-[9px] font-bold px-2 py-0.5 rounded ${getStatusColor(q.status)} w-16 text-center`}>{getStatusLabel(q.status)}</div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <Separator />
-      <footer className="text-center py-3 text-xs text-muted-foreground flex-shrink-0">
-        Zyvionix Solutions © 2026. All Rights Reserved.
-      </footer>
+      {/* Quick Actions & Floating Notification */}
+      <div className="flex gap-4 items-end mt-auto shrink-0">
+         <div className="flex-1">
+            <div className="text-[12px] font-bold text-[#0F172A] mb-3">Quick Actions</div>
+            <div className="flex gap-3">
+              {[
+                { icon: PlusCircle, title: "New Quotation", desc: "Create a new quotation", href: "/Quotations" },
+                { icon: Boxes, title: "Add Material", desc: "Add new material to database", href: "/Materials" },
+                { icon: Users, title: "Employees", desc: "Manage your team", href: "/Staff" },
+                { icon: FileArchive, title: "Activity Template", desc: "Create or edit templates", href: "/Activities" },
+              ].map((action, i) => (
+                <Link key={i} href={action.href} className="flex-1 bg-white border border-[#F1F5F9] rounded-xl p-3 shadow-sm flex flex-col items-center text-center gap-1.5 hover:border-[#0066FF]/30 transition-colors">
+                   <div className="p-2 bg-[#EFF6FF] text-[#0066FF] rounded-lg">
+                     <action.icon className="h-4 w-4" />
+                   </div>
+                   <div className="text-[10px] font-bold text-[#0F172A] mt-1 leading-tight">{action.title}</div>
+                   <div className="text-[8px] font-medium text-[#64748B] leading-tight">{action.desc}</div>
+                </Link>
+              ))}
+            </div>
+         </div>
+
+         {/* Floating price update widget */}
+         <div className="w-[240px] bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-sm flex flex-col gap-2 relative">
+            <div className="absolute top-[-10px] left-4 bg-[#10B981]/10 text-[#10B981] p-1 rounded">
+               <FileSpreadsheet className="h-4 w-4" />
+            </div>
+            <div className="ml-10">
+               <div className="text-[11px] font-bold text-[#0F172A]">Materials Price Update</div>
+               <div className="text-[9px] text-[#64748B] mt-0.5">Schneider Electric price list updated on 28 May, 2024</div>
+            </div>
+            <div className="text-right mt-1">
+               <Link href="/Materials" className="text-[9px] font-bold text-[#0066FF] border border-[#E2E8F0] px-2 py-1 rounded bg-white hover:bg-slate-50">View Details →</Link>
+            </div>
+         </div>
+      </div>
     </div>
   );
 }

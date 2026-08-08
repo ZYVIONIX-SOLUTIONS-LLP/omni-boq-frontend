@@ -99,8 +99,8 @@ export default function ActivityImportDialog({
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">Import Activities from Excel</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Columns: Code, Activity Name, Wiring Type, Category, Sub Category, Unit. This only creates
-            activity shells — add materials for each one afterward in its editor. Rows whose Code matches
+            Columns: Activity Name, Type, Category. This only creates
+            activity shells — add materials for each one afterward in its editor. Rows with a Code that matches
             an existing activity update it instead of duplicating.
           </DialogDescription>
         </DialogHeader>

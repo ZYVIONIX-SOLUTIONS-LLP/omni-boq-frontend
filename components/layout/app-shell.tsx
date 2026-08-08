@@ -73,6 +73,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => {
     if (!isLoggedIn()) {
       router.replace("/Login");
@@ -87,6 +89,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setUser(currentUser);
     setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1");
     setChecked(true);
+
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
   }, [router]);
 
   const toggleCollapsed = () => {
@@ -131,8 +139,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen" style={{ backgroundColor: THEME.canvas }}>
       {/* ═══ FIXED SIDEBAR ═══ */}
       <aside
-        className="fixed left-0 top-0 z-30 h-screen flex flex-col py-5 transition-[width] duration-200 print:hidden"
-        style={{ width: sidebarWidth, backgroundColor: THEME.surface, borderRight: `1px solid ${THEME.hairline}` }}
+        className={`fixed left-0 top-0 z-30 h-screen flex flex-col py-5 transition-[width] duration-200 print:hidden ${isFullscreen ? "!hidden" : ""}`}
+        style={{ width: sidebarWidth, backgroundColor: THEME.surface, borderRight: `1px solid ${THEME.hairline}`, display: isFullscreen ? "none" : undefined }}
       >
         {/* Brand + collapse toggle */}
         <div className={`flex items-center mb-6 px-4 ${collapsed ? "flex-col gap-2" : "justify-between gap-2"}`}>
@@ -174,12 +182,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.label}
                 href={item.href}
                 title={collapsed ? item.label : undefined}
-                className={`flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm transition-all ${
-                  isActive ? "font-semibold shadow-md" : "font-medium"
+                className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm transition-all ${
+                  isActive ? "font-bold rounded-md border border-purple-200" : "font-medium rounded-md border border-transparent"
                 } ${collapsed ? "justify-center" : ""}`}
                 style={
                   isActive
-                    ? { backgroundColor: THEME.deepwater, color: "white", boxShadow: `0 4px 10px -4px ${THEME.deepwater}80` }
+                    ? { backgroundColor: "#faf5ff", color: "#7e22ce" }
                     : { color: THEME.muted }
                 }
                 onMouseEnter={(e) => {
@@ -243,8 +251,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className="min-h-screen py-0 transition-[padding] duration-200 print:!px-0 print:!pt-0"
         style={{
-          paddingLeft: isEditorPage ? sidebarWidth : `calc(${sidebarWidth}px + 1.75rem)`,
-          paddingRight: isEditorPage ? 0 : "1.75rem",
+          paddingLeft: isFullscreen ? 0 : (isEditorPage ? sidebarWidth : `calc(${sidebarWidth}px + 1.75rem)`),
+          paddingRight: isFullscreen ? 0 : (isEditorPage ? 0 : "1.75rem"),
         }}
       >
         {children}

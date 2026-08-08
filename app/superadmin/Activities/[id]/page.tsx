@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Search, Loader2, Sparkles, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Save, Search, Loader2, Sparkles, Trash2, Plus, Pencil } from "lucide-react";
 
 import { getActivity, updateActivity, Activity, ActivityCharge, duplicateActivity } from "@/app/lib/api/activities";
 import { getUser } from "@/app/lib/auth-storage";
@@ -65,10 +65,11 @@ export default function ActivityEditorPage({ params }: PageProps) {
   // Form states for new requirement
   const [selectedCat, setSelectedCat] = useState("");
   const [selectedSubCat, setSelectedSubCat] = useState("");
-  const [specFilters, setSpecFilters] = useState<Record<string, string>>({});
+  const [specFilters, setSpecFilters] = useState<Record<string, string | string[]>>({});
   const [reqQuantity, setReqQuantity] = useState(1);
   const [reqUnit, setReqUnit] = useState("NOS");
   const [reqDescription, setReqDescription] = useState("");
+  const [editingRequirementKey, setEditingRequirementKey] = useState<string | null>(null);
   const [catProducts, setCatProducts] = useState<ProductModel[]>([]);
 
   useEffect(() => {
@@ -198,14 +199,15 @@ export default function ActivityEditorPage({ params }: PageProps) {
     Object.keys(specFilters).forEach(key => {
       const def = attributeDefs.find(d => d.id === key);
       const val = specFilters[key];
-      if (!val) return;
-      if (def?.type === "NUMBER") typedSpecs[key] = Number(val);
+      if (!val || (Array.isArray(val) && val.length === 0)) return;
+      if (Array.isArray(val)) typedSpecs[key] = val; // Store arrays directly
+      else if (def?.type === "NUMBER") typedSpecs[key] = Number(val);
       else if (def?.type === "BOOLEAN") typedSpecs[key] = val === "true";
       else typedSpecs[key] = val;
     });
 
     const row: RequirementRow = {
-      key: `r${++rowKeySeq.current}`,
+      key: editingRequirementKey || `r${++rowKeySeq.current}`,
       categoryId: cat.id,
       categoryName: cat.name,
       subCategoryId: sub?.id,
@@ -215,9 +217,45 @@ export default function ActivityEditorPage({ params }: PageProps) {
       requiredAttributes: typedSpecs,
     };
     
-    setRequirements((prev) => [...prev, row]);
+    if (editingRequirementKey) {
+      setRequirements((prev) => prev.map(r => r.key === editingRequirementKey ? row : r));
+      setEditingRequirementKey(null);
+    } else {
+      setRequirements((prev) => [...prev, row]);
+    }
     
     // Reset form
+    setSelectedCat("");
+    setSelectedSubCat("");
+    setSpecFilters({});
+    setReqDescription("");
+    setReqQuantity(1);
+  };
+
+  const handleEditRequirement = (row: RequirementRow) => {
+    setEditingRequirementKey(row.key);
+    setSelectedCat(row.categoryId);
+    setSelectedSubCat(row.subCategoryId || "");
+    
+    // Convert required attributes back to string or string[] for specFilters
+    const filters: Record<string, string | string[]> = {};
+    if (row.requiredAttributes) {
+      Object.entries(row.requiredAttributes).forEach(([k, v]) => {
+        if (Array.isArray(v)) {
+          filters[k] = v;
+        } else if (v !== undefined && v !== null) {
+          filters[k] = String(v);
+        }
+      });
+    }
+    setSpecFilters(filters);
+    setReqDescription(row.description || "");
+    setReqQuantity(row.quantity || 1);
+    setReqUnit(row.unit || "NOS");
+  };
+
+  const cancelEditRequirement = () => {
+    setEditingRequirementKey(null);
     setSelectedCat("");
     setSelectedSubCat("");
     setSpecFilters({});
@@ -346,7 +384,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                               const defName = attributeDefs.find(d => d.id === k)?.name || k;
                               return (
                                 <span key={k} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-secondary text-secondary-foreground">
-                                  {defName}: {String(v)}
+                                  {defName}: {Array.isArray(v) ? v.join(" OR ") : String(v)}
                                 </span>
                               );
                             })}
@@ -369,14 +407,24 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         />
                       </td>
                       <td className={tdClass}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeRow(row.key)}
-                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditRequirement(row)}
+                            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeRow(row.key)}
+                            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -443,8 +491,17 @@ export default function ActivityEditorPage({ params }: PageProps) {
         <div className="w-px bg-border h-full shrink-0" />
 
         {/* Sidebar */}
-        <div className="w-[330px] h-full flex flex-col bg-slate-50/50 shrink-0 border-l border-border select-none p-4">
-          <h3 className="text-sm font-bold text-foreground mb-4">Add Requirement</h3>
+        <div className="w-[330px] h-full flex flex-col bg-slate-50/50 shrink-0 border-l border-border select-none p-4 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-foreground">
+              {editingRequirementKey ? "Edit Requirement" : "Add Requirement"}
+            </h3>
+            {editingRequirementKey && (
+              <Button variant="ghost" size="sm" onClick={cancelEditRequirement} className="h-7 px-2 text-xs text-muted-foreground">
+                Cancel
+              </Button>
+            )}
+          </div>
           
           <div className="space-y-4">
             <div className="space-y-1.5">
@@ -491,21 +548,37 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         {def.name}
                       </label>
                     ) : def.type === "SELECT" || distinctOptions.length > 0 ? (
-                      <select
-                        key={def.id}
-                        value={specFilters[def.id] ?? ""}
-                        onChange={(e) => setSpecFilters(prev => ({ ...prev, [def.id]: e.target.value }))}
-                        className="h-8 rounded-lg bg-white border border-border text-[10px] px-1.5"
-                      >
-                        <option value="">{def.name}</option>
-                        {(def.type === "SELECT" ? def.options : distinctOptions).map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
+                      <div key={def.id} className="flex flex-col gap-1 border border-border rounded-lg p-1.5 bg-white max-h-28 overflow-y-auto">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase">{def.name}</span>
+                        {(def.type === "SELECT" ? def.options : distinctOptions).map(o => {
+                          const currentVals = (Array.isArray(specFilters[def.id]) ? specFilters[def.id] : (specFilters[def.id] ? [specFilters[def.id]] : [])) as string[];
+                          const isChecked = currentVals.includes(o);
+                          return (
+                            <label key={o} className="flex items-center gap-1.5 text-[10px] hover:bg-slate-50 cursor-pointer p-0.5 rounded">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  setSpecFilters(prev => {
+                                    let vals = (Array.isArray(prev[def.id]) ? prev[def.id] : (prev[def.id] ? [prev[def.id]] : [])) as string[];
+                                    if (e.target.checked) vals = [...vals, o];
+                                    else vals = vals.filter(v => v !== o);
+                                    return { ...prev, [def.id]: vals.length > 0 ? vals : "" };
+                                  });
+                                }}
+                                className="rounded border-gray-300 w-3 h-3"
+                              />
+                              {o}
+                            </label>
+                          )
+                        })}
+                      </div>
                     ) : (
                       <input
                         key={def.id}
                         type={def.type === "NUMBER" ? "number" : "text"}
                         placeholder={def.name}
-                        value={specFilters[def.id] ?? ""}
+                        value={(specFilters[def.id] as string) ?? ""}
                         onChange={(e) => setSpecFilters(prev => ({ ...prev, [def.id]: e.target.value }))}
                         className="h-8 rounded-lg bg-white border border-border text-[10px] px-1.5"
                       />
@@ -537,7 +610,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
             </div>
 
             <Button onClick={handleAddRequirement} disabled={!selectedCat} className="w-full mt-4">
-              Add Requirement
+              {editingRequirementKey ? "Update Requirement" : "Add Requirement"}
             </Button>
           </div>
         </div>

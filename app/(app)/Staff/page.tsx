@@ -141,7 +141,7 @@ export default function StaffPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+              className="h-7 w-7 rounded-none text-slate-400 hover:text-red-600 hover:bg-red-50"
               onClick={() => p.data && setDeleting(p.data)}
               aria-label="Delete user"
             >
@@ -155,7 +155,7 @@ export default function StaffPage() {
   );
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -163,7 +163,7 @@ export default function StaffPage() {
             placeholder="Search staff"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -171,14 +171,14 @@ export default function StaffPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-xl border-border h-10 w-10 bg-white"
+            className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-10 w-10 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all animate-all"
+            className="gap-2 rounded-none h-10 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
           >
             <Plus className="h-4 w-4" />
             Register Staff
@@ -186,9 +186,9 @@ export default function StaffPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-none px-4 py-3 border border-red-200 font-medium">{error}</p>}
 
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
         {loading ? (
           <p className="text-center py-14 text-sm text-muted-foreground">Loading staff directory...</p>
         ) : (
@@ -210,13 +210,13 @@ export default function StaffPage() {
 
       {/* Register User Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md rounded-2xl bg-white">
+        <DialogContent className="max-w-md rounded-none border border-purple-200 bg-white shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
+              <UserPlus className="h-5 w-5 text-purple-700" />
               Register Staff Account
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-xs text-slate-500">
               Add a new staff estimator to your organization.
             </DialogDescription>
           </DialogHeader>
@@ -224,21 +224,21 @@ export default function StaffPage() {
           <form onSubmit={handleCreate} className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">First Name</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">First Name</label>
                 <Input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                  className="rounded-none border-purple-200 bg-white focus-visible:ring-purple-500 h-9.5 text-xs font-semibold"
                   placeholder="John"
                   required
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Last Name</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Last Name</label>
                 <Input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                  className="rounded-none border-purple-200 bg-white focus-visible:ring-purple-500 h-9.5 text-xs font-semibold"
                   placeholder="Doe"
                   required
                 />
@@ -246,25 +246,25 @@ export default function StaffPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                <KeyRound className="h-3 w-3" /> Username / Login ID
+              <label className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                <KeyRound className="h-3 w-3 text-purple-600" /> Username / Login ID
               </label>
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                className="rounded-none border-purple-200 bg-white focus-visible:ring-purple-500 h-9.5 text-xs font-semibold"
                 placeholder="johndoe"
                 required
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-muted-foreground uppercase">Password</label>
+              <label className="text-[11px] font-bold text-slate-600 uppercase">Password</label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                className="rounded-none border-purple-200 bg-white focus-visible:ring-purple-500 h-9.5 text-xs font-semibold"
                 placeholder="••••••••"
                 required
               />
@@ -274,7 +274,7 @@ export default function StaffPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-xl h-9.5"
+                className="rounded-none border-purple-200 h-9.5"
                 onClick={() => setCreateOpen(false)}
                 disabled={createBusy}
               >
@@ -283,7 +283,7 @@ export default function StaffPage() {
               <Button
                 type="submit"
                 disabled={createBusy}
-                className="rounded-xl h-9.5 bg-primary text-white hover:bg-primary/95 shadow-md shadow-primary/25 px-5 font-semibold"
+                className="rounded-none h-9.5 bg-purple-700 text-white hover:bg-purple-800 shadow-md px-5 font-semibold"
               >
                 {createBusy ? "Registering..." : "Create Account"}
               </Button>
@@ -294,17 +294,17 @@ export default function StaffPage() {
 
       {/* Delete User Confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-none border border-purple-200 bg-white shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Account</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Delete account <span className="font-semibold text-foreground">{deleting?.firstName} {deleting?.lastName}</span>? This user will no longer be able to log in.
+            <DialogDescription className="text-sm text-slate-600">
+              Delete account <span className="font-semibold text-slate-900">{deleting?.firstName} {deleting?.lastName}</span>? This user will no longer be able to log in.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -312,7 +312,7 @@ export default function StaffPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-none bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDelete}
               disabled={deleteBusy}
             >

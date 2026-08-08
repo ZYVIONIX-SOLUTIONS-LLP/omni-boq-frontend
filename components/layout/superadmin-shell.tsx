@@ -139,9 +139,9 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
                 title={collapsed ? item.label : undefined}
                 className={
                   (isActive
-                    ? "bg-primary text-white shadow-md shadow-primary/25 font-semibold"
-                    : "text-muted-foreground hover:text-primary hover:bg-accent font-medium") +
-                  ` flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 text-sm transition-all ${
+                    ? "bg-[#faf5ff] text-[#7e22ce] border border-purple-200 font-bold rounded-md"
+                    : "text-muted-foreground hover:text-primary hover:bg-accent font-medium rounded-md border border-transparent") +
+                  ` flex items-center gap-2.5 w-full px-3 py-2.5 text-sm transition-all ${
                     collapsed ? "justify-center" : ""
                   }`
                 }

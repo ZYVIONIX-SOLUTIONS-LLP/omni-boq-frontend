@@ -7,31 +7,15 @@ import { login } from "../lib/api/auth";
 
 export default function SuperAdminLogin() {
   const router = useRouter();
-  const [theme, setTheme] = useState("light");
   const [showPassword, setShowPassword] = useState(false);
 
-  const isDark = theme === "dark";
+  const isDark = false;
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    // initialize theme based on root html class
-    if (document.documentElement.classList.contains("dark")) {
-      setTheme("dark");
-    }
-  }, []);
-
-  const toggleTheme = (newTheme: "light" | "dark") => {
-    setTheme(newTheme);
-    if (newTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,26 +71,6 @@ export default function SuperAdminLogin() {
         {/* ---------- Right: Login Form Panel ---------- */}
         <div className="relative flex flex-1 items-center justify-center px-8 py-10 md:px-14">
           
-          {/* Theme toggle (Top Right) */}
-          <div className="absolute top-6 right-6 z-20">
-            <div className={`flex items-center rounded-full p-1 text-[11px] font-semibold shadow-sm transition-colors ${isDark ? "bg-[#1E1B33]/80 border border-white/5" : "bg-zinc-200/60 border border-zinc-300"}`}>
-              <button
-                type="button"
-                onClick={() => toggleTheme("light")}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition-all ${!isDark ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-white"}`}
-              >
-                <Sun className="h-3.5 w-3.5" /> Light
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleTheme("dark")}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition-all ${isDark ? "bg-[#2A2552] text-white shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
-              >
-                <Moon className="h-3.5 w-3.5" /> Dark
-              </button>
-            </div>
-          </div>
-
           <div className="w-full max-w-[380px] z-10">
             <div className="mb-8 flex items-center justify-center md:hidden gap-1">
                <span className="text-2xl text-foreground font-extrabold tracking-tight">Zyvionix</span>

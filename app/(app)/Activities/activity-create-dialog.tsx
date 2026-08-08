@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createActivity, WiringType, ACTIVITY_CATEGORIES } from "@/app/lib/api/activities";
+import { createActivity, getActivityTypes, ActivityType } from "@/app/lib/api/activities";
 
 function Field({
   label,
@@ -49,27 +49,59 @@ export default function ActivityCreateDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: (activityId: string) => void;
 }) {
+  const [types, setTypes] = useState<ActivityType[]>([]);
   const [name, setName] = useState("");
-  const [wiringType, setWiringType] = useState<WiringType>("POINT_WIRING");
-  const [category, setCategory] = useState(ACTIVITY_CATEGORIES.POINT_WIRING[0]);
+  const [wiringType, setWiringType] = useState<string>("");
+  const [category, setCategory] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (open) {
+      getActivityTypes().then(data => {
+        setTypes(data);
+        if (data.length > 0) {
+          setWiringType(data[0].name);
+          if (data[0].categories.length > 0) {
+            setCategory(data[0].categories[0].name);
+          } else {
+            setCategory("");
+          }
+        }
+      }).catch(err => console.error("Failed to load types:", err));
+    }
+  }, [open]);
+
   const reset = () => {
     setName("");
-    setWiringType("POINT_WIRING");
-    setCategory(ACTIVITY_CATEGORIES.POINT_WIRING[0]);
+    if (types.length > 0) {
+      setWiringType(types[0].name);
+      if (types[0].categories.length > 0) {
+        setCategory(types[0].categories[0].name);
+      } else {
+        setCategory("");
+      }
+    }
     setError("");
   };
 
-  const handleWiringTypeChange = (val: WiringType) => {
+  const handleWiringTypeChange = (val: string) => {
     setWiringType(val);
-    setCategory(ACTIVITY_CATEGORIES[val][0]);
+    const t = types.find(x => x.name === val);
+    if (t && t.categories.length > 0) {
+      setCategory(t.categories[0].name);
+    } else {
+      setCategory("");
+    }
   };
 
   const submit = async () => {
     if (!name.trim()) {
       setError("Activity name is required");
+      return;
+    }
+    if (!wiringType) {
+      setError("Type is required");
       return;
     }
     setSaving(true);
@@ -91,6 +123,8 @@ export default function ActivityCreateDialog({
     }
   };
 
+  const currentType = types.find(t => t.name === wiringType);
+
   return (
     <Dialog
       open={open}
@@ -111,26 +145,32 @@ export default function ActivityCreateDialog({
             <Field label="Type">
               <Select
                 value={wiringType}
-                onValueChange={(val) => val && handleWiringTypeChange(val as WiringType)}
+                onValueChange={(val) => val && handleWiringTypeChange(val)}
+                disabled={types.length === 0}
               >
                 <SelectTrigger className="rounded-xl border-border h-10 bg-white">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-border">
-                  <SelectItem value="POINT_WIRING">Point Wiring</SelectItem>
-                  <SelectItem value="CIRCUIT_WIRING">Circuit Wiring</SelectItem>
+                  {types.map(t => (
+                    <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
             <Field label="Category">
-              <Select value={category} onValueChange={(val) => val && setCategory(val)}>
+              <Select 
+                value={category} 
+                onValueChange={(val) => val && setCategory(val)}
+                disabled={!currentType || currentType.categories.length === 0}
+              >
                 <SelectTrigger className="rounded-xl border-border h-10 bg-white">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-border">
-                  {ACTIVITY_CATEGORIES[wiringType].map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
+                  {currentType?.categories.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -159,7 +199,7 @@ export default function ActivityCreateDialog({
           <Button
             className="rounded-xl bg-primary text-white hover:bg-primary/95"
             onClick={submit}
-            disabled={saving}
+            disabled={saving || !wiringType}
           >
             {saving ? "Creating..." : "Create & Open"}
           </Button>

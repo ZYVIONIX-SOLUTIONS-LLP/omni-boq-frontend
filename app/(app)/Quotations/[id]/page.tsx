@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Plus, Trash2, Loader2, Sparkles, FolderKanban, Printer, Settings, ListOrdered, Tag, Package, Layers, Coins, TrendingUp, Percent, Receipt, FileText, Calculator, CreditCard, Zap, Type, ArrowUp, ArrowDown, MoreVertical } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Loader2, Sparkles, FolderKanban, Printer, Settings, ListOrdered, Tag, Package, Layers, Coins, TrendingUp, Percent, Receipt, FileText, Calculator, CreditCard, Zap, Type, ArrowUp, ArrowDown, MoreVertical, Hash, Maximize2, Minimize2 } from "lucide-react";
 
 import { getQuotation, updateQuotation, Quotation, QuotationItem } from "@/app/lib/api/quotations";
-import { listActivities, Activity, WIRING_TYPES, ACTIVITY_CATEGORIES, wiringTypeLabel, WiringType } from "@/app/lib/api/activities";
+import { listActivities, Activity, wiringTypeLabel, getActivityTypes, ActivityType } from "@/app/lib/api/activities";
 import { listProducts } from "@/app/lib/catalog/api";
 import type { ProductModel } from "@/app/lib/catalog/types";
 
@@ -21,6 +21,8 @@ import {
 import { ActivitySelectionSidebar } from "@/components/quotations/ActivitySelectionSidebar";
 import { QuotationItemMaterialDialog } from "@/components/quotations/QuotationItemMaterialDialog";
 import { CascadingMaterialMenu } from "@/components/quotations/CascadingMaterialMenu";
+import { BrandPreferencesDialog } from "@/components/quotations/BrandPreferencesDialog";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -42,8 +44,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const [selectedType, setSelectedType] = useState<WiringType | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // States to track materials configuration
@@ -56,13 +59,45 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const [configuringIdx, setConfiguringIdx] = useState<number | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
 
+  // Fullscreen State
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch((err) => {
+        console.error(`Error entering fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          setIsFullscreen(false);
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  // States for Global Brand Defaults
+  const [brandPreferencesOpen, setBrandPreferencesOpen] = useState(false);
+  const [brandPreferences, setBrandPreferences] = useState<Record<string, { manufacturerId: string; seriesId?: string | null }>>({});
+
   const initData = useCallback(async () => {
     setLoading(true);
     try {
-      const [qData, actData, prodData] = await Promise.all([
+      const [qData, aRes, pRes, typesRes] = await Promise.all([
         getQuotation(id),
-        listActivities(),
-        listProducts({ limit: 5000 }), // In a real app we'd paginate or search server-side
+        listActivities({ limit: 1000 }),
+        listProducts({ limit: 1000 }),
+        getActivityTypes(),
       ]);
       setQuotation(qData);
         const qItems = (qData.items || []).map((it: any) => ({
@@ -82,13 +117,15 @@ export default function QuotationEditorPage({ params }: PageProps) {
         setItems(qItems);
         setActivityRows(qData.activityRows || {});
         setActivityCustomizations(qData.activityCustomizations || {});
+        setBrandPreferences(qData.brandPreferences || {});
         
         if (qData.sheetData && typeof qData.sheetData === 'object' && 'pricingMode' in qData.sheetData) {
           setPricingMode((qData.sheetData as any).pricingMode);
         }
       
-      setActivities(actData.items);
-      setProducts(prodData.items);
+      setActivities(aRes.items);
+      setProducts(pRes.items);
+      setActivityTypes(typesRes);
     } catch (err) {
       console.error(err);
     } finally {
@@ -127,7 +164,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
          items,
          activityRows: newActivityRows,
          activityCustomizations: newActivityCustomizations,
-         sheetData: { pricingMode }
+         sheetData: { pricingMode },
+         brandPreferences
       });
       setActivityRows(newActivityRows);
       setActivityCustomizations(newActivityCustomizations);
@@ -376,22 +414,66 @@ export default function QuotationEditorPage({ params }: PageProps) {
       let totalMaterialCost = 0;
       
       activity.requirements?.forEach((req: any) => {
-        let selectedProdId = req.options?.find((o: any) => o.isDefault)?.productModelId;
-        
-        if (!selectedProdId) {
-          const match = products.find(p => {
+        let selectedProdId = undefined;
+        const normalizeAttr = (v: any) => String(v ?? "").replace(/\s+/g, "").toLowerCase();
+
+        const validProducts = products.filter(p => {
              if (p.categoryId !== req.categoryId) return false;
              if (req.subCategoryId && p.subCategoryId !== req.subCategoryId) return false;
              if (req.requiredAttributes) {
                for (const [key, val] of Object.entries(req.requiredAttributes)) {
                  // @ts-ignore
                  const pVal = p.attributes?.[key];
-                 if (String(pVal ?? "").trim().toLowerCase() !== String(val ?? "").trim().toLowerCase()) return false;
+                 if (Array.isArray(val)) {
+                   if (!val.some(v => normalizeAttr(pVal) === normalizeAttr(v))) return false;
+                 } else {
+                   if (normalizeAttr(pVal) !== normalizeAttr(val)) return false;
+                 }
                }
              }
              return true;
+        });
+
+        // 1. Try brand preferences first
+        const pref = brandPreferences[req.categoryId];
+        console.log(`[DEBUG] req.categoryId: ${req.categoryId}, pref:`, pref);
+        console.log(`[DEBUG] validProducts count: ${validProducts.length}`);
+        
+        if (pref && pref.manufacturerId && validProducts.length > 0) {
+          const prefMatch = validProducts.find(p => {
+            if (p.manufacturerId !== pref.manufacturerId) return false;
+            
+            // Check series
+            if (pref.seriesId) {
+               const seriesPref = String(pref.seriesId).trim().toLowerCase();
+               const pSeries = String(p.series || "").trim().toLowerCase();
+               const pName = String(p.name || "").trim().toLowerCase();
+               
+               if (pSeries !== seriesPref && !pName.includes(seriesPref)) {
+                 console.log(`[DEBUG] Series mismatch: product '${p.series}' (name: '${p.name}') vs pref '${pref.seriesId}'`);
+                 return false;
+               }
+            }
+            return true;
           });
-          if (match) selectedProdId = match.id;
+          if (prefMatch) {
+             console.log(`[DEBUG] Found brand match! Product ID: ${prefMatch.id}`);
+             selectedProdId = prefMatch.id;
+          } else {
+             console.log(`[DEBUG] No product matched the brand/series preference! falling back.`);
+          }
+        }
+        
+        // 2. Try default option from activity definition
+        if (!selectedProdId) {
+          selectedProdId = req.options?.find((o: any) => o.isDefault)?.productModelId;
+          if (selectedProdId) console.log(`[DEBUG] Picked admin default: ${selectedProdId}`);
+        }
+
+        // 3. Fallback to first valid product
+        if (!selectedProdId && validProducts.length > 0) {
+          selectedProdId = validProducts[0].id;
+          console.log(`[DEBUG] Picked fallback: ${selectedProdId}`);
         }
 
         if (selectedProdId) {
@@ -465,24 +547,24 @@ export default function QuotationEditorPage({ params }: PageProps) {
     grandTotalAll += finalAmount;
   });
 
-  const thClass = "px-2 py-3 text-left text-[11px] font-bold text-slate-700 uppercase tracking-wide border-r border-b border-purple-200 last:border-r-0 whitespace-nowrap bg-white";
-  const tdClass = "px-2 py-2 align-top border-r border-b border-purple-100 last:border-r-0 bg-white/50";
+  const thClass = "px-2 py-3 text-left text-[11px] font-bold text-purple-950 uppercase tracking-wide border-r border-b border-purple-200/90 last:border-r-0 whitespace-nowrap bg-purple-100/60 backdrop-blur-md";
+  const tdClass = "px-2 py-1.5 align-top border-r border-b border-purple-100/90 last:border-r-0 bg-white/40 backdrop-blur-xs";
 
   return (
-    <div className="flex flex-col bg-white overflow-hidden h-[calc(100vh-0rem)] w-full relative print:overflow-visible print:h-auto">
+    <div className="flex flex-col bg-slate-50/60 min-h-screen w-full relative print:overflow-visible print:h-auto bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
       <div className="flex flex-col h-full w-full print:hidden">
         {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-white px-4 py-2 shadow-sm z-10">
+      <div className="sticky top-0 flex shrink-0 items-center justify-between border-b border-purple-200/80 bg-white/80 backdrop-blur-md px-4 py-2 shadow-[0_4px_20px_0_rgba(124,58,237,0.06)] z-40">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push("/Quotations")}
-            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-slate-100 hover:text-primary transition-colors"
+            className="flex items-center gap-1.5 rounded-none px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-purple-50 hover:text-purple-700 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
           <div className="h-5 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <FolderKanban className="h-4 w-4 text-primary" />
+            <FolderKanban className="h-4 w-4 text-purple-700" />
             <h2 className="text-sm font-bold text-foreground">
               {quotation?.code} — <span className="text-muted-foreground font-medium">{quotation?.project?.name}</span>
             </h2>
@@ -490,17 +572,17 @@ export default function QuotationEditorPage({ params }: PageProps) {
         </div>
           <div className="flex items-center gap-3">
           {saveSuccess && (
-            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 transition-all animate-in fade-in">
+            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold bg-emerald-50 px-3 py-1.5 rounded-none border border-emerald-200 transition-all animate-in fade-in shadow-xs">
               <Sparkles className="h-3.5 w-3.5" /> Saved successfully
             </span>
           )}
           
           <div className="flex gap-2">
             <Select value={pricingMode} onValueChange={(val: any) => setPricingMode(val)}>
-              <SelectTrigger className="w-[200px] h-9 text-xs font-semibold bg-purple-50 text-purple-700 border-purple-200 print:hidden">
+              <SelectTrigger className="w-[200px] h-9 text-xs font-semibold bg-purple-50/80 backdrop-blur-xs text-purple-700 border-purple-200 rounded-none print:hidden shadow-xs">
                 <SelectValue placeholder="Pricing Mode" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-none border-purple-200">
                 <SelectItem value="combined">Material + Labour (Combined)</SelectItem>
                 <SelectItem value="separate">Material & Labour (Separate)</SelectItem>
               </SelectContent>
@@ -509,16 +591,34 @@ export default function QuotationEditorPage({ params }: PageProps) {
             <Button
               variant="outline"
               onClick={() => window.print()}
-              className="gap-2 h-9 px-3 rounded-lg text-xs font-semibold border-border hover:bg-slate-50 shadow-sm print:hidden"
+              className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-purple-50 text-slate-700 shadow-xs print:hidden"
             >
               <Printer className="h-4 w-4" /> Export PDF
             </Button>
           </div>
 
           <Button
+            onClick={() => setBrandPreferencesOpen(true)}
+            variant="outline"
+            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-blue-50 hover:text-blue-600 shadow-xs print:hidden"
+          >
+            <Settings className="h-4 w-4" /> Brand Setup
+          </Button>
+
+          <Button
+            onClick={toggleFullscreen}
+            variant="outline"
+            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 text-purple-700 hover:bg-purple-50 shadow-xs print:hidden"
+            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4 text-purple-600" /> : <Maximize2 className="h-4 w-4 text-purple-600" />}
+            <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+          </Button>
+
+          <Button
             onClick={handleSave}
             disabled={saving}
-            className="gap-2 h-9 px-4 rounded-lg font-semibold bg-primary text-white hover:bg-primary/95 transition-all shadow-md disabled:opacity-50 print:hidden"
+            className="gap-2 h-9 px-4 rounded-none font-semibold bg-purple-700 text-white hover:bg-purple-800 transition-all shadow-md disabled:opacity-50 print:hidden"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Quotation
@@ -527,70 +627,74 @@ export default function QuotationEditorPage({ params }: PageProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex min-h-0 overflow-y-auto bg-slate-50/50 p-4 print:p-0 print:bg-white print:overflow-visible">
-        <div className="flex-1 max-w-[1400px] mx-auto w-full flex flex-col gap-4 print:gap-0">
+      <div className="flex-1 flex bg-slate-50/50 p-4 print:p-0 print:bg-white print:overflow-visible">
+        <div className={`flex-1 ${isFullscreen ? 'max-w-none px-4' : 'max-w-[1400px]'} mx-auto w-full flex flex-col gap-4 print:gap-0 transition-all duration-300`}>
           
           {/* Activity Selection UI & Controls */}
-          <div className="flex flex-col xl:flex-row items-center justify-between gap-4 mb-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm print:hidden">
+          <div className="flex flex-col xl:flex-row items-center justify-between gap-4 mb-2 bg-white/75 backdrop-blur-xl p-4 rounded-none border border-purple-200/80 shadow-[0_4px_24px_0_rgba(124,58,237,0.08)] print:hidden">
             <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">Wiring Types:</span>
+                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">Activity Type:</span>
                 <Select 
                   value={selectedType || ""} 
-                  onValueChange={(val: any) => setSelectedType(val || null)}
+                  onValueChange={(val) => {
+                    setSelectedType(val);
+                    const t = activityTypes.find(x => x.name === val);
+                    setSelectedCategory(t?.categories[0]?.name || "");
+                  }}
                 >
-                  <SelectTrigger className="w-[180px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-slate-200">
-                    <SelectValue placeholder="Select Wiring Type" />
+                  <SelectTrigger className="w-[200px] h-9 text-sm font-semibold bg-white border-purple-200/80 rounded-none shadow-xs">
+                    <SelectValue placeholder="Select Type..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    {WIRING_TYPES.map(wt => (
-                      <SelectItem key={wt} value={wt} className="font-semibold cursor-pointer">
-                        {wiringTypeLabel(wt)}
+                  <SelectContent className="rounded-none border-purple-200">
+                    {activityTypes.map(t => (
+                      <SelectItem key={t.id} value={t.name} className="font-semibold cursor-pointer">
+                        {t.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               
-              {selectedType && (
-                <div className="flex items-center gap-3 animate-in slide-in-from-left-2">
-                  <span className="text-sm font-bold text-slate-700 whitespace-nowrap">Category:</span>
+              {selectedType && activityTypes.find(x => x.name === selectedType)?.categories.length ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cat:</span>
                   <Select 
-                    value={selectedCategory || ""} 
+                    value={selectedCategory} 
                     onValueChange={(val) => {
-                      setSelectedCategory(val);
+                      setSelectedCategory(val || "");
                       setSidebarOpen(true);
                     }}
                   >
-                    <SelectTrigger className="w-[220px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-slate-200">
+                    <SelectTrigger className="w-[220px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-purple-200/80 rounded-none">
                       <SelectValue placeholder="Select Category..." />
                     </SelectTrigger>
-                    <SelectContent>
-                      {ACTIVITY_CATEGORIES[selectedType].map(cat => (
-                        <SelectItem key={cat} value={cat} className="font-semibold cursor-pointer">
-                          {cat}
+                    <SelectContent className="rounded-none border-purple-200">
+                      {activityTypes.find(x => x.name === selectedType)?.categories.map(cat => (
+                        <SelectItem key={cat.id} value={cat.name} className="font-semibold cursor-pointer">
+                          {cat.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-3 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0">
+            <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
               <CascadingMaterialMenu products={products} onSelect={handleAddRawMaterial} />
               <Button 
                 onClick={addItemRow} 
                 variant="default"
-                className="h-9 text-xs gap-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg shadow-sm whitespace-nowrap font-semibold"
+                className="h-9 text-xs gap-1.5 bg-slate-900 hover:bg-black text-white rounded-none shadow-xs whitespace-nowrap font-semibold"
               >
                 <Plus className="h-4 w-4" /> Add Custom Item
               </Button>
               <Button 
                 onClick={addHeadingRow} 
                 variant="outline"
-                className="h-9 text-xs gap-1.5 border-purple-200 text-purple-700 hover:bg-purple-50 rounded-lg shadow-sm whitespace-nowrap font-semibold"
+                className="h-9 text-xs gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-50 rounded-none shadow-xs whitespace-nowrap font-semibold"
               >
                 <Type className="h-4 w-4" /> Add Heading
               </Button>
@@ -598,30 +702,30 @@ export default function QuotationEditorPage({ params }: PageProps) {
           </div>
 
           {/* Table Container */}
-          <div className="rounded-xl border border-purple-200 bg-purple-50/30 shadow-sm overflow-hidden flex flex-col">
+          <div className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden flex flex-col">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-purple-200">
-                    <th className={`${thClass} w-[60px]`}><div className="flex items-center gap-1.5 justify-center"><ListOrdered className="h-3.5 w-3.5 text-slate-400" /> SL</div></th>
-                    <th className={`${thClass} min-w-[300px]`}><div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-emerald-500" /> ITEM NAME / SPEC</div></th>
-                    <th className={`${thClass} w-[80px]`}><div className="flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-blue-500" /> UNIT</div></th>
-                    <th className={`${thClass} w-[100px]`}><div className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5 text-orange-500" /> QTY</div></th>
+                    <th className={`${thClass} w-[50px]`}><div className="flex items-center gap-1 justify-center"><ListOrdered className="h-3.5 w-3.5 text-slate-400" /> SL</div></th>
+                    <th className={`${thClass} min-w-[450px]`}><div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-emerald-500" /> ITEM NAME / SPEC</div></th>
+                    <th className={`${thClass} w-[80px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> UNIT</div></th>
+                    <th className={`${thClass} w-[75px]`}><div className="flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-orange-500" /> QTY</div></th>
                     {pricingMode === "separate" ? (
                       <>
-                        <th className={`${thClass} w-[100px]`}><div className="flex items-center gap-1.5"><Package className="h-3.5 w-3.5 text-blue-500" /> MAT RATE</div></th>
-                        <th className={`${thClass} w-[100px]`}><div className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-amber-500" /> LAB RATE</div></th>
+                        <th className={`${thClass} w-[90px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> MAT RATE</div></th>
+                        <th className={`${thClass} w-[90px]`}><div className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" /> LAB RATE</div></th>
                       </>
                     ) : (
-                      <th className={`${thClass} w-[120px]`}><div className="flex items-center gap-1.5"><Coins className="h-3.5 w-3.5 text-amber-500" /> RATE</div></th>
+                      <th className={`${thClass} w-[95px]`}><div className="flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-amber-500" /> RATE</div></th>
                     )}
-                    <th className={`${thClass} w-[80px]`}><div className="flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> % PROFIT</div></th>
-                    <th className={`${thClass} w-[80px]`}><div className="flex items-center gap-1.5"><Percent className="h-3.5 w-3.5 text-red-500" /> % DISC</div></th>
-                    <th className={`${thClass} w-[80px]`}><div className="flex items-center gap-1.5"><Receipt className="h-3.5 w-3.5 text-cyan-500" /> % TAX</div></th>
-                    <th className={`${thClass} w-[120px]`}><div className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-purple-500" /> TAX AMT</div></th>
-                    <th className={`${thClass} w-[120px]`}><div className="flex items-center gap-1.5"><Calculator className="h-3.5 w-3.5 text-blue-600" /> SUB TOTAL</div></th>
-                    <th className={`${thClass} w-[120px]`}><div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-emerald-500" /> TOTAL</div></th>
-                    <th className={`${thClass} w-[60px]`}><div className="flex items-center gap-1.5 justify-center"><Zap className="h-3.5 w-3.5 text-slate-800" /> ACT</div></th>
+                    <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> % PROFIT</div></th>
+                    <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Percent className="h-3.5 w-3.5 text-red-500" /> % DISC</div></th>
+                    <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-cyan-500" /> % TAX</div></th>
+                    <th className={`${thClass} w-[90px]`}><div className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-purple-500" /> TAX AMT</div></th>
+                    <th className={`${thClass} w-[95px]`}><div className="flex items-center gap-1"><Calculator className="h-3.5 w-3.5 text-blue-600" /> SUB TOTAL</div></th>
+                    <th className={`${thClass} w-[100px]`}><div className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5 text-emerald-500" /> TOTAL</div></th>
+                    <th className={`${thClass} w-[45px]`}><div className="flex items-center gap-1 justify-center"><Zap className="h-3.5 w-3.5 text-slate-800" /> ACT</div></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -654,30 +758,28 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       if (isHeading) {
                         return (
                           <tr key={it.id || idx} className="hover:bg-purple-100/50 transition-colors bg-purple-50/50">
-                            <td className={`${tdClass} align-middle`}>
+                            <td className="px-1.5 py-0.5 align-middle border-r border-b border-purple-200">
                               <Input
-                                value={it.snapshotData?.serialNumber || ""}
+                                value={it.snapshotData?.serialNumber ?? ""}
                                 onChange={(e) => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: e.target.value } })}
-                                placeholder={String(idx + 1)}
-                                className="h-8 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent"
+                                placeholder={it.snapshotData?.serialNumber !== undefined ? "" : String(idx + 1)}
+                                className="h-6 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent"
                               />
                             </td>
-                            <td className={tdClass} colSpan={pricingMode === "separate" ? 11 : 10}>
-                              <textarea
-                                value={it.description}
-                                onChange={(e) => updateItem(idx, { description: e.target.value })}
-                                className="h-10 min-h-[40px] text-sm font-bold border-transparent hover:border-purple-200 focus:border-primary bg-transparent px-2 py-2 w-full text-slate-800 uppercase tracking-wide resize-y rounded-md outline-none focus:ring-1 focus:ring-purple-500"
+                            <td className="px-1.5 py-0.5 align-middle border-r border-b border-purple-200">
+                              <RichTextEditor
+                                content={it.description || ""}
+                                onChange={(html) => updateItem(idx, { description: html })}
+                                className="h-auto min-h-[24px] text-sm border-transparent hover:border-purple-200 focus:border-primary bg-transparent px-1 py-0.5 w-full text-slate-800 tracking-wide rounded-md outline-none focus:ring-1 focus:ring-purple-500"
                                 placeholder="SECTION HEADING..."
-                                rows={1}
                               />
                             </td>
-                            <td className={`${tdClass} text-center py-2 bg-white/50 align-middle`}>
+                            <td className="border-r border-b border-purple-200 bg-purple-50/30" colSpan={pricingMode === "separate" ? 10 : 9} />
+                            <td className="px-1.5 py-0.5 text-center bg-purple-50/50 align-middle border-b border-purple-200">
                               <div className="flex items-center justify-center gap-1">
                                 <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
+                                  <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center h-6 w-6 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none">
+                                    <MoreVertical className="h-3.5 w-3.5" />
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48 font-semibold text-sm">
                                     <DropdownMenuItem onClick={() => insertRowAbove(idx)} className="cursor-pointer text-emerald-600 focus:text-emerald-700 focus:bg-emerald-50">
@@ -686,6 +788,15 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                     <DropdownMenuItem onClick={() => insertHeadingAbove(idx)} className="cursor-pointer text-purple-600 focus:text-purple-700 focus:bg-purple-50">
                                       <Type className="h-4 w-4 mr-2" /> Insert Heading Above
                                     </DropdownMenuItem>
+                                    {it.snapshotData?.serialNumber === "" ? (
+                                      <DropdownMenuItem onClick={() => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: undefined } })} className="cursor-pointer text-slate-600 focus:bg-slate-100">
+                                        <Hash className="h-4 w-4 mr-2" /> Reset Serial Number
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem onClick={() => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: "" } })} className="cursor-pointer text-amber-600 focus:text-amber-700 focus:bg-amber-50">
+                                        <Hash className="h-4 w-4 mr-2" /> Remove Serial Number
+                                      </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem onClick={() => removeItem(idx)} className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50">
                                       <Trash2 className="h-4 w-4 mr-2" /> Remove Item
                                     </DropdownMenuItem>
@@ -701,54 +812,25 @@ export default function QuotationEditorPage({ params }: PageProps) {
                         <tr key={it.id || idx} className="hover:bg-purple-50/80 transition-colors">
                           <td className={`${tdClass} align-middle`}>
                             <Input
-                              value={it.snapshotData?.serialNumber || ""}
+                              value={it.snapshotData?.serialNumber ?? ""}
                               onChange={(e) => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: e.target.value } })}
-                              placeholder={String(idx + 1)}
+                              placeholder={it.snapshotData?.serialNumber !== undefined ? "" : String(idx + 1)}
                               className="h-8 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent text-slate-500"
                             />
                           </td>
                           <td className={tdClass}>
-                            <textarea
-                              value={it.description}
-                              onChange={(e) => updateItem(idx, { description: e.target.value })}
-                              className="w-full min-h-[44px] text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary focus:ring-1 focus:ring-purple-500 shadow-sm px-2 py-1.5 font-medium resize-y outline-none leading-relaxed"
+                            <RichTextEditor
+                              content={it.description || ""}
+                              onChange={(html) => updateItem(idx, { description: html })}
+                              className="w-full min-h-[34px] text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary focus:ring-1 focus:ring-purple-500 shadow-sm px-2 py-1.5 font-medium overflow-hidden leading-relaxed text-justify"
                               placeholder="Item description..."
-                              rows={2}
                             />
-                            
-                            {/* Materials preview for Activity */}
-                            {activityRows[idx] && (() => {
-                               const actId = activityRows[idx];
-                               const act = activities.find(a => a.id === actId);
-                               if (!act || !act.requirements) return null;
-                               const customizations = activityCustomizations[idx] || {};
-                               return (
-                                 <div className="mt-2 text-[10px] text-slate-500 pl-1 leading-tight border-l-2 border-purple-200 ml-1">
-                                    {act.requirements.map(req => {
-                                       let selectedProdId = customizations[req.id];
-                                       if (!selectedProdId) selectedProdId = req.options?.find((o: any) => o.isDefault)?.productModelId;
-                                       if (!selectedProdId) {
-                                          const match = products.find(p => p.categoryId === req.categoryId && (req.subCategoryId ? p.subCategoryId === req.subCategoryId : true));
-                                          if (match) selectedProdId = match.id;
-                                       }
-                                       const prod = products.find(p => p.id === selectedProdId);
-                                       if (!prod) return null;
-                                       return (
-                                         <div key={req.id} className="flex gap-1 mb-0.5">
-                                           <span>-</span>
-                                           <span className="line-clamp-1">{prod.name} ({Number(req.quantity)} {prod.unit || 'Nos'})</span>
-                                         </div>
-                                       );
-                                    })}
-                                 </div>
-                               );
-                            })()}
                           </td>
                           <td className={tdClass}>
                             <Input
                               value={it.unit}
                               onChange={(e) => updateItem(idx, { unit: e.target.value })}
-                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-2"
+                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center"
                             />
                           </td>
                           <td className={tdClass}>
@@ -756,7 +838,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               
                               value={it.quantity}
                               onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
-                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-2 text-right"
+                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center"
                             />
                           </td>
                           {pricingMode === "separate" ? (
@@ -764,7 +846,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               <td className={tdClass}>
                                 <Input
                                   type="number"
-                                  value={it.snapshotData?.materialRate ?? it.rate}
+                                  value={isActivity ? Number(it.snapshotData?.materialRate ?? it.rate).toFixed(2) : (it.snapshotData?.materialRate ?? it.rate)}
                                   onChange={(e) => {
                                     const matRate = Number(e.target.value) || 0;
                                     const labRate = Number(it.snapshotData?.labourRate) || 0;
@@ -781,7 +863,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               <td className={tdClass}>
                                 <Input
                                   type="number"
-                                  value={it.snapshotData?.labourRate || 0}
+                                  value={isActivity ? Number(it.snapshotData?.labourRate || 0).toFixed(2) : (it.snapshotData?.labourRate || 0)}
                                   onChange={(e) => {
                                     const labRate = Number(e.target.value) || 0;
                                     const matRate = Number(it.snapshotData?.materialRate ?? it.rate) || 0;
@@ -790,7 +872,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                       snapshotData: { ...it.snapshotData, labourRate: labRate } 
                                     });
                                   }}
-                                  className={`h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm`}
+                                  readOnly={isActivity}
+                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
                                 />
                               </td>
                             </>
@@ -798,7 +881,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                             <td className={tdClass}>
                               <Input
                                 type="number"
-                                value={it.rate}
+                                value={isActivity ? Number(it.rate).toFixed(2) : it.rate}
                                 onChange={(e) => {
                                   const newRate = Number(e.target.value) || 0;
                                   updateItem(idx, { 
@@ -854,10 +937,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           <td className={`${tdClass} text-center py-2 bg-white align-middle`}>
                             <div className="flex flex-col items-center justify-center gap-1">
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
+                                <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center h-8 w-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none">
+                                  <MoreVertical className="h-4 w-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 font-semibold text-sm">
                                   <DropdownMenuItem onClick={() => insertRowAbove(idx)} className="cursor-pointer text-emerald-600 focus:text-emerald-700 focus:bg-emerald-50">
@@ -869,6 +950,15 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                   {activityRows[idx] && (
                                     <DropdownMenuItem onClick={() => handleConfigureMaterials(idx)} className="cursor-pointer text-blue-600 focus:text-blue-700 focus:bg-blue-50">
                                       <Settings className="h-4 w-4 mr-2" /> Configure Materials
+                                    </DropdownMenuItem>
+                                  )}
+                                  {it.snapshotData?.serialNumber === "" ? (
+                                    <DropdownMenuItem onClick={() => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: undefined } })} className="cursor-pointer text-slate-600 focus:bg-slate-100">
+                                      <Hash className="h-4 w-4 mr-2" /> Reset Serial Number
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onClick={() => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: "" } })} className="cursor-pointer text-amber-600 focus:text-amber-700 focus:bg-amber-50">
+                                      <Hash className="h-4 w-4 mr-2" /> Remove Serial Number
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuItem onClick={() => removeItem(idx)} className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50">
@@ -886,22 +976,29 @@ export default function QuotationEditorPage({ params }: PageProps) {
               </table>
 
               {/* Totals Footer */}
-              {items.length > 0 && (
-                <div className="bg-purple-50/50 border-t border-purple-200 p-4 flex flex-col items-end justify-center gap-1">
-                  <div className="flex w-64 justify-between text-xs text-slate-600 font-medium">
-                    <span>Sub Total:</span>
-                    <span>₹ {subTotalAll.toFixed(2)}</span>
+              {items.length > 0 && (() => {
+                const hasExplicitTax = taxTotalAll > 0;
+                const computedSubTotal = hasExplicitTax ? subTotalAll : grandTotalAll / 1.18;
+                const computedTax = hasExplicitTax ? taxTotalAll : (grandTotalAll - computedSubTotal);
+                const taxLabel = hasExplicitTax ? "Tax Amount:" : "GST @ 18%:";
+
+                return (
+                  <div className="bg-white/80 backdrop-blur-md border-t border-purple-200/90 p-4 flex flex-col items-end justify-center gap-1 rounded-none shadow-inner">
+                    <div className="flex w-64 justify-between text-xs text-slate-600 font-medium">
+                      <span>Sub Total:</span>
+                      <span>₹ {computedSubTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex w-64 justify-between text-xs text-slate-600 font-medium pb-2 border-b border-purple-200/80">
+                      <span>{taxLabel}</span>
+                      <span>₹ {computedTax.toFixed(2)}</span>
+                    </div>
+                    <div className="flex w-64 justify-between text-sm text-purple-950 font-bold pt-1">
+                      <span>Grand Total:</span>
+                      <span>₹ {grandTotalAll.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex w-64 justify-between text-xs text-slate-600 font-medium pb-2 border-b border-border/50">
-                    <span>Tax Amount:</span>
-                    <span>₹ {taxTotalAll.toFixed(2)}</span>
-                  </div>
-                  <div className="flex w-64 justify-between text-sm text-foreground font-bold pt-1">
-                    <span>Grand Total:</span>
-                    <span>₹ {grandTotalAll.toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -973,15 +1070,17 @@ export default function QuotationEditorPage({ params }: PageProps) {
               const finalAmount = afterDisc + taxAmt;
               
               const isHeading = !!it.snapshotData?.isHeading;
-              const slNo = it.snapshotData?.serialNumber || (idx + 1).toString();
+              const slNo = it.snapshotData?.serialNumber ?? (idx + 1).toString();
 
               if (isHeading) {
                 return (
                   <tr key={it.id || idx}>
-                    <td className="border border-slate-400 py-3 px-3 text-center align-top font-bold text-slate-900 bg-slate-50">{slNo}</td>
-                    <td className="border border-slate-400 py-3 px-3 align-top font-bold text-slate-900 uppercase bg-slate-50 tracking-wide" colSpan={pricingMode === "separate" ? 6 : 4}>
-                      {it.description}
-                    </td>
+                    <td className="border border-slate-400 py-3 px-3 text-center align-top text-slate-900 bg-slate-50">{slNo}</td>
+                    <td 
+                      className="border border-slate-400 py-3 px-3 align-top text-slate-900 bg-slate-50 tracking-wide prose prose-sm max-w-none text-justify" 
+                      dangerouslySetInnerHTML={{ __html: it.description || "" }}
+                    />
+                    <td className="border border-slate-400 py-3 px-3 bg-slate-50" colSpan={pricingMode === "separate" ? 5 : 3} />
                   </tr>
                 );
               }
@@ -990,40 +1089,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 <tr key={it.id || idx}>
                   <td className="border border-slate-400 py-3 px-3 text-center align-top text-slate-700">{slNo}</td>
                   <td className="border border-slate-400 py-3 px-3 align-top">
-                    <div className="font-medium text-slate-900 whitespace-pre-wrap">{it.description}</div>
-                    
-                    {/* Detailed Materials Breakdown for Activities */}
-                    {activityRows[idx] && (() => {
-                       const actId = activityRows[idx];
-                       const act = activities.find(a => a.id === actId);
-                       if (!act || !act.requirements) return null;
-                       
-                       const customizations = activityCustomizations[idx] || {};
-                       
-                       return (
-                         <div className="mt-2 text-[11px] text-slate-600 pl-1 leading-relaxed border-l border-slate-300 ml-1">
-                            {act.requirements.map(req => {
-                               let selectedProdId = customizations[req.id];
-                               if (!selectedProdId) {
-                                 selectedProdId = req.options?.find((o: any) => o.isDefault)?.productModelId;
-                               }
-                               if (!selectedProdId) {
-                                  const match = products.find(p => p.categoryId === req.categoryId && (req.subCategoryId ? p.subCategoryId === req.subCategoryId : true));
-                                  if (match) selectedProdId = match.id;
-                               }
-                               const prod = products.find(p => p.id === selectedProdId);
-                               if (!prod) return null;
-                               
-                               return (
-                                 <div key={req.id} className="flex gap-2">
-                                   <span className="opacity-50">-</span>
-                                   <span>{prod.name} ({Number(req.quantity)} {prod.unit || 'Nos'})</span>
-                                 </div>
-                               );
-                            })}
-                         </div>
-                       );
-                    })()}
+                    <div 
+                      className="font-medium text-slate-900 whitespace-pre-wrap text-justify prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: it.description || "" }}
+                    />
                   </td>
                   <td className="border border-slate-400 py-3 px-3 text-center align-top text-slate-700">{it.unit}</td>
                   <td className="border border-slate-400 py-3 px-3 text-center font-bold text-slate-900">{qty}</td>
@@ -1040,22 +1109,31 @@ export default function QuotationEditorPage({ params }: PageProps) {
           </tbody>
         </table>
 
-        <div className="flex justify-end pt-4">
-          <div className="w-[300px] text-sm">
-            <div className="flex justify-between py-2 text-slate-600 border-b border-slate-200">
-              <span className="font-medium">Sub Total:</span>
-              <span className="font-semibold">₹ {subTotalAll.toFixed(2)}</span>
+        {(() => {
+          const hasExplicitTax = taxTotalAll > 0;
+          const computedSubTotal = hasExplicitTax ? subTotalAll : grandTotalAll / 1.18;
+          const computedTax = hasExplicitTax ? taxTotalAll : (grandTotalAll - computedSubTotal);
+          const taxLabel = hasExplicitTax ? "Tax Amount:" : "GST @ 18%:";
+
+          return (
+            <div className="flex justify-end pt-4">
+              <div className="w-[300px] text-sm">
+                <div className="flex justify-between py-2 text-slate-600 border-b border-slate-200">
+                  <span className="font-medium">Sub Total:</span>
+                  <span className="font-semibold">₹ {computedSubTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2 text-slate-600 border-b border-slate-800">
+                  <span className="font-medium">{taxLabel}</span>
+                  <span className="font-semibold">₹ {computedTax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-4 text-slate-900 font-bold text-lg">
+                  <span>Grand Total:</span>
+                  <span>₹ {grandTotalAll.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between py-2 text-slate-600 border-b border-slate-800">
-              <span className="font-medium">Tax Amount:</span>
-              <span className="font-semibold">₹ {taxTotalAll.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between py-4 text-slate-900 font-bold text-lg">
-              <span>Grand Total:</span>
-              <span>₹ {grandTotalAll.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       <ActivitySelectionSidebar
@@ -1072,7 +1150,23 @@ export default function QuotationEditorPage({ params }: PageProps) {
         activity={configuringIdx !== null && activityRows[configuringIdx] ? activities.find(a => a.id === activityRows[configuringIdx]) : undefined}
         products={products}
         customizations={configuringIdx !== null ? activityCustomizations[configuringIdx] || {} : {}}
+        brandPreferences={brandPreferences}
         onSave={handleSaveCustomizations}
+      />
+
+      <BrandPreferencesDialog
+        open={brandPreferencesOpen}
+        onOpenChange={setBrandPreferencesOpen}
+        brandPreferences={brandPreferences}
+        onSave={async (prefs) => {
+          setBrandPreferences(prefs);
+          try {
+            await updateQuotation(id, { brandPreferences: prefs });
+          } catch (err) {
+            console.error("Failed to save brand preferences", err);
+          }
+        }}
+        products={products}
       />
     </div>
   );

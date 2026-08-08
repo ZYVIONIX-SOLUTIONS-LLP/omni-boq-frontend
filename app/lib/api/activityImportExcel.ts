@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import * as XLSX from "xlsx";
-import { listActivities, createActivity, updateActivity, WIRING_TYPES, type WiringType } from "./activities";
+import { listActivities, createActivity, updateActivity } from "./activities";
 
 export interface RawActivityImportRow {
   rowNumber: number;
@@ -26,6 +26,7 @@ const COLUMN_MAP: Record<string, keyof Omit<RawActivityImportRow, "rowNumber">> 
   "activity name": "name",
   name: "name",
   "wiring type": "wiringType",
+  type: "wiringType",
   segment: "segment",
   category: "category",
   "sub category": "subCategory",
@@ -64,7 +65,7 @@ export interface ValidatedActivityRow {
   raw: RawActivityImportRow;
   status: RowStatus;
   messages: string[];
-  resolvedWiringType: WiringType;
+  resolvedWiringType: string;
   willUpdateExisting: boolean;
 }
 
@@ -77,15 +78,12 @@ export interface ActivityValidationResult {
   updateCount: number;
 }
 
-function normalizeWiringType(text: string): { value: WiringType; matched: boolean } {
+function normalizeWiringType(text: string): { value: string; matched: boolean } {
   const t = text.trim().toLowerCase();
-  if (!t) return { value: "POINT_WIRING", matched: false };
-  if (t === "point wiring" || t === "point_wiring" || t === "point") return { value: "POINT_WIRING", matched: true };
-  if (t === "circuit wiring" || t === "circuit_wiring" || t === "circuit") return { value: "CIRCUIT_WIRING", matched: true };
-  if (WIRING_TYPES.includes(text.trim().toUpperCase() as WiringType)) {
-    return { value: text.trim().toUpperCase() as WiringType, matched: true };
-  }
-  return { value: "POINT_WIRING", matched: false };
+  if (!t) return { value: "POINT WIRING", matched: false };
+  if (t === "point wiring" || t === "point_wiring" || t === "point") return { value: "POINT WIRING", matched: true };
+  if (t === "circuit wiring" || t === "circuit_wiring" || t === "circuit") return { value: "CIRCUIT WIRING", matched: true };
+  return { value: text.trim().toUpperCase(), matched: true };
 }
 
 function resolveActivityRow(
@@ -109,9 +107,9 @@ function resolveActivityRow(
 
   const { value: resolvedWiringType, matched } = normalizeWiringType(raw.wiringType);
   if (!matched && raw.wiringType.trim()) {
-    warn(`Unrecognized Wiring Type "${raw.wiringType}" — defaulted to Point Wiring`);
+    warn(`Unrecognized Wiring Type "${raw.wiringType}" — will be created as a new type or used as is`);
   } else if (!raw.wiringType.trim()) {
-    warn(`Wiring Type is blank — defaulted to Point Wiring`);
+    warn(`Wiring Type is blank — defaulted to POINT WIRING`);
   }
 
   const code = raw.code.trim();
@@ -178,7 +176,7 @@ export async function commitActivityImport(rows: ValidatedActivityRow[]): Promis
     const validSegment = ["RESIDENTIAL", "COMMERCIAL", "INDUSTRIAL"].includes(segment)
       ? (segment as "RESIDENTIAL" | "COMMERCIAL" | "INDUSTRIAL")
       : "RESIDENTIAL";
-    const unit = raw.unit.trim().toUpperCase() || (resolvedWiringType === "POINT_WIRING" ? "POINT" : "CIRCUIT");
+    const unit = raw.unit.trim().toUpperCase() || (resolvedWiringType === "POINT WIRING" ? "POINT" : "CIRCUIT");
     const description = [raw.category.trim(), raw.subCategory.trim()].filter(Boolean).join(" / ") || undefined;
 
     const code = raw.code.trim();

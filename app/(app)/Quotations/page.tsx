@@ -45,7 +45,7 @@ const STATUS_STYLES: Record<QuotationStatus, string> = {
 function StatusBadge({ status }: { status: QuotationStatus }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center rounded-none px-2.5 py-0.5 text-[11px] font-semibold border border-purple-200/80 shadow-2xs ${STATUS_STYLES[status]}`}
     >
       {status}
     </span>
@@ -156,7 +156,7 @@ export default function QuotationsPage() {
         cellClass: "font-semibold",
         cellRenderer: (p: ICellRendererParams<Quotation>) => (
           <button
-            className="font-semibold text-primary hover:underline text-left"
+            className="font-bold text-purple-700 hover:text-purple-900 hover:underline text-left"
             onClick={() => p.data && openQuotation(p.data.id)}
           >
             {p.value}
@@ -209,7 +209,7 @@ export default function QuotationsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-lg text-muted-foreground"
+                    className="h-7 w-7 rounded-none text-slate-400 hover:text-purple-700 hover:bg-purple-50"
                     aria-label="More options"
                   >
                     <MoreVertical className="h-3.5 w-3.5" />
@@ -243,7 +243,7 @@ export default function QuotationsPage() {
   );
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -251,7 +251,7 @@ export default function QuotationsPage() {
             placeholder="Search code, client, project"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -259,14 +259,14 @@ export default function QuotationsPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-xl border-border h-10 w-10 bg-white"
+            className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-10 w-10 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all animate-all"
+            className="gap-2 rounded-none h-10 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
           >
             <Plus className="h-4 w-4" />
             New Quotation
@@ -274,9 +274,9 @@ export default function QuotationsPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-none px-4 py-3 border border-red-200 font-medium">{error}</p>}
 
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
         {loading ? (
           <p className="text-center py-14 text-sm text-muted-foreground">Loading quotations...</p>
         ) : items.length === 0 ? (
@@ -318,18 +318,18 @@ export default function QuotationsPage() {
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-none border border-purple-200 bg-white shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Delete Quotation</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Delete quotation <span className="font-semibold text-foreground">{deleting?.code}</span> for{" "}
-              <span className="font-semibold text-foreground">{deleting?.customer?.name}</span>? This cannot be undone.
+            <DialogTitle className="text-lg font-bold text-slate-900">Delete Quotation</DialogTitle>
+            <DialogDescription className="text-sm text-slate-600">
+              Delete quotation <span className="font-semibold text-slate-900">{deleting?.code}</span> for{" "}
+              <span className="font-semibold text-slate-900">{deleting?.customer?.name}</span>? This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -337,7 +337,7 @@ export default function QuotationsPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-none bg-red-600 hover:bg-red-700 text-white"
               onClick={confirmDelete}
               disabled={deleteBusy}
             >
@@ -349,45 +349,45 @@ export default function QuotationsPage() {
 
       {/* Edit quotation */}
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-md rounded-2xl bg-white">
+        <DialogContent className="max-w-md rounded-none border border-purple-200 bg-white shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Edit Quotation</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
+            <DialogTitle className="text-lg font-bold text-slate-900">Edit Quotation</DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
               Update the client and project details for{" "}
-              <span className="font-semibold text-foreground">{editing?.code}</span>.
+              <span className="font-semibold text-slate-900">{editing?.code}</span>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Client Name *</label>
+              <label className="text-xs font-semibold text-slate-600">Client Name *</label>
               <Input
                 value={editClientName}
                 onChange={(e) => setEditClientName(e.target.value)}
-                className="rounded-xl border-border h-10 bg-white"
+                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Phone</label>
+              <label className="text-xs font-semibold text-slate-600">Phone</label>
               <Input
                 value={editClientPhone}
                 onChange={(e) => setEditClientPhone(e.target.value)}
-                className="rounded-xl border-border h-10 bg-white"
+                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Project Name *</label>
+              <label className="text-xs font-semibold text-slate-600">Project Name *</label>
               <Input
                 value={editProjectName}
                 onChange={(e) => setEditProjectName(e.target.value)}
-                className="rounded-xl border-border h-10 bg-white"
+                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Address</label>
+              <label className="text-xs font-semibold text-slate-600">Address</label>
               <Input
                 value={editClientAddress}
                 onChange={(e) => setEditClientAddress(e.target.value)}
-                className="rounded-xl border-border h-10 bg-white"
+                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
               />
             </div>
             {editError && <p className="text-xs text-red-500 font-medium">{editError}</p>}
@@ -395,14 +395,14 @@ export default function QuotationsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setEditing(null)}
               disabled={editBusy}
             >
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-primary text-white hover:bg-primary/95"
+              className="rounded-none bg-purple-700 text-white hover:bg-purple-800 shadow-md font-semibold"
               onClick={confirmEdit}
               disabled={editBusy}
             >

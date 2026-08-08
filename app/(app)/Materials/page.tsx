@@ -352,12 +352,12 @@ export default function ProductLibraryPage() {
   };
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
       <div className="flex items-center justify-between">
         <Tabs value={scope} onValueChange={(val) => { setScope(val as any); setPage(1); }}>
-          <TabsList>
-            <TabsTrigger value="local" className="px-6">My Materials</TabsTrigger>
-            <TabsTrigger value="global" className="px-6">Global Materials</TabsTrigger>
+          <TabsList className="bg-white/80 backdrop-blur-md border border-purple-200/80 p-1 rounded-none shadow-xs">
+            <TabsTrigger value="local" className="px-6 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold transition-all">My Materials</TabsTrigger>
+            <TabsTrigger value="global" className="px-6 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold transition-all">Global Materials</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -370,7 +370,7 @@ export default function ProductLibraryPage() {
             placeholder="Search product, SKU, barcode, series"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
           />
         </div>
 
@@ -379,7 +379,7 @@ export default function ProductLibraryPage() {
             <Button
               variant="destructive"
               onClick={handleDeleteAll}
-              className="gap-2 rounded-xl h-10 px-4 font-semibold mr-2"
+              className="gap-2 rounded-none h-10 px-4 font-semibold mr-2 shadow-xs"
             >
               <Trash2 className="h-4 w-4" />
               Delete All
@@ -389,7 +389,7 @@ export default function ProductLibraryPage() {
             <Button
               variant="destructive"
               onClick={() => setBulkDeleteOpen(true)}
-              className="gap-2 rounded-xl h-10 px-4 font-semibold"
+              className="gap-2 rounded-none h-10 px-4 font-semibold shadow-xs"
             >
               <Trash2 className="h-4 w-4" />
               Delete Selected ({selectedIds.size})
@@ -399,14 +399,14 @@ export default function ProductLibraryPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-xl border-border h-10 w-10"
+            className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-10 w-10 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
             onClick={() => router.push("/Materials/new")}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all"
+            className="gap-2 rounded-none h-10 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
           >
             <Plus className="h-4 w-4" />
             Add Product
@@ -417,26 +417,26 @@ export default function ProductLibraryPage() {
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
 
       {/* Table */}
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="w-10 pl-5">
+          <TableHeader className="bg-purple-100/60 backdrop-blur-md border-b border-purple-200/90">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10 pl-5 border-r border-purple-200/80">
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={toggleSelectAll}
                   aria-label="Select all products"
-                  className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  className="h-3.5 w-3.5 rounded-none border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                 />
               </TableHead>
-              <TableHead className="font-bold text-xs">Product</TableHead>
-              <TableHead className="font-bold text-xs">Manufacturer</TableHead>
-              <TableHead className="font-bold text-xs">Series</TableHead>
-              <TableHead className="font-bold text-xs">Category</TableHead>
-              <TableHead className="font-bold text-xs text-right">MRP</TableHead>
-              <TableHead className="font-bold text-xs">Status</TableHead>
-              <TableHead className="font-bold text-xs text-center pr-5">Actions</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Product</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Manufacturer</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Series</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Category</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 text-right py-3.5">MRP</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Status</TableHead>
+              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide text-center pr-5 py-3.5">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -461,66 +461,66 @@ export default function ProductLibraryPage() {
               items.map((p) => {
                 const isGlobal = !p.tenantId;
                 return (
-                  <TableRow key={p.id} className="hover:bg-muted/30">
-                    <TableCell className="pl-5">
+                  <TableRow key={p.id} className="hover:bg-purple-50/60 transition-colors border-b border-purple-100/90 bg-white/40 backdrop-blur-xs">
+                    <TableCell className="pl-5 border-r border-purple-100/80 py-2.5">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
                         disabled={isGlobal}
                         aria-label={`Select ${p.name || p.modelCode}`}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-30"
+                        className="h-3.5 w-3.5 rounded-none border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-30"
                       />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <p className="text-sm font-semibold">{p.name || p.modelCode || "—"}</p>
+                    <TableCell className="whitespace-nowrap border-r border-purple-100/80 py-2.5">
+                      <p className="text-sm font-semibold text-slate-900">{p.name || p.modelCode || "—"}</p>
                       {p.name && p.modelCode && (
-                        <p className="text-xs text-muted-foreground">{p.modelCode}</p>
+                        <p className="text-xs text-slate-500">{p.modelCode}</p>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="border-r border-purple-100/80 py-2.5">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold max-w-[220px] truncate" title={p.manufacturer?.name ?? p.manufacturerName ?? "—"}>
+                        <p className="text-sm font-semibold max-w-[220px] truncate text-slate-800" title={p.manufacturer?.name ?? p.manufacturerName ?? "—"}>
                           {p.manufacturer?.name ?? p.manufacturerName ?? "—"}
                         </p>
                         {isGlobal && (
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] uppercase font-bold text-slate-600 bg-purple-100/80 px-1.5 py-0.5 rounded-none border border-purple-200/80">
                             Global
                           </span>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">{p.series ?? "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm border-r border-purple-100/80 py-2.5 text-slate-700">{p.series ?? "—"}</TableCell>
+                    <TableCell className="border-r border-purple-100/80 py-2.5">
                       {p.category?.name ?? p.categoryName ? (
-                        <Badge className="bg-[#6c63ff]/12 text-[#6c63ff] border-0 font-semibold rounded-full px-3 whitespace-nowrap">
+                        <Badge className="bg-purple-100/80 text-purple-700 border border-purple-200/80 font-semibold rounded-none px-2.5 py-0.5 whitespace-nowrap shadow-2xs">
                           {p.category?.name ?? p.categoryName}
                         </Badge>
                       ) : (
                         "—"
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-right font-semibold whitespace-nowrap">
+                    <TableCell className="text-sm text-right font-semibold whitespace-nowrap border-r border-purple-100/80 py-2.5 text-slate-900">
                       {p.mrp != null ? inr(p.mrp) : "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="border-r border-purple-100/80 py-2.5">
                       <Badge
                         className={
                           p.status === "ACTIVE"
-                            ? "bg-emerald-100 text-emerald-700 border-0 rounded-full text-[10px]"
-                            : "bg-slate-200 text-slate-600 border-0 rounded-full text-[10px]"
+                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-none text-[10px] shadow-2xs"
+                            : "bg-slate-200 text-slate-600 border border-slate-300 rounded-none text-[10px] shadow-2xs"
                         }
                       >
                         {p.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="pr-5">
+                    <TableCell className="pr-5 py-2.5">
                       <div className="flex items-center justify-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => setViewing(p.id)}
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                          className="h-8 w-8 rounded-none text-slate-500 hover:text-purple-700 hover:bg-purple-50"
                           aria-label={`View ${p.name || p.modelCode}`}
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -529,7 +529,7 @@ export default function ProductLibraryPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => router.push(`/Materials/new?id=${p.id}`)}
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                          className="h-8 w-8 rounded-none text-slate-500 hover:text-purple-700 hover:bg-purple-50"
                           aria-label={`Edit ${p.name || p.modelCode}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -539,7 +539,7 @@ export default function ProductLibraryPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleting(p)}
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500"
+                            className="h-8 w-8 rounded-none text-slate-500 hover:text-red-600 hover:bg-red-50"
                             aria-label={`Delete ${p.name || p.modelCode}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -557,8 +557,8 @@ export default function ProductLibraryPage() {
 
       {/* Pagination */}
       {meta && meta.totalItems > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-slate-600 font-medium">
             Showing {(meta.page - 1) * meta.limit + 1}–
             {Math.min(meta.page * meta.limit, meta.totalItems)} of {meta.totalItems} products
           </p>
@@ -566,19 +566,19 @@ export default function ProductLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl border-border"
+              className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs text-xs font-semibold shadow-xs"
               disabled={!meta.hasPreviousPage || loading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
               Previous
             </Button>
-            <span className="text-xs font-semibold text-muted-foreground px-1">
+            <span className="text-xs font-semibold text-slate-700 px-2">
               Page {meta.page} of {meta.totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl border-border"
+              className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs text-xs font-semibold shadow-xs"
               disabled={!meta.hasNextPage || loading}
               onClick={() => setPage((p) => p + 1)}
             >
@@ -592,7 +592,7 @@ export default function ProductLibraryPage() {
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-none border-purple-200 shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Product</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -602,7 +602,7 @@ export default function ProductLibraryPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-none border-purple-200"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -610,7 +610,7 @@ export default function ProductLibraryPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl"
+              className="rounded-none"
               onClick={confirmDelete}
               disabled={deleteBusy}
             >

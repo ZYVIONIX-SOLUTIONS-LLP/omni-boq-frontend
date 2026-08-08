@@ -1,46 +1,43 @@
 import { apiDelete, apiGet, apiPatch, apiPost, PageMeta, toQueryString } from "./client";
 import { UnitOfMeasure } from "./types";
 
-export const WIRING_TYPES = ["POINT_WIRING", "CIRCUIT_WIRING"] as const;
-export type WiringType = (typeof WIRING_TYPES)[number];
-
 export const PROJECT_SEGMENTS = ["RESIDENTIAL", "COMMERCIAL", "INDUSTRIAL"] as const;
 export type ProjectSegment = (typeof PROJECT_SEGMENTS)[number];
 
-/** Activity categories, grouped by wiring type — matches the Point/Circuit Wiring Library
- *  taxonomy used across the app's activity templates. */
-export const ACTIVITY_CATEGORIES: Record<WiringType, string[]> = {
-    POINT_WIRING: [
-        "Lighting Points",
-        "Fan Points",
-        "Socket Points",
-        "AC Points",
-        "Geyser Points",
-        "Motor Points",
-        "Kitchen Points",
-        "Utility Points",
-        "TV & Data",
-        "Security",
-        "Fire & Safety",
-        "Automation",
-        "Outdoor",
-        "EV Charging",
-    ],
-    CIRCUIT_WIRING: [
-        "Lighting Circuits",
-        "Power Circuits",
-        "AC Circuits",
-        "Geyser Circuits",
-        "Kitchen Circuits",
-        "Motor Circuits",
-        "UPS Circuits",
-        "DG Circuits",
-        "Distribution Circuits",
-        "ELV Circuits",
-        "Outdoor Circuits",
-        "EV Circuits",
-    ],
-};
+export interface ActivityCategory {
+    id: string;
+    name: string;
+    nameNormalized: string;
+    tenantId?: string | null;
+}
+
+export interface ActivityType {
+    id: string;
+    name: string;
+    nameNormalized: string;
+    tenantId?: string | null;
+    categories: ActivityCategory[];
+}
+
+export function getActivityTypes(): Promise<ActivityType[]> {
+    return apiGet(`/activities/types`);
+}
+
+export function createActivityType(name: string): Promise<ActivityType> {
+    return apiPost(`/activities/types`, { name });
+}
+
+export function deleteActivityType(id: string): Promise<void> {
+    return apiDelete(`/activities/types/${id}`);
+}
+
+export function createActivityCategory(typeId: string, name: string): Promise<ActivityCategory> {
+    return apiPost(`/activities/types/${typeId}/categories`, { name });
+}
+
+export function deleteActivityCategory(id: string): Promise<void> {
+    return apiDelete(`/activities/categories/${id}`);
+}
 
 /** One alternate "make" (a specific catalog variant) a requirement can be fulfilled with. */
 export interface ActivityRequirementOption {
@@ -88,7 +85,7 @@ export interface Activity {
     id: string;
     code: string;
     name: string;
-    wiringType: WiringType;
+    wiringType: string;
     category?: string | null;
     segment?: ProjectSegment | null;
     unit: UnitOfMeasure | "POINT" | "CIRCUIT";
@@ -103,7 +100,7 @@ export interface Activity {
 
 export interface ActivityPayload {
     name: string;
-    wiringType: WiringType;
+    wiringType: string;
     category?: string;
     segment?: ProjectSegment;
     unit?: string;
@@ -128,7 +125,7 @@ export function listActivities(params: {
     page?: number;
     limit?: number;
     search?: string;
-    wiringType?: WiringType;
+    wiringType?: string;
     segment?: ProjectSegment;
     scope?: "global" | "local" | "all";
 } = {}): Promise<{ items: Activity[]; meta: PageMeta }> {
@@ -159,6 +156,9 @@ export function duplicateActivity(id: string, name: string): Promise<Activity> {
     return apiPost(`/activities/${id}/duplicate`, { name });
 }
 
-export function wiringTypeLabel(type: WiringType): string {
-    return type === "POINT_WIRING" ? "Point Wiring" : "Circuit Wiring";
+export function wiringTypeLabel(type: string): string {
+    // If it's the old static snake_case, format it, otherwise just return the dynamic name
+    if (type === "POINT_WIRING") return "Point Wiring";
+    if (type === "CIRCUIT_WIRING") return "Circuit Wiring";
+    return type;
 }
