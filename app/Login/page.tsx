@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Sun, Moon, Eye, EyeOff, ChevronRight, User, ShieldCheck, Building2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, ShieldCheck, Building2, Phone, ChevronRight } from "lucide-react";
 import { login, register } from "../lib/api/auth";
 
 const ROLES = [
@@ -35,6 +35,7 @@ export default function Login() {
   const [companyName, setCompanyName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -49,9 +50,9 @@ export default function Login() {
 
     if (isSignUp) {
       // Handle Sign Up
-      console.log("Attempting to register with:", { username, firstName, lastName, companyName });
+      console.log("Attempting to register with:", { username, firstName, lastName, companyName, phone });
       try {
-        await register({ username, password, firstName, lastName, companyName });
+        await register({ username, password, firstName, lastName, companyName, email: username, phone });
         console.log("Registration successful");
         setSuccess("Registration submitted! A Super Admin will review and verify your account shortly.");
         setLoading(false);
@@ -61,6 +62,7 @@ export default function Login() {
         setCompanyName("");
         setFirstName("");
         setLastName("");
+        setPhone("");
       } catch (err: any) {
         console.error("Registration error:", err);
         setError(err.message || "Registration failed");
@@ -223,6 +225,22 @@ export default function Login() {
                   />
                 </div>
               </div>
+
+              {isSignUp && (
+                <div>
+                  <div className={`flex items-center gap-2.5 rounded-xl border px-4 h-[52px] transition-all ${isDark ? "border-white/10 bg-[#12182B] focus-within:border-[#1E88FF] focus-within:bg-[#1A2235]" : "border-zinc-300 bg-white focus-within:border-[#1E88FF] focus-within:ring-2 focus-within:ring-[#1E88FF]/20"}`}>
+                    <Phone className={`h-4.5 w-4.5 shrink-0 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                    <input
+                      type="text"
+                      placeholder="Mobile Number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                      className={`w-full bg-transparent text-[15px] outline-none font-medium ${isDark ? "text-white placeholder:text-zinc-600" : "text-zinc-900 placeholder:text-zinc-400"}`}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className={`flex items-center gap-2.5 rounded-xl border px-4 h-[52px] transition-all ${isDark ? "border-white/10 bg-[#12182B] focus-within:border-[#1E88FF] focus-within:bg-[#1A2235]" : "border-zinc-300 bg-white focus-within:border-[#1E88FF] focus-within:ring-2 focus-within:ring-[#1E88FF]/20"}`}>

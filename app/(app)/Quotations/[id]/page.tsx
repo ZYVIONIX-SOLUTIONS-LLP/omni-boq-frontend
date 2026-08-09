@@ -8,6 +8,8 @@ import { getQuotation, updateQuotation, Quotation, QuotationItem } from "@/app/l
 import { listActivities, Activity, wiringTypeLabel, getActivityTypes, ActivityType } from "@/app/lib/api/activities";
 import { listProducts } from "@/app/lib/catalog/api";
 import type { ProductModel } from "@/app/lib/catalog/types";
+import { User } from "@/app/lib/api/auth";
+import { getUser, AuthUser } from "@/app/lib/auth-storage";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QuotationItem[]>([]);
+  const [adminProfile, setAdminProfile] = useState<User | AuthUser | null>(null);
   
   const [activities, setActivities] = useState<Activity[]>([]);
   const [products, setProducts] = useState<ProductModel[]>([]);
@@ -89,6 +92,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
   // States for Global Brand Defaults
   const [brandPreferencesOpen, setBrandPreferencesOpen] = useState(false);
   const [brandPreferences, setBrandPreferences] = useState<Record<string, { manufacturerId: string; seriesId?: string | null }>>({});
+
+  useEffect(() => {
+    setAdminProfile(getUser());
+  }, []);
 
   const initData = useCallback(async () => {
     setLoading(true);
@@ -1006,51 +1013,83 @@ export default function QuotationEditorPage({ params }: PageProps) {
       </div>
 
       {/* PRINT-ONLY UI */}
-      <div className="hidden print:block w-full bg-white text-black font-sans print:p-[1.5cm] min-h-screen">
+      <div className="hidden print:block w-full bg-white text-black font-sans" style={{padding: '1.2cm 1.5cm', minHeight: '100vh'}}>
         <style type="text/css" media="print">
           {`
-            @page { margin: 0; size: auto; }
+            @page { margin: 0; size: A4; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
+            .print-blue { color: #0D2B6B !important; }
+            .print-blue-bg { background-color: #0D2B6B !important; color: white !important; }
+            .print-blue-light-bg { background-color: #F4F8FF !important; }
+            .print-blue-border { border-color: #0D2B6B !important; }
           `}
         </style>
-        
-        <div className="text-center mb-10 pb-6 border-b-4 border-slate-800">
-          <h1 className="text-4xl font-black uppercase tracking-widest text-slate-900 mb-2">Quotation</h1>
-          <p className="text-lg font-bold text-slate-600">Ref: {quotation?.code}</p>
-        </div>
 
-        <div className="grid grid-cols-2 gap-12 mb-10 text-sm">
+        {/* ── HEADER ── */}
+        <div className="flex items-start justify-between mb-6">
+          {/* Left: Title */}
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3 border-b border-slate-200 pb-2">Client Details</h2>
-            <div className="flex flex-col gap-1.5">
-              <p className="font-bold text-slate-900 text-base">{quotation?.customer?.name || 'Client Name N/A'}</p>
-              {quotation?.customer?.phone && <p className="text-slate-700 font-medium">{quotation.customer.phone}</p>}
-              {quotation?.customer?.address && <p className="text-slate-700 whitespace-pre-wrap mt-1">{quotation.customer.address}</p>}
+            <h1 className="text-4xl font-black uppercase tracking-wide mb-0.5" style={{color: '#0D2B6B'}}>QUOTATION</h1>
+            <p className="text-sm font-medium text-slate-500">Ref: {quotation?.code}</p>
+          </div>
+          {/* Right: Company Logo / Letterhead */}
+          <div className="text-right flex flex-col items-end gap-1">
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="font-black text-base uppercase tracking-wide" style={{color: '#0D2B6B'}}>
+                  {adminProfile?.companyName || 'YOUR COMPANY'}
+                </p>
+                {adminProfile?.email && (
+                  <p className="text-xs text-slate-500">{adminProfile.email}</p>
+                )}
+              </div>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-black" style={{backgroundColor: '#0D2B6B'}}>
+                {(adminProfile?.companyName || 'C')[0].toUpperCase()}
+              </div>
             </div>
           </div>
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3 border-b border-slate-200 pb-2">Project Details</h2>
-            <div className="flex flex-col gap-1.5">
-              <p className="font-bold text-slate-900 text-base">{quotation?.project?.name || 'Project Name N/A'}</p>
-              {quotation?.project?.code && <p className="text-slate-700 font-medium">Code: {quotation.project.code}</p>}
+        </div>
+
+        {/* ── CLIENT & PROJECT DETAILS CARD ── */}
+        <div className="border border-slate-200 rounded-sm mb-5 overflow-hidden">
+          <div className="grid grid-cols-2 divide-x divide-slate-200">
+            {/* Client Details */}
+            <div className="p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E88FF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span className="text-xs font-bold uppercase tracking-widest" style={{color: '#0D2B6B'}}>Client Details</span>
+              </div>
+              <p className="font-bold text-slate-900 text-sm">{quotation?.customer?.name || '—'}</p>
+              {quotation?.customer?.phone && <p className="text-slate-600 text-xs mt-0.5">{quotation.customer.phone}</p>}
+              {quotation?.customer?.address && <p className="text-slate-600 text-xs mt-0.5">{quotation.customer.address}</p>}
+            </div>
+            {/* Project Details */}
+            <div className="p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E88FF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span className="text-xs font-bold uppercase tracking-widest" style={{color: '#0D2B6B'}}>Project Details</span>
+              </div>
+              <p className="font-bold text-slate-900 text-sm">{quotation?.project?.name || '—'}</p>
+              {quotation?.project?.code && <p className="text-slate-600 text-xs mt-0.5">Code: {quotation.project.code}</p>}
             </div>
           </div>
         </div>
 
-        <table className="w-full text-sm border-collapse border border-slate-400 mb-8">
+        {/* ── ITEMS TABLE ── */}
+        <table className="w-full text-xs border-collapse mb-5" style={{borderColor: '#0D2B6B'}}>
           <thead>
-            <tr className="bg-slate-100">
-              <th className="border border-slate-400 py-3 px-3 text-center font-bold text-slate-800 w-[5%]">SL</th>
-              <th className={`border border-slate-400 py-3 px-3 text-left font-bold text-slate-800 ${pricingMode === "separate" ? "w-[45%]" : "w-[55%]"}`}>ITEM DESCRIPTION</th>
-              <th className="border border-slate-400 py-3 px-3 text-center font-bold text-slate-800 w-[10%]">UNIT</th>
-              <th className="border border-slate-400 py-3 px-3 text-center font-bold text-slate-800 w-[10%]">QTY</th>
+            <tr style={{backgroundColor: '#0D2B6B', color: 'white'}}>
+              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[5%]">SL.</th>
+              <th className={`py-2.5 px-3 text-left font-bold border border-white/20 ${pricingMode === "separate" ? "w-[43%]" : "w-[53%]"}`}>ITEM DESCRIPTION</th>
+              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[10%]">UNIT</th>
+              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[8%]">QTY</th>
               {pricingMode === "separate" && (
                 <>
-                  <th className="border border-slate-400 py-3 px-3 text-right font-bold text-slate-800 w-[10%]">MAT RATE</th>
-                  <th className="border border-slate-400 py-3 px-3 text-right font-bold text-slate-800 w-[10%]">LAB RATE</th>
+                  <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[9%]">MAT RATE</th>
+                  <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[9%]">LAB RATE</th>
                 </>
               )}
-              <th className="border border-slate-400 py-3 px-3 text-right font-bold text-slate-800 w-[20%]">TOTAL</th>
+              <th className="py-2.5 px-3 text-right font-bold border border-white/20 w-[15%]">TOTAL</th>
             </tr>
           </thead>
           <tbody>
@@ -1068,72 +1107,90 @@ export default function QuotationEditorPage({ params }: PageProps) {
               const afterDisc = withProfit - (withProfit * disc) / 100;
               const taxAmt = (afterDisc * tax) / 100;
               const finalAmount = afterDisc + taxAmt;
-              
+
               const isHeading = !!it.snapshotData?.isHeading;
               const slNo = it.snapshotData?.serialNumber ?? (idx + 1).toString();
 
               if (isHeading) {
                 return (
-                  <tr key={it.id || idx}>
-                    <td className="border border-slate-400 py-3 px-3 text-center align-top text-slate-900 bg-slate-50">{slNo}</td>
-                    <td 
-                      className="border border-slate-400 py-3 px-3 align-top text-slate-900 bg-slate-50 tracking-wide prose prose-sm max-w-none text-justify" 
+                  <tr key={it.id || idx} style={{backgroundColor: '#f8f8f8'}}>
+                    <td className="border border-slate-300 py-2 px-2 text-center align-top font-bold text-slate-800">{slNo}</td>
+                    <td
+                      className="border border-slate-300 py-2 px-3 align-top font-bold text-slate-800 prose prose-xs max-w-none"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
                     />
-                    <td className="border border-slate-400 py-3 px-3 bg-slate-50" colSpan={pricingMode === "separate" ? 5 : 3} />
+                    <td className="border border-slate-300 py-2 px-2" colSpan={pricingMode === "separate" ? 5 : 3} />
                   </tr>
                 );
               }
 
               return (
                 <tr key={it.id || idx}>
-                  <td className="border border-slate-400 py-3 px-3 text-center align-top text-slate-700">{slNo}</td>
-                  <td className="border border-slate-400 py-3 px-3 align-top">
-                    <div 
-                      className="font-medium text-slate-900 whitespace-pre-wrap text-justify prose prose-sm max-w-none"
+                  <td className="border border-slate-300 py-2 px-2 text-center align-top text-slate-600">{slNo}</td>
+                  <td className="border border-slate-300 py-2 px-3 align-top">
+                    <div
+                      className="text-slate-800 prose prose-xs max-w-none text-justify"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
                     />
                   </td>
-                  <td className="border border-slate-400 py-3 px-3 text-center align-top text-slate-700">{it.unit}</td>
-                  <td className="border border-slate-400 py-3 px-3 text-center font-bold text-slate-900">{qty}</td>
+                  <td className="border border-slate-300 py-2 px-2 text-center align-top text-slate-600">{it.unit}</td>
+                  <td className="border border-slate-300 py-2 px-2 text-center align-top font-bold text-slate-800">{qty}</td>
                   {pricingMode === "separate" && (
                     <>
-                      <td className="border border-slate-400 py-3 px-3 text-right text-slate-800">{matRate.toFixed(2)}</td>
-                      <td className="border border-slate-400 py-3 px-3 text-right text-slate-800">{labRate.toFixed(2)}</td>
+                      <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{matRate.toFixed(2)}</td>
+                      <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{labRate.toFixed(2)}</td>
                     </>
                   )}
-                  <td className="border border-slate-400 py-3 px-3 text-right font-bold text-slate-900">₹ {finalAmount.toFixed(2)}</td>
+                  <td className="border border-slate-300 py-2 px-3 text-right font-bold text-slate-900">₹ {finalAmount.toFixed(2)}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
 
+        {/* ── TERMS + TOTALS ── */}
         {(() => {
           const hasExplicitTax = taxTotalAll > 0;
           const computedSubTotal = hasExplicitTax ? subTotalAll : grandTotalAll / 1.18;
           const computedTax = hasExplicitTax ? taxTotalAll : (grandTotalAll - computedSubTotal);
-          const taxLabel = hasExplicitTax ? "Tax Amount:" : "GST @ 18%:";
+          const taxLabel = hasExplicitTax ? "Tax Amount" : "GST @ 18%";
 
           return (
-            <div className="flex justify-end pt-4">
-              <div className="w-[300px] text-sm">
-                <div className="flex justify-between py-2 text-slate-600 border-b border-slate-200">
-                  <span className="font-medium">Sub Total:</span>
-                  <span className="font-semibold">₹ {computedSubTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-slate-600 border-b border-slate-800">
-                  <span className="font-medium">{taxLabel}</span>
-                  <span className="font-semibold">₹ {computedTax.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between py-4 text-slate-900 font-bold text-lg">
-                  <span>Grand Total:</span>
-                  <span>₹ {grandTotalAll.toFixed(2)}</span>
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              {/* Terms & Notes */}
+              <div>
+                <p className="font-bold text-sm text-slate-800 mb-2">Terms &amp; Notes</p>
+                <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                  <li>This quotation is valid for 30 days from the date of issue.</li>
+                  <li>Payment Terms: 100% Advance / As mutually agreed.</li>
+                  <li>Material will be as per specification and subject to availability.</li>
+                </ul>
+                {quotation?.termsAndConditions && (
+                  <p className="text-xs text-slate-600 mt-2 whitespace-pre-wrap">{quotation.termsAndConditions}</p>
+                )}
+              </div>
+              {/* Totals Box */}
+              <div>
+                <div className="border border-slate-200 overflow-hidden rounded-sm">
+                  <div className="flex justify-between px-4 py-2.5 border-b border-slate-200">
+                    <span className="text-sm font-medium text-slate-700">Sub Total</span>
+                    <span className="text-sm font-bold text-slate-900">₹ {computedSubTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-2.5 border-b border-slate-200">
+                    <span className="text-sm font-medium text-slate-700">{taxLabel}</span>
+                    <span className="text-sm font-bold text-slate-900">₹ {computedTax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3" style={{backgroundColor: '#1a5c38'}}>
+                    <span className="text-sm font-black text-white">Grand Total</span>
+                    <span className="text-sm font-black text-white">₹ {grandTotalAll.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             </div>
           );
         })()}
+
+
       </div>
 
       <ActivitySelectionSidebar

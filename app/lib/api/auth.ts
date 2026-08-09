@@ -7,6 +7,7 @@ export interface User {
     password?: string;
     firstName: string;
     lastName: string;
+    email?: string | null;
     role: "STAFF" | "ADMIN" | "SUPERADMIN";
     status: "PENDING" | "APPROVED";
     companyName?: string | null;
@@ -19,6 +20,8 @@ export interface RegisterPayload {
     firstName: string;
     lastName: string;
     companyName?: string;
+    email?: string;
+    phone?: string;
 }
 
 export interface LoginPayload {
@@ -74,4 +77,27 @@ export async function approveUser(id: string): Promise<User> {
 
 export async function deleteUser(id: string): Promise<void> {
     await apiDelete(`/users/${id}`);
+}
+
+/** Returns the ADMIN-role user for the current tenant (the company owner).
+ *  Used to display the admin's company information on quotation prints,
+ *  regardless of whether the viewer is staff or admin. */
+export async function getAdminProfile(): Promise<User | null> {
+    try {
+        const users = await listUsers();
+        return users.find((u) => u.role === "ADMIN") ?? null;
+    } catch {
+        return null;
+    }
+}
+
+export interface UpdateProfilePayload {
+    companyName?: string;
+    phone?: string;
+    gst?: string;
+    companyAddress?: string;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+    return apiPatch<User>("/users/me", payload);
 }

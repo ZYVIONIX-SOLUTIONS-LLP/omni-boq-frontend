@@ -72,19 +72,13 @@ export default function SuperAdminLogin() {
         <div className="relative flex flex-1 items-center justify-center px-8 py-10 md:px-14">
           
           <div className="w-full max-w-[380px] z-10">
-            <div className="mb-8 flex items-center justify-center md:hidden gap-1">
-               <span className="text-2xl text-foreground font-extrabold tracking-tight">Zyvionix</span>
-               <span className="text-2xl text-[#1E88FF] font-light tracking-tight">Solutions</span>
-            </div>
-
-            <div className="flex flex-col items-start text-left mb-8">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-[#1E88FF]/10 p-2 rounded-lg">
-                  <Crown className="w-6 h-6 text-[#1E88FF]" />
-                </div>
-                <h1 className={`text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>Super Admin</h1>
-              </div>
-              <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>Owner login portal.</p>
+            <div className="mb-6 flex flex-col items-start text-left">
+              <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+                Super Admin Login
+              </h1>
+              <p className={`mt-1 text-sm ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+                Sign in to the system owner portal.
+              </p>
             </div>
 
             {/* Form */}

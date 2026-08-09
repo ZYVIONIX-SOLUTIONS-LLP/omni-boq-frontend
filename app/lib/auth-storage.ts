@@ -4,6 +4,10 @@ export interface AuthUser {
     email?: string;
     firstName: string;
     lastName: string;
+    companyName?: string | null;
+    phone?: string | null;
+    gst?: string | null;
+    companyAddress?: string | null;
     roles: string[];
 }
 

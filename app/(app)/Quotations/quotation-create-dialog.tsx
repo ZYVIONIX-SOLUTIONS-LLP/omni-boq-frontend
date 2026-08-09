@@ -153,13 +153,13 @@ export default function QuotationCreateDialog({
             >
               {saving ? "Creating..." : "Manual Entry"}
             </Button>
-            <Button
+            {/* <Button
               className="rounded-none bg-purple-700 hover:bg-purple-800 text-white shadow-md transition-all font-semibold text-xs"
               onClick={() => submit("ai")}
               disabled={saving}
             >
               {saving ? "Creating..." : "AI Workspace ✨"}
-            </Button>
+            </Button> */}
           </div>
         </DialogFooter>
       </DialogContent>
