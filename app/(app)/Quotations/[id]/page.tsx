@@ -638,7 +638,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
         <div className={`flex-1 ${isFullscreen ? 'max-w-none px-4' : 'max-w-[1400px]'} mx-auto w-full flex flex-col gap-4 print:gap-0 transition-all duration-300`}>
           
           {/* Activity Selection UI & Controls */}
-          <div className="flex flex-col xl:flex-row items-center justify-between gap-4 mb-2 bg-white/75 backdrop-blur-xl p-4 rounded-none border border-purple-200/80 shadow-[0_4px_24px_0_rgba(124,58,237,0.08)] print:hidden">
+          <div className="sticky top-[53px] z-30 flex flex-col xl:flex-row items-center justify-between gap-4 mb-2 bg-white/75 backdrop-blur-xl p-4 rounded-none border border-purple-200/80 shadow-[0_4px_24px_0_rgba(124,58,237,0.08)] print:hidden">
             <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-slate-700 whitespace-nowrap">Activity Type:</span>
