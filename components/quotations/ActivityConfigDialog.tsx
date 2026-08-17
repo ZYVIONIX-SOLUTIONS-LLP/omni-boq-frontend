@@ -211,7 +211,15 @@ export default function ActivityConfigDialog({
                                       onValueChange={(v) => handleSelection(reqKey, v || "")}
                                     >
                                       <SelectTrigger className={`h-10 text-xs w-full shadow-sm transition-all ${hasSelection ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900 ring-emerald-500/20' : 'border-slate-200 bg-white'}`}>
-                                        <SelectValue placeholder="Choose Make / Series..." />
+                                        <SelectValue placeholder="Choose Make / Series...">
+                                           {(() => {
+                                             const selId = selections[reqKey];
+                                             const sel = matches.find((m) => m.id === selId);
+                                             return sel
+                                               ? `${sel.manufacturer?.name || sel.manufacturerName || ""} ${sel.series ? `- ${sel.series}` : ""}`.trim()
+                                               : "Choose Make / Series...";
+                                           })()}
+                                        </SelectValue>
                                       </SelectTrigger>
                                       <SelectContent>
                                         {matches.map((m) => (

@@ -12,10 +12,12 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   className?: string;
+  readOnly?: boolean;
 }
 
-export function RichTextEditor({ content, onChange, placeholder, className }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, placeholder, className, readOnly = false }: RichTextEditorProps) {
   const editor = useEditor({
+    editable: !readOnly,
     extensions: [
       StarterKit,
       TextStyle,

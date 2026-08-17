@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost, PageMeta, toQueryString } from "./client";
 import { UnitOfMeasure } from "./types";
 
-export type QuotationStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+export type QuotationStatus = "DRAFT" | "FINAL" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
 
 export interface QuotationCustomer {
     id: string;
@@ -42,19 +42,13 @@ export interface Quotation {
     customer?: QuotationCustomer | null;
     project?: QuotationProject | null;
     items?: QuotationItem[];
-    /** Opaque spreadsheet workbook blob (shape owned by the spreadsheet store —
-     *  either the current multi-sheet form or, for older records, the single-sheet
-     *  form saved before sheet tabs existed; `store.loadWorkbook` handles both). */
     sheetData?: unknown;
     activityRows?: Record<number, string> | null;
     activityCustomizations?: Record<number, Record<string, string>> | null;
-    /** Preferred manufacturer (and optionally series) per catalog category, keyed by
-     *  categoryId — e.g. { "cat-switch-id": { manufacturerId: "mfr-legrand", seriesId: "ser-myrius" } }.
-     *  Used to auto-pick a make when an Activity's material requirement is added to this
-     *  quotation: if the requirement has multiple configured alternate makes, the one from
-     *  the preferred manufacturer (and series, if set) wins; otherwise falls back to the
-     *  requirement's own default. */
     brandPreferences?: Record<string, { manufacturerId: string; seriesId?: string | null }> | null;
+    parentQuotationId?: string | null;
+    revisionNote?: string | null;
+    versionTag?: string | null;
 }
 
 export interface CreateQuotationWithClientPayload {
@@ -64,6 +58,8 @@ export interface CreateQuotationWithClientPayload {
     projectName: string;
     startDate?: string;
     endDate?: string;
+    parentQuotationId?: string;
+    revisionNote?: string;
 }
 export interface QuotationItemPayload {
     description: string;
@@ -73,6 +69,20 @@ export interface QuotationItemPayload {
     discountPct?: number;
     profitPct?: number;
     taxRate?: number;
+}
+
+export function sanitizeBackendStatus(status?: string | null): string | undefined {
+    if (!status) return undefined;
+    if (status === "FINAL") return "SENT";
+    return status;
+}
+
+export function getDisplayStatus(q: Quotation): QuotationStatus {
+    if (!q) return "DRAFT";
+    if ((q.sheetData as any)?.displayStatus === "FINAL" || (q.sheetData as any)?.isFinalized) {
+        return "FINAL";
+    }
+    return q.status;
 }
 
 export function listQuotations(params: { page?: number; limit?: number } = {}): Promise<{
@@ -85,7 +95,10 @@ export function listQuotations(params: { page?: number; limit?: number } = {}): 
 export function createQuotationWithClient(
     payload: CreateQuotationWithClientPayload
 ): Promise<Quotation> {
-    return apiPost("/quotations", payload);
+    const copy: any = { ...payload };
+    delete copy.parentQuotationId;
+    delete copy.revisionNote;
+    return apiPost("/quotations", copy);
 }
 
 export function getQuotation(id: string): Promise<Quotation> {
@@ -112,11 +125,19 @@ export function removeQuotationItem(quotationId: string, itemId: string): Promis
 }
 
 export function updateQuotationStatus(id: string, status: QuotationStatus): Promise<Quotation> {
-    return apiPatch(`/quotations/${id}/status`, { status });
+    const apiStatus = sanitizeBackendStatus(status);
+    return apiPatch(`/quotations/${id}/status`, { status: apiStatus });
 }
 
 export function updateQuotation(id: string, payload: Partial<Quotation>): Promise<Quotation> {
-    return apiPatch(`/quotations/${id}`, payload);
+    const copy: any = { ...payload };
+    if (copy.status) {
+        copy.status = sanitizeBackendStatus(copy.status);
+    }
+    delete copy.parentQuotationId;
+    delete copy.revisionNote;
+    delete copy.versionTag;
+    return apiPatch(`/quotations/${id}`, copy);
 }
 
 export function deleteQuotation(id: string): Promise<void> {

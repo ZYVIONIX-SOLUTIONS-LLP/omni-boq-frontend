@@ -310,9 +310,16 @@ export function QuotationItemMaterialDialog({
       requirements.forEach((req: any) => {
         const reqId = req.id || req.key;
         const existing = customizations[reqId];
-        
+        const categoryPref = req.categoryId ? (brandPreferences as any)[req.categoryId] : undefined;
+
         if (existing && typeof existing === 'object') {
-          parsed[reqId] = existing as ConfiguredMaterial;
+          const confObj = existing as ConfiguredMaterial;
+          parsed[reqId] = {
+            ...confObj,
+            profitPct: categoryPref?.defaultProfitPct ?? confObj.profitPct ?? 0,
+            discountPct: categoryPref?.defaultDiscountPct ?? confObj.discountPct ?? 0,
+            taxRate: categoryPref?.defaultTaxPct ?? confObj.taxRate ?? 0,
+          };
         } else {
           // Fallback / Initialize new
           let selectedProdId = typeof existing === 'string' ? existing : undefined;
@@ -364,12 +371,12 @@ export function QuotationItemMaterialDialog({
           }
           
           let rate = 0;
-          let disc = 0;
+          let prodDisc = 0;
           if (selectedProdId) {
             const prod = products.find(p => p.id === selectedProdId);
             if (prod) {
                rate = Number(prod.mrp) || 0;
-               disc = Number(prod.discountPercent) || 0;
+               prodDisc = Number(prod.discountPercent) || 0;
             }
           }
 
@@ -378,15 +385,15 @@ export function QuotationItemMaterialDialog({
             productId: selectedProdId || "",
             quantity: Number(req.quantity) || 1,
             rate,
-            profitPct: 0,
-            discountPct: disc,
-            taxRate: 0,
+            profitPct: categoryPref?.defaultProfitPct ?? 0,
+            discountPct: categoryPref?.defaultDiscountPct ?? prodDisc,
+            taxRate: categoryPref?.defaultTaxPct ?? 0,
           };
         }
       });
       setLocalCustoms(parsed);
     }
-  }, [isOpen, customizations, activity]);
+  }, [isOpen, customizations, activity, brandPreferences]);
 
   const updateCustom = (reqId: string, updates: Partial<ConfiguredMaterial>) => {
     setLocalCustoms(prev => ({
@@ -398,10 +405,13 @@ export function QuotationItemMaterialDialog({
   const handleProductChange = (reqId: string, productId: string) => {
     const prod = products.find(p => p.id === productId);
     if (prod) {
+      const categoryPref = prod.categoryId ? (brandPreferences as any)[prod.categoryId] : undefined;
       updateCustom(reqId, { 
         productId, 
         rate: Number(prod.mrp) || 0,
-        discountPct: Number(prod.discountPercent) || 0
+        profitPct: categoryPref?.defaultProfitPct ?? localCustoms[reqId]?.profitPct ?? 0,
+        discountPct: categoryPref?.defaultDiscountPct ?? (Number(prod.discountPercent) || 0),
+        taxRate: categoryPref?.defaultTaxPct ?? localCustoms[reqId]?.taxRate ?? 0,
       });
     }
   };

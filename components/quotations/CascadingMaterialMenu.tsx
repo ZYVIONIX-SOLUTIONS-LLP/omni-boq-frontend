@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 export function CascadingMaterialMenu({
   products,
   onSelect,
+  disabled = false,
 }: {
   products: ProductModel[];
   onSelect: (product: ProductModel) => void;
+  disabled?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -100,8 +102,9 @@ export function CascadingMaterialMenu({
     <div className="relative inline-block" ref={containerRef}>
       <Button 
         onClick={() => setIsOpen(!isOpen)} 
+        disabled={disabled}
         variant="outline"
-        className="h-8 text-xs gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm"
+        className="h-8 text-xs gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm disabled:opacity-50"
       >
         <PackagePlus className="h-3.5 w-3.5" /> Add Material
       </Button>

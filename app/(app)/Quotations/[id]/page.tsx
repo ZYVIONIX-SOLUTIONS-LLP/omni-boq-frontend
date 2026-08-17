@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Plus, Trash2, Loader2, Sparkles, FolderKanban, Printer, Settings, ListOrdered, Tag, Package, Layers, Coins, TrendingUp, Percent, Receipt, FileText, Calculator, CreditCard, Zap, Type, ArrowUp, ArrowDown, MoreVertical, Hash, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Loader2, Sparkles, FolderKanban, Printer, Settings, ListOrdered, Tag, Package, Layers, Coins, TrendingUp, Percent, Receipt, FileText, Calculator, CreditCard, Zap, Type, ArrowUp, ArrowDown, MoreVertical, Hash, Maximize2, Minimize2, Copy, Lock, ShieldAlert, BookOpen, FileSpreadsheet, Briefcase, Unlock } from "lucide-react";
 
-import { getQuotation, updateQuotation, Quotation, QuotationItem } from "@/app/lib/api/quotations";
+import { getQuotation, updateQuotation, updateQuotationStatus, createQuotationWithClient, getDisplayStatus, Quotation, QuotationItem, QuotationStatus } from "@/app/lib/api/quotations";
 import { listActivities, Activity, wiringTypeLabel, getActivityTypes, ActivityType } from "@/app/lib/api/activities";
 import { listProducts } from "@/app/lib/catalog/api";
 import type { ProductModel } from "@/app/lib/catalog/types";
@@ -20,10 +20,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ActivitySelectionSidebar } from "@/components/quotations/ActivitySelectionSidebar";
 import { QuotationItemMaterialDialog } from "@/components/quotations/QuotationItemMaterialDialog";
 import { CascadingMaterialMenu } from "@/components/quotations/CascadingMaterialMenu";
 import { BrandPreferencesDialog } from "@/components/quotations/BrandPreferencesDialog";
+import { HeadingPresetsDialog } from "@/components/quotations/HeadingPresetsDialog";
+import { convertQuotationToProject, getProjects, setProjectManualEdit } from "@/app/lib/api/projects";
+import Swal from "sweetalert2";
+import { exportQuotationToExcel } from "@/app/lib/api/quotationExcelExport";
+import type { HeadingPreset } from "@/app/lib/api/headingPresets";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
 interface PageProps {
@@ -65,6 +78,47 @@ export default function QuotationEditorPage({ params }: PageProps) {
   // Fullscreen State
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Status & Revision Dialog States
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
+  const [revisionNote, setRevisionNote] = useState("");
+  const [savingRevision, setSavingRevision] = useState(false);
+
+  const currentUser = getUser();
+  const userRole = currentUser?.roles?.[0] || "";
+  const isStaff = userRole === "STAFF";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPERADMIN";
+  const currentStatus = quotation ? getDisplayStatus(quotation) : "DRAFT";
+  const isLockedForStaff = isStaff && (currentStatus === "FINAL" || currentStatus === "SENT" || currentStatus === "ACCEPTED");
+  const isNegotiationEligible = currentStatus === "FINAL" || currentStatus === "SENT" || currentStatus === "ACCEPTED";
+
+  // Project Conversion & Manual Edit States
+  const [manualEditUnlocked, setManualEditUnlocked] = useState(false);
+  const qSnap = (quotation as any)?.snapshotData || (quotation as any)?.sheetData || {};
+  const isConvertedToProject = !!(qSnap.isConvertedToProject || getProjects().some(p => p.quotationId === id));
+  const convertedProject = getProjects().find(p => p.quotationId === id);
+  
+  const isLockedByStatus = currentStatus === "SENT" || currentStatus === "ACCEPTED" || isConvertedToProject || isLockedForStaff;
+  const isReadOnlyQuotation = isLockedByStatus && !manualEditUnlocked;
+
+  // Profit Shift State for Post-Negotiation Adjustments
+  const [profitShift, setProfitShift] = useState<number>(0);
+
+  const handleProfitShift = (delta: number) => {
+    setProfitShift((prev) => prev + delta);
+    setItems((prevItems) =>
+      prevItems.map((it) => {
+        if (it.snapshotData?.isHeading) return it;
+        const curProfit = Number(it.profitPct) || 0;
+        const newProfit = Math.max(0, curProfit + delta);
+        return {
+          ...it,
+          profitPct: newProfit,
+        };
+      })
+    );
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().then(() => {
@@ -92,10 +146,75 @@ export default function QuotationEditorPage({ params }: PageProps) {
   // States for Global Brand Defaults
   const [brandPreferencesOpen, setBrandPreferencesOpen] = useState(false);
   const [brandPreferences, setBrandPreferences] = useState<Record<string, { manufacturerId: string; seriesId?: string | null }>>({});
+  const [headingPresetsOpen, setHeadingPresetsOpen] = useState(false);
 
   useEffect(() => {
     setAdminProfile(getUser());
   }, []);
+
+  const handleConvertToProject = () => {
+    if (!quotation) return;
+    Swal.fire({
+      title: "Convert Quotation to Project?",
+      text: `Convert accepted quotation ${quotation.code || ""} into an active Project? Once converted, this quotation will be locked in Read-Only mode to preserve project BOQ baseline.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#059669",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, Convert to Project",
+      cancelButtonText: "Cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const proj = convertQuotationToProject(quotation);
+        setQuotation((prev: any) => prev ? {
+          ...prev,
+          snapshotData: {
+            ...((prev as any).snapshotData || (prev as any).sheetData || {}),
+            isConvertedToProject: true,
+            projectId: proj.id,
+            projectCode: proj.code,
+          }
+        } : null);
+
+        Swal.fire({
+          title: "Project Created Successfully!",
+          text: `Accepted quotation converted to Project ${proj.code}. Quotation is now locked in Read-Only mode.`,
+          icon: "success",
+          showCancelButton: true,
+          confirmButtonText: "Go to Projects Workspace",
+          cancelButtonText: "Stay on Quotation",
+          confirmButtonColor: "#7c3aed",
+        }).then((res) => {
+          if (res.isConfirmed) {
+            router.push("/Projects");
+          }
+        });
+      }
+    });
+  };
+
+  const handleToggleManualEdit = () => {
+    if (manualEditUnlocked) {
+      setManualEditUnlocked(false);
+      setProjectManualEdit(id, false);
+      Swal.fire("Re-Locked", "Quotation has been re-locked in Read-Only project baseline mode.", "info");
+    } else {
+      Swal.fire({
+        title: "Unlock Manual Editing?",
+        text: "This quotation is linked to an active Project. Editing values will modify your project BOQ baseline. Are you sure you want to enable manual editing?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d97706",
+        confirmButtonText: "Yes, Enable Manual Edit",
+        cancelButtonText: "Keep Locked",
+      }).then((res) => {
+        if (res.isConfirmed) {
+          setManualEditUnlocked(true);
+          setProjectManualEdit(id, true);
+        }
+      });
+    }
+  };
 
   const initData = useCallback(async () => {
     setLoading(true);
@@ -144,7 +263,79 @@ export default function QuotationEditorPage({ params }: PageProps) {
     initData();
   }, [initData]);
 
+  const handleStatusChange = async (newStatus: QuotationStatus) => {
+    if (!quotation) return;
+    setUpdatingStatus(true);
+    try {
+      const isFinal = newStatus === "FINAL";
+      await updateQuotationStatus(quotation.id, newStatus);
+      const updatedSheet = {
+        ...(quotation.sheetData && typeof quotation.sheetData === "object" ? quotation.sheetData : {}),
+        pricingMode,
+        isFinalized: isFinal,
+        displayStatus: newStatus,
+      };
+      await updateQuotation(quotation.id, { sheetData: updatedSheet });
+      setQuotation((prev) => (prev ? { ...prev, status: newStatus, sheetData: updatedSheet } : null));
+    } catch (err) {
+      console.error("Failed to update status", err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleSaveAsRevision = async () => {
+    if (!quotation) return;
+    setSavingRevision(true);
+    try {
+      const defaultNote = revisionNote.trim() || `After negotiation meeting on ${new Date().toLocaleDateString("en-IN")}`;
+      
+      const newQuotation = await createQuotationWithClient({
+        clientName: quotation.customer?.name || "Client",
+        clientPhone: quotation.customer?.phone || undefined,
+        clientAddress: quotation.customer?.address || undefined,
+        projectName: quotation.project?.name || "Project",
+        parentQuotationId: quotation.id,
+        revisionNote: defaultNote,
+      });
+
+      // Populate revision copy with full quotation data
+      await updateQuotation(newQuotation.id, {
+        sheetData: {
+          ...(quotation.sheetData && typeof quotation.sheetData === "object" ? quotation.sheetData : {}),
+          pricingMode,
+          parentQuotationId: quotation.id,
+          revisionNote: defaultNote,
+          profitShift: profitShift,
+        },
+        activityRows: quotation.activityRows,
+        activityCustomizations: quotation.activityCustomizations,
+        brandPreferences: quotation.brandPreferences,
+        items: items.map((it, idx) => ({
+          id: it.id || `item-${idx}`,
+          description: it.description,
+          unit: it.unit as any,
+          quantity: Number(it.quantity) || 0,
+          rate: Number(it.rate) || 0,
+          discountPct: Number(it.discountPct) || 0,
+          profitPct: Number(it.profitPct) || 0,
+          taxRate: Number(it.taxRate) || 0,
+          amount: Number(it.amount) || 0,
+          sortOrder: it.sortOrder ?? idx,
+        })),
+      });
+
+      setRevisionDialogOpen(false);
+      router.push(`/Quotations/${newQuotation.id}`);
+    } catch (err) {
+      console.error("Failed to save revision", err);
+    } finally {
+      setSavingRevision(false);
+    }
+  };
+
   const handleSave = async () => {
+    if (isLockedForStaff) return;
     setSaving(true);
     setSaveSuccess(false);
     try {
@@ -225,7 +416,14 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
   const handleAddRawMaterial = (product: ProductModel) => {
     const mrp = Number(product.mrp) || 0;
-    const disc = Number(product.discountPercent) || 0;
+    const catId = product.categoryId;
+    const categoryPref = catId ? (brandPreferences as any)[catId] : undefined;
+
+    // Overriding: If Admin set profit, discount, or tax in Brand & Category Setup, use Admin values over material creation values
+    const profit = categoryPref?.defaultProfitPct ?? 0;
+    const disc = categoryPref?.defaultDiscountPct ?? (Number(product.discountPercent) || 0);
+    const tax = categoryPref?.defaultTaxPct ?? 0;
+
     const rateAfterDisc = mrp * (1 - disc / 100);
 
     setItems((prev) => [
@@ -237,8 +435,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
         quantity: 1,
         rate: mrp,
         discountPct: disc,
-        profitPct: 0,
-        taxRate: 0,
+        profitPct: profit,
+        taxRate: tax,
         amount: rateAfterDisc,
         sortOrder: prev.length,
         snapshotData: { materialRate: mrp, labourRate: 0 },
@@ -342,6 +540,25 @@ export default function QuotationEditorPage({ params }: PageProps) {
       }
       return next;
     });
+  };
+
+  const handleInsertPresetHeading = (preset: HeadingPreset) => {
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `temp-${Date.now()}`,
+        description: preset.description || `<p><strong>${preset.title}</strong></p>`,
+        unit: "",
+        quantity: 0,
+        rate: 0,
+        discountPct: 0,
+        profitPct: 0,
+        taxRate: 0,
+        amount: 0,
+        sortOrder: prev.length,
+        snapshotData: { isHeading: true, serialNumber: "" }
+      }
+    ]);
   };
 
   const insertRowAbove = (index: number) => {
@@ -502,6 +719,13 @@ export default function QuotationEditorPage({ params }: PageProps) {
       const labourCost = Number(activity.labourCost) || 0;
       const finalRate = totalMaterialCost + labourCost + totalCharges;
 
+      // Check category preferences override
+      const firstReqCatId = activity.requirements?.[0]?.categoryId;
+      const categoryPref = firstReqCatId ? (brandPreferences as any)[firstReqCatId] : undefined;
+      const profit = categoryPref?.defaultProfitPct ?? 0;
+      const discount = categoryPref?.defaultDiscountPct ?? 0;
+      const tax = categoryPref?.defaultTaxPct ?? 0;
+
       return {
         id: `temp-${Date.now()}-${activity.id}`,
         activityId: activity.id,
@@ -509,9 +733,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
         unit: activity.unit,
         quantity: 1,
         rate: finalRate,
-        discountPct: 0,
-        profitPct: 0,
-        taxRate: 0,
+        discountPct: discount,
+        profitPct: profit,
+        taxRate: tax,
         amount: finalRate,
         snapshotData: { materialRate: totalMaterialCost, labourRate: labourCost + totalCharges }
       } as QuotationItem & { activityId: string };
@@ -536,32 +760,40 @@ export default function QuotationEditorPage({ params }: PageProps) {
   let taxTotalAll = 0;
   let grandTotalAll = 0;
 
-  items.forEach((it) => {
+  items.forEach((it, idx) => {
+    const isActivity = !!activityRows[idx];
     const qty = Number(it.quantity) || 0;
     const rate = Number(it.rate) || 0;
-    const disc = Number(it.discountPct) || 0;
-    const tax = Number(it.taxRate) || 0;
-    const profit = Number(it.profitPct) || 0;
 
-    const baseAmount = qty * rate;
-    const withProfit = baseAmount + (baseAmount * profit) / 100;
-    const afterDisc = withProfit - (withProfit * disc) / 100;
-    const taxAmt = (afterDisc * tax) / 100;
-    const finalAmount = afterDisc + taxAmt;
+    if (isActivity) {
+      const finalAmount = qty * rate;
+      subTotalAll += finalAmount;
+      grandTotalAll += finalAmount;
+    } else {
+      const disc = Number(it.discountPct) || 0;
+      const tax = Number(it.taxRate) || 0;
+      const profit = Number(it.profitPct) || 0;
 
-    subTotalAll += afterDisc;
-    taxTotalAll += taxAmt;
-    grandTotalAll += finalAmount;
+      const baseAmount = qty * rate;
+      const withProfit = baseAmount + (baseAmount * profit) / 100;
+      const afterDisc = withProfit - (withProfit * disc) / 100;
+      const taxAmt = (afterDisc * tax) / 100;
+      const finalAmount = afterDisc + taxAmt;
+
+      subTotalAll += afterDisc;
+      taxTotalAll += taxAmt;
+      grandTotalAll += finalAmount;
+    }
   });
 
-  const thClass = "px-2 py-3 text-left text-[11px] font-bold text-purple-950 uppercase tracking-wide border-r border-b border-purple-200/90 last:border-r-0 whitespace-nowrap bg-purple-100/60 backdrop-blur-md";
+  const thClass = "px-2 py-3 text-left text-[11px] font-bold text-purple-950 uppercase tracking-wide border-r border-b border-purple-200/90 last:border-r-0 whitespace-nowrap bg-purple-100/95 backdrop-blur-md sticky top-0 z-20 shadow-2xs";
   const tdClass = "px-2 py-1.5 align-top border-r border-b border-purple-100/90 last:border-r-0 bg-white/40 backdrop-blur-xs";
 
   return (
     <div className="flex flex-col bg-slate-50/60 min-h-screen w-full relative print:overflow-visible print:h-auto bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
       <div className="flex flex-col h-full w-full print:hidden">
-        {/* Header */}
-      <div className="sticky top-0 flex shrink-0 items-center justify-between border-b border-purple-200/80 bg-white/80 backdrop-blur-md px-4 py-2 shadow-[0_4px_20px_0_rgba(124,58,237,0.06)] z-40">
+        {/* Header (Row 1) */}
+      <div className="sticky top-0 h-[52px] flex shrink-0 items-center justify-between border-b border-purple-200/80 bg-white/95 backdrop-blur-md px-4 py-2 shadow-[0_4px_20px_0_rgba(124,58,237,0.06)] z-40">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push("/Quotations")}
@@ -583,10 +815,36 @@ export default function QuotationEditorPage({ params }: PageProps) {
               <Sparkles className="h-3.5 w-3.5" /> Saved successfully
             </span>
           )}
+
+          {/* Status Dropdown */}
+          <div className="flex items-center gap-1.5 print:hidden">
+            <span className="text-xs font-bold text-slate-500">Status:</span>
+            <Select
+              value={currentStatus}
+              disabled={isStaff || updatingStatus || isReadOnlyQuotation}
+              onValueChange={(val: any) => handleStatusChange(val)}
+            >
+              <SelectTrigger className={`w-[130px] h-9 text-xs font-bold rounded-none border shadow-2xs disabled:opacity-50 ${
+                currentStatus === "FINAL" ? "bg-emerald-50 text-emerald-700 border-emerald-300" :
+                currentStatus === "DRAFT" ? "bg-slate-100 text-slate-700 border-slate-300" :
+                "bg-purple-50 text-purple-700 border-purple-200"
+              }`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-none border-purple-200">
+                <SelectItem value="DRAFT">DRAFT</SelectItem>
+                <SelectItem value="FINAL">FINAL (Lock Staff)</SelectItem>
+                <SelectItem value="SENT">SENT</SelectItem>
+                <SelectItem value="ACCEPTED">ACCEPTED</SelectItem>
+                <SelectItem value="REJECTED">REJECTED</SelectItem>
+                <SelectItem value="EXPIRED">EXPIRED</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="flex gap-2">
-            <Select value={pricingMode} onValueChange={(val: any) => setPricingMode(val)}>
-              <SelectTrigger className="w-[200px] h-9 text-xs font-semibold bg-purple-50/80 backdrop-blur-xs text-purple-700 border-purple-200 rounded-none print:hidden shadow-xs">
+            <Select disabled={isReadOnlyQuotation} value={pricingMode} onValueChange={(val: any) => setPricingMode(val)}>
+              <SelectTrigger className="w-[190px] h-9 text-xs font-semibold bg-purple-50/80 backdrop-blur-xs text-purple-700 border-purple-200 rounded-none print:hidden shadow-xs disabled:opacity-50">
                 <SelectValue placeholder="Pricing Mode" />
               </SelectTrigger>
               <SelectContent className="rounded-none border-purple-200">
@@ -597,17 +855,44 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
             <Button
               variant="outline"
+              disabled={isReadOnlyQuotation}
               onClick={() => window.print()}
-              className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-purple-50 text-slate-700 shadow-xs print:hidden"
+              className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-purple-50 text-slate-700 shadow-xs print:hidden disabled:opacity-50"
             >
               <Printer className="h-4 w-4" /> Export PDF
             </Button>
           </div>
 
+          {currentStatus === "ACCEPTED" && !isConvertedToProject && (
+            <Button
+              onClick={handleConvertToProject}
+              className="gap-1.5 h-9 px-3.5 rounded-none text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md print:hidden cursor-pointer"
+              title="Convert this Accepted Quotation into an Active Project"
+            >
+              <Briefcase className="h-4 w-4" /> Convert to Project
+            </Button>
+          )}
+
+          {isAdmin && isNegotiationEligible && (
+            <Button
+              variant="outline"
+              disabled={isReadOnlyQuotation}
+              onClick={() => {
+                setRevisionNote(`After negotiation meeting on ${new Date().toLocaleDateString("en-IN")}`);
+                setRevisionDialogOpen(true);
+              }}
+              className="gap-1.5 h-9 px-3 rounded-none text-xs font-bold border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 shadow-xs print:hidden disabled:opacity-50"
+              title="Save As Revision after negotiation meeting"
+            >
+              <Copy className="h-3.5 w-3.5 text-amber-600" /> Save As Revision
+            </Button>
+          )}
+
           <Button
             onClick={() => setBrandPreferencesOpen(true)}
+            disabled={isReadOnlyQuotation}
             variant="outline"
-            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-blue-50 hover:text-blue-600 shadow-xs print:hidden"
+            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-blue-50 hover:text-blue-600 shadow-xs print:hidden disabled:opacity-50"
           >
             <Settings className="h-4 w-4" /> Brand Setup
           </Button>
@@ -622,27 +907,72 @@ export default function QuotationEditorPage({ params }: PageProps) {
             <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
           </Button>
 
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-2 h-9 px-4 rounded-none font-semibold bg-purple-700 text-white hover:bg-purple-800 transition-all shadow-md disabled:opacity-50 print:hidden"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Quotation
-          </Button>
+          {!isLockedForStaff && (
+            <Button
+              onClick={handleSave}
+              disabled={saving || isReadOnlyQuotation}
+              className="gap-2 h-9 px-4 rounded-none font-semibold bg-purple-700 text-white hover:bg-purple-800 transition-all shadow-md disabled:opacity-50 print:hidden"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Quotation
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Locked Read-Only Banner */}
+      {isLockedByStatus && !manualEditUnlocked && (
+        <div className="bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-md print:hidden">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-4.5 h-4.5 text-emerald-200" />
+            <span>
+              {isConvertedToProject
+                ? `Active Project Baseline (${convertedProject?.code || qSnap?.projectCode || "PRJ-ACTIVE"}): This accepted quotation was converted into a Project. It is locked in Read-Only mode.`
+                : `Quotation Locked (Status: ${currentStatus}): All editing features are locked in Read-Only mode.`}
+            </span>
+          </div>
+          <Button
+            onClick={handleToggleManualEdit}
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs font-bold border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-50 rounded-none shadow-2xs cursor-pointer"
+          >
+            <Unlock className="w-3.5 h-3.5 mr-1.5 text-emerald-700" />
+            Enable Manual Editing
+          </Button>
+        </div>
+      )}
+
+      {/* Manual Edit Unlocked Banner */}
+      {isLockedByStatus && manualEditUnlocked && (
+        <div className="bg-amber-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-xs print:hidden">
+          <div className="flex items-center gap-2">
+            <Unlock className="w-4 h-4 text-white" />
+            <span>Manual Editing Unlocked ({currentStatus} Status): Editing features are temporarily enabled.</span>
+          </div>
+          <Button
+            onClick={handleToggleManualEdit}
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs font-bold border-amber-300 bg-white text-amber-900 hover:bg-amber-50 rounded-none shadow-2xs cursor-pointer"
+          >
+            <Lock className="w-3.5 h-3.5 mr-1.5 text-amber-700" />
+            Re-Lock Quotation
+          </Button>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex bg-slate-50/50 p-4 print:p-0 print:bg-white print:overflow-visible">
         <div className={`flex-1 ${isFullscreen ? 'max-w-none px-4' : 'max-w-[1400px]'} mx-auto w-full flex flex-col gap-4 print:gap-0 transition-all duration-300`}>
           
-          {/* Activity Selection UI & Controls */}
-          <div className="sticky top-[53px] z-30 flex flex-col xl:flex-row items-center justify-between gap-4 mb-2 bg-white/75 backdrop-blur-xl p-4 rounded-none border border-purple-200/80 shadow-[0_4px_24px_0_rgba(124,58,237,0.08)] print:hidden">
+          {/* Activity Selection UI & Controls (Row 2) */}
+          <div className="sticky top-[52px] z-30 flex flex-col xl:flex-row items-center justify-between gap-4 bg-white/95 backdrop-blur-xl px-4 py-2.5 rounded-none border-b border-purple-200/80 shadow-xs print:hidden">
             <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-slate-700 whitespace-nowrap">Activity Type:</span>
                 <Select 
+                  disabled={isReadOnlyQuotation}
                   value={selectedType || ""} 
                   onValueChange={(val) => {
                     setSelectedType(val);
@@ -650,7 +980,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     setSelectedCategory(t?.categories[0]?.name || "");
                   }}
                 >
-                  <SelectTrigger className="w-[200px] h-9 text-sm font-semibold bg-white border-purple-200/80 rounded-none shadow-xs">
+                  <SelectTrigger className="w-[200px] h-9 text-sm font-semibold bg-white border-purple-200/80 rounded-none shadow-xs disabled:opacity-50">
                     <SelectValue placeholder="Select Type..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-none border-purple-200">
@@ -667,13 +997,14 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cat:</span>
                   <Select 
+                    disabled={isReadOnlyQuotation}
                     value={selectedCategory} 
                     onValueChange={(val) => {
                       setSelectedCategory(val || "");
                       setSidebarOpen(true);
                     }}
                   >
-                    <SelectTrigger className="w-[220px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-purple-200/80 rounded-none">
+                    <SelectTrigger className="w-[220px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-purple-200/80 rounded-none disabled:opacity-50">
                       <SelectValue placeholder="Select Category..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-none border-purple-200">
@@ -687,51 +1018,115 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 </div>
               ) : null}
             </div>
+            {/* Quick Profit Shift Controller for Post-Negotiation */}
+            {isNegotiationEligible && (
+              <div className="flex items-center gap-2 bg-amber-50/90 border border-amber-300 px-3 py-1 rounded-none shadow-2xs">
+                <span className="text-xs font-bold text-amber-900 flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
+                  Profit Shift:
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isReadOnlyQuotation}
+                    onClick={() => handleProfitShift(-2)}
+                    className="h-7 px-2 text-xs font-extrabold border-amber-300 bg-white text-amber-900 hover:bg-amber-100 rounded-none shadow-2xs disabled:opacity-50"
+                    title="Decrease all item profits by 2%"
+                  >
+                    -2%
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isReadOnlyQuotation}
+                    onClick={() => handleProfitShift(-1)}
+                    className="h-7 px-2 text-xs font-extrabold border-amber-300 bg-white text-amber-900 hover:bg-amber-100 rounded-none shadow-2xs disabled:opacity-50"
+                    title="Decrease all item profits by 1%"
+                  >
+                    -1%
+                  </Button>
+                  <span className="text-xs font-black text-amber-950 px-2 py-0.5 bg-amber-200/80 rounded min-w-[36px] text-center">
+                    {profitShift >= 0 ? `+${profitShift}%` : `${profitShift}%`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isReadOnlyQuotation}
+                    onClick={() => handleProfitShift(+1)}
+                    className="h-7 px-2 text-xs font-extrabold border-amber-300 bg-white text-amber-900 hover:bg-amber-100 rounded-none shadow-2xs disabled:opacity-50"
+                    title="Increase all item profits by 1%"
+                  >
+                    +1%
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isReadOnlyQuotation}
+                    onClick={() => handleProfitShift(+2)}
+                    className="h-7 px-2 text-xs font-extrabold border-amber-300 bg-white text-amber-900 hover:bg-amber-100 rounded-none shadow-2xs disabled:opacity-50"
+                    title="Increase all item profits by 2%"
+                  >
+                    +2%
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-              <CascadingMaterialMenu products={products} onSelect={handleAddRawMaterial} />
+              <CascadingMaterialMenu products={products} onSelect={handleAddRawMaterial} disabled={isReadOnlyQuotation} />
               <Button 
                 onClick={addItemRow} 
+                disabled={isReadOnlyQuotation}
                 variant="default"
-                className="h-9 text-xs gap-1.5 bg-slate-900 hover:bg-black text-white rounded-none shadow-xs whitespace-nowrap font-semibold"
+                className="h-9 text-xs gap-1.5 bg-slate-900 hover:bg-black text-white rounded-none shadow-xs whitespace-nowrap font-semibold disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" /> Add Custom Item
               </Button>
-              <Button 
-                onClick={addHeadingRow} 
-                variant="outline"
-                className="h-9 text-xs gap-1.5 border-purple-300 text-purple-700 hover:bg-purple-50 rounded-none shadow-xs whitespace-nowrap font-semibold"
-              >
-                <Type className="h-4 w-4" /> Add Heading
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger disabled={isReadOnlyQuotation} className="h-9 px-3 text-xs gap-1.5 border border-purple-300 text-purple-700 hover:bg-purple-50 rounded-none shadow-xs whitespace-nowrap font-semibold inline-flex items-center outline-none cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
+                  <Type className="h-4 w-4" /> Add Heading
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 text-xs font-semibold">
+                  <DropdownMenuItem onClick={addHeadingRow} className="cursor-pointer text-slate-700">
+                    <Type className="h-4 w-4 mr-2 text-purple-600" /> Blank Section Heading
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setHeadingPresetsOpen(true)} className="cursor-pointer text-purple-700 font-bold bg-purple-50/50 focus:bg-purple-100">
+                    <BookOpen className="h-4 w-4 mr-2 text-purple-700" /> Preset Heading Templates...
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
           {/* Table Container */}
-          <div className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden flex flex-col">
-            <div className="overflow-x-auto">
+          <div className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-md flex flex-col max-h-[calc(100vh-180px)] overflow-auto">
+            <div className="min-w-full">
               <table className="w-full text-xs border-collapse">
-                <thead>
+                <thead className="sticky top-0 z-20">
                   <tr className="border-b border-purple-200">
                     <th className={`${thClass} w-[50px]`}><div className="flex items-center gap-1 justify-center"><ListOrdered className="h-3.5 w-3.5 text-slate-400" /> SL</div></th>
-                    <th className={`${thClass} min-w-[450px]`}><div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-emerald-500" /> ITEM NAME / SPEC</div></th>
-                    <th className={`${thClass} w-[80px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> UNIT</div></th>
-                    <th className={`${thClass} w-[75px]`}><div className="flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-orange-500" /> QTY</div></th>
+                    <th className={`${thClass} min-w-[360px]`}><div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-emerald-500" /> ITEM NAME / SPEC</div></th>
+                    <th className={`${thClass} w-[110px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> UNIT</div></th>
+                    <th className={`${thClass} w-[85px]`}><div className="flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-orange-500" /> QTY</div></th>
                     {pricingMode === "separate" ? (
                       <>
-                        <th className={`${thClass} w-[90px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> MAT RATE</div></th>
-                        <th className={`${thClass} w-[90px]`}><div className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" /> LAB RATE</div></th>
+                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> MAT RATE</div></th>
+                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" /> LAB RATE</div></th>
                       </>
                     ) : (
-                      <th className={`${thClass} w-[95px]`}><div className="flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-amber-500" /> RATE</div></th>
+                      <th className={`${thClass} w-[125px]`}><div className="flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-amber-500" /> RATE</div></th>
                     )}
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> % PROFIT</div></th>
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Percent className="h-3.5 w-3.5 text-red-500" /> % DISC</div></th>
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-cyan-500" /> % TAX</div></th>
-                    <th className={`${thClass} w-[90px]`}><div className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-purple-500" /> TAX AMT</div></th>
-                    <th className={`${thClass} w-[95px]`}><div className="flex items-center gap-1"><Calculator className="h-3.5 w-3.5 text-blue-600" /> SUB TOTAL</div></th>
-                    <th className={`${thClass} w-[100px]`}><div className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5 text-emerald-500" /> TOTAL</div></th>
+                    <th className={`${thClass} w-[105px]`}><div className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-purple-500" /> TAX AMT</div></th>
+                    <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Calculator className="h-3.5 w-3.5 text-blue-600" /> SUB TOTAL</div></th>
+                    <th className={`${thClass} w-[125px]`}><div className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5 text-emerald-500" /> TOTAL</div></th>
+                    {profitShift !== 0 && (
+                      <th className={`${thClass} w-[105px] text-amber-950 bg-amber-100/90`}><div className="flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-amber-600" /> DIFF</div></th>
+                    )}
                     <th className={`${thClass} w-[45px]`}><div className="flex items-center gap-1 justify-center"><Zap className="h-3.5 w-3.5 text-slate-800" /> ACT</div></th>
                   </tr>
                 </thead>
@@ -747,45 +1142,56 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     </tr>
                   ) : (
                     items.map((it, idx) => {
+                      const isActivity = !!activityRows[idx];
+                      const isHeading = !!it.snapshotData?.isHeading;
+
                       const qty = Number(it.quantity) || 0;
                       const rate = Number(it.rate) || 0;
                       const disc = Number(it.discountPct) || 0;
                       const tax = Number(it.taxRate) || 0;
                       const profit = Number(it.profitPct) || 0;
 
-                      const baseAmount = qty * rate;
-                      const withProfit = baseAmount + (baseAmount * profit) / 100;
-                      const afterDisc = withProfit - (withProfit * disc) / 100;
-                      const taxAmt = (afterDisc * tax) / 100;
-                      const finalAmount = afterDisc + taxAmt;
-                      
-                      const isActivity = !!activityRows[idx];
-                      const isHeading = !!it.snapshotData?.isHeading;
+                      let baseAmount = 0;
+                      let withProfit = 0;
+                      let afterDisc = 0;
+                      let taxAmt = 0;
+                      let finalAmount = 0;
+
+                      if (isActivity) {
+                        finalAmount = qty * rate;
+                      } else {
+                        baseAmount = qty * rate;
+                        withProfit = baseAmount + (baseAmount * profit) / 100;
+                        afterDisc = withProfit - (withProfit * disc) / 100;
+                        taxAmt = (afterDisc * tax) / 100;
+                        finalAmount = afterDisc + taxAmt;
+                      }
 
                       if (isHeading) {
-                        return (
-                          <tr key={it.id || idx} className="hover:bg-purple-100/50 transition-colors bg-purple-50/50">
+                        return (                          <tr key={it.id || idx} className="hover:bg-purple-100/50 transition-colors bg-purple-50/50">
                             <td className="px-1.5 py-0.5 align-middle border-r border-b border-purple-200">
                               <Input
                                 value={it.snapshotData?.serialNumber ?? ""}
+                                disabled={isReadOnlyQuotation}
                                 onChange={(e) => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: e.target.value } })}
                                 placeholder={it.snapshotData?.serialNumber !== undefined ? "" : String(idx + 1)}
-                                className="h-6 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent"
+                                className="h-6 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent disabled:opacity-70"
                               />
                             </td>
                             <td className="px-1.5 py-0.5 align-middle border-r border-b border-purple-200">
                               <RichTextEditor
                                 content={it.description || ""}
+                                readOnly={isReadOnlyQuotation}
                                 onChange={(html) => updateItem(idx, { description: html })}
                                 className="h-auto min-h-[24px] text-sm border-transparent hover:border-purple-200 focus:border-primary bg-transparent px-1 py-0.5 w-full text-slate-800 tracking-wide rounded-md outline-none focus:ring-1 focus:ring-purple-500"
                                 placeholder="SECTION HEADING..."
                               />
                             </td>
-                            <td className="border-r border-b border-purple-200 bg-purple-50/30" colSpan={pricingMode === "separate" ? 10 : 9} />
+                            <td className="border-r border-b border-purple-200 bg-purple-50/30" colSpan={pricingMode === "separate" ? (profitShift !== 0 ? 11 : 10) : (profitShift !== 0 ? 10 : 9)} />
                             <td className="px-1.5 py-0.5 text-center bg-purple-50/50 align-middle border-b border-purple-200">
                               <div className="flex items-center justify-center gap-1">
                                 <DropdownMenu>
-                                  <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center h-6 w-6 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none">
+                                  <DropdownMenuTrigger disabled={isReadOnlyQuotation} className="inline-flex shrink-0 items-center justify-center h-6 w-6 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none disabled:opacity-50 disabled:pointer-events-none">
                                     <MoreVertical className="h-3.5 w-3.5" />
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48 font-semibold text-sm">
@@ -820,14 +1226,16 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           <td className={`${tdClass} align-middle`}>
                             <Input
                               value={it.snapshotData?.serialNumber ?? ""}
+                              disabled={isReadOnlyQuotation}
                               onChange={(e) => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: e.target.value } })}
                               placeholder={it.snapshotData?.serialNumber !== undefined ? "" : String(idx + 1)}
-                              className="h-8 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent text-slate-500"
+                              className="h-8 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent text-slate-500 disabled:opacity-70"
                             />
                           </td>
                           <td className={tdClass}>
                             <RichTextEditor
                               content={it.description || ""}
+                              readOnly={isReadOnlyQuotation}
                               onChange={(html) => updateItem(idx, { description: html })}
                               className="w-full min-h-[34px] text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary focus:ring-1 focus:ring-purple-500 shadow-sm px-2 py-1.5 font-medium overflow-hidden leading-relaxed text-justify"
                               placeholder="Item description..."
@@ -836,16 +1244,17 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           <td className={tdClass}>
                             <Input
                               value={it.unit}
+                              disabled={isReadOnlyQuotation}
                               onChange={(e) => updateItem(idx, { unit: e.target.value })}
-                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center"
+                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center disabled:opacity-70"
                             />
                           </td>
                           <td className={tdClass}>
                             <Input
-                              
+                              disabled={isReadOnlyQuotation}
                               value={it.quantity}
                               onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
-                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center"
+                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center disabled:opacity-70"
                             />
                           </td>
                           {pricingMode === "separate" ? (
@@ -862,9 +1271,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                       snapshotData: { ...it.snapshotData, materialRate: matRate } 
                                     });
                                   }}
-                                  readOnly={isActivity}
+                                  readOnly={isActivity || isReadOnlyQuotation}
                                   title={isActivity ? "Material Rate is computed from configured materials" : undefined}
-                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
                                 />
                               </td>
                               <td className={tdClass}>
@@ -879,8 +1288,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                       snapshotData: { ...it.snapshotData, labourRate: labRate } 
                                     });
                                   }}
-                                  readOnly={isActivity}
-                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                  readOnly={isActivity || isReadOnlyQuotation}
+                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
                                 />
                               </td>
                             </>
@@ -896,55 +1305,83 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                     snapshotData: { ...it.snapshotData, materialRate: newRate, labourRate: 0 }
                                   });
                                 }}
-                                readOnly={isActivity}
+                                readOnly={isActivity || isReadOnlyQuotation}
                                 title={isActivity ? "Rate is computed from configured materials" : undefined}
-                                className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
                               />
                             </td>
                           )}
                           <td className={tdClass}>
-                            <Input
-                              type="number"
-                              value={it.profitPct}
-                              onChange={(e) => updateItem(idx, { profitPct: Number(e.target.value) || 0 })}
-                              readOnly={isActivity}
-                              title={isActivity ? "Already added in Configure Materials" : undefined}
-                              className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
-                            />
+                            {isActivity ? (
+                              <div className="h-8 flex items-center justify-center text-xs text-slate-400 font-bold">--</div>
+                            ) : (
+                              <Input
+                                type="number"
+                                disabled={isReadOnlyQuotation}
+                                value={it.profitPct}
+                                onChange={(e) => updateItem(idx, { profitPct: Number(e.target.value) || 0 })}
+                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm disabled:opacity-70"
+                              />
+                            )}
                           </td>
                           <td className={tdClass}>
-                            <Input
-                              type="number"
-                              value={it.discountPct}
-                              onChange={(e) => updateItem(idx, { discountPct: Number(e.target.value) || 0 })}
-                              readOnly={isActivity}
-                              title={isActivity ? "Already added in Configure Materials" : undefined}
-                              className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
-                            />
+                            {isActivity ? (
+                              <div className="h-8 flex items-center justify-center text-xs text-slate-400 font-bold">--</div>
+                            ) : (
+                              <Input
+                                type="number"
+                                disabled={isReadOnlyQuotation}
+                                value={it.discountPct}
+                                onChange={(e) => updateItem(idx, { discountPct: Number(e.target.value) || 0 })}
+                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm disabled:opacity-70"
+                              />
+                            )}
                           </td>
                           <td className={tdClass}>
-                            <Input
-                              type="number"
-                              value={it.taxRate}
-                              onChange={(e) => updateItem(idx, { taxRate: Number(e.target.value) || 0 })}
-                              readOnly={isActivity}
-                              title={isActivity ? "Already added in Configure Materials" : undefined}
-                              className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
-                            />
+                            {isActivity ? (
+                              <div className="h-8 flex items-center justify-center text-xs text-slate-400 font-bold">--</div>
+                            ) : (
+                              <Input
+                                type="number"
+                                disabled={isReadOnlyQuotation}
+                                value={it.taxRate}
+                                onChange={(e) => updateItem(idx, { taxRate: Number(e.target.value) || 0 })}
+                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm disabled:opacity-70"
+                              />
+                            )}
                           </td>
                           <td className={`${tdClass} text-right py-3 pr-4 text-purple-600 font-medium`}>
-                            {taxAmt.toFixed(2)}
+                            {isActivity ? <span className="text-slate-400 font-bold flex justify-center">--</span> : taxAmt.toFixed(2)}
                           </td>
                           <td className={`${tdClass} text-right py-3 pr-4 font-medium text-slate-600`}>
-                            {afterDisc.toFixed(2)}
+                            {isActivity ? <span className="text-slate-400 font-bold flex justify-center">--</span> : afterDisc.toFixed(2)}
                           </td>
                           <td className={`${tdClass} text-right py-3 pr-4 font-bold text-emerald-700 bg-emerald-50/30`}>
                             {finalAmount.toFixed(2)}
                           </td>
+                          {profitShift !== 0 && (
+                            <td className={`${tdClass} text-right py-3 pr-3 font-bold bg-amber-50/60`}>
+                              {(() => {
+                                const origProfit = Math.max(0, profit - profitShift);
+                                const origWithProfit = baseAmount + (baseAmount * origProfit) / 100;
+                                const origAfterDisc = origWithProfit - (origWithProfit * disc) / 100;
+                                const origTaxAmt = (origAfterDisc * tax) / 100;
+                                const origFinal = origAfterDisc + origTaxAmt;
+                                const itemDiff = finalAmount - origFinal;
+                                return (
+                                  <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${
+                                    itemDiff >= 0 ? "text-emerald-800 bg-emerald-100 border-emerald-300" : "text-red-800 bg-red-100 border-red-300"
+                                  }`}>
+                                    {itemDiff >= 0 ? `+₹${itemDiff.toFixed(0)}` : `-₹${Math.abs(itemDiff).toFixed(0)}`}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                          )}
                           <td className={`${tdClass} text-center py-2 bg-white align-middle`}>
                             <div className="flex flex-col items-center justify-center gap-1">
                               <DropdownMenu>
-                                <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center h-8 w-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none">
+                                <DropdownMenuTrigger disabled={isReadOnlyQuotation} className="inline-flex shrink-0 items-center justify-center h-8 w-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none disabled:opacity-50 disabled:pointer-events-none">
                                   <MoreVertical className="h-4 w-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 font-semibold text-sm">
@@ -975,7 +1412,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               </DropdownMenu>
                             </div>
                           </td>
-                          </tr>
+                        </tr>
                       );
                     })
                   )}
@@ -1010,7 +1447,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
           </div>
         </div>
       </div>
-      </div>
+    </div>
 
       {/* PRINT-ONLY UI */}
       <div className="hidden print:block w-full bg-white text-black font-sans" style={{padding: '1.2cm 1.5cm', minHeight: '100vh'}}>
@@ -1159,7 +1596,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
             <div className="grid grid-cols-2 gap-6 mb-8">
               {/* Terms & Notes */}
               <div>
-                <p className="font-bold text-sm text-slate-800 mb-2">Terms &amp; Notes</p>
+                <p className="font-bold text-sm text-slate-800 mb-2">Terms & Notes</p>
                 <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
                   <li>This quotation is valid for 30 days from the date of issue.</li>
                   <li>Payment Terms: 100% Advance / As mutually agreed.</li>
@@ -1214,16 +1651,89 @@ export default function QuotationEditorPage({ params }: PageProps) {
       <BrandPreferencesDialog
         open={brandPreferencesOpen}
         onOpenChange={setBrandPreferencesOpen}
-        brandPreferences={brandPreferences}
+        brandPreferences={brandPreferences as any}
         onSave={async (prefs) => {
-          setBrandPreferences(prefs);
+          setBrandPreferences(prefs as any);
           try {
-            await updateQuotation(id, { brandPreferences: prefs });
+            await updateQuotation(id, { brandPreferences: prefs as any });
+            
+            // Automatically apply category profit, discount, and tax defaults to quotation items
+            setItems((prevItems) =>
+              prevItems.map((it) => {
+                const prod = products.find((p) => p.name === it.description || p.id === it.id);
+                const catId = prod?.categoryId;
+                if (catId && prefs[catId]) {
+                  const categoryPref = prefs[catId];
+                  return {
+                    ...it,
+                    profitPct: categoryPref.defaultProfitPct ?? it.profitPct,
+                    discountPct: categoryPref.defaultDiscountPct ?? it.discountPct,
+                    taxRate: categoryPref.defaultTaxPct ?? it.taxRate,
+                  };
+                }
+                return it;
+              })
+            );
           } catch (err) {
             console.error("Failed to save brand preferences", err);
           }
         }}
         products={products}
+      />
+
+      {/* Save As Revision (Negotiation) Dialog */}
+      <Dialog open={revisionDialogOpen} onOpenChange={setRevisionDialogOpen}>
+        <DialogContent className="max-w-md bg-white border border-amber-200 rounded-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Copy className="w-5 h-5 text-amber-600" />
+              Save As Revision (Post Negotiation)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Create a new revision copy of this quotation for negotiation adjustments. The original quotation will remain untouched.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                Revision Title / Negotiation Note *
+              </label>
+              <Input
+                value={revisionNote}
+                onChange={(e) => setRevisionNote(e.target.value)}
+                placeholder="e.g. After negotiation meeting on 13/08/2026"
+                className="text-xs h-10 rounded-none border-amber-200 bg-white focus-visible:ring-amber-500 font-medium"
+              />
+            </div>
+
+            <div className="p-3 bg-purple-50/70 border border-purple-100 text-xs text-purple-900 rounded-none space-y-1">
+              <p className="font-bold">Original Quotation: {quotation?.code}</p>
+              <p className="text-[11px] text-purple-700 leading-relaxed">
+                The new revision will start in <span className="font-bold">DRAFT</span> status and carry over all line items, brand setups, and spreadsheet configurations.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="rounded-none border-slate-300" onClick={() => setRevisionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveAsRevision}
+              disabled={savingRevision}
+              className="rounded-none bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5 shadow-md"
+            >
+              {savingRevision ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+              Create Revision
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <HeadingPresetsDialog
+        open={headingPresetsOpen}
+        onOpenChange={setHeadingPresetsOpen}
+        onSelectPreset={handleInsertPresetHeading}
       />
     </div>
   );

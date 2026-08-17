@@ -12,7 +12,9 @@ export interface PageMeta {
   hasPreviousPage: boolean;
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://200.141.6.187:3001";
+// const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://200.141.6.187:3001";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 // const BASE_URL = "https://omnibackend.zyvionixsolutions.com";
 
 

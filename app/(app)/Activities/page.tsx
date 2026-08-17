@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgGridReact } from "ag-grid-react";
 import type { ColDef, ICellRendererParams, SelectionChangedEvent } from "ag-grid-community";
-import { Copy, Hammer, Plus, RefreshCw, Search, Trash2, Upload } from "lucide-react";
+import { BookOpen, Copy, Hammer, Plus, RefreshCw, Search, Trash2, Upload } from "lucide-react";
 import Swal from "sweetalert2";
+
+import { HeadingPresetsDialog } from "@/components/quotations/HeadingPresetsDialog";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -48,6 +50,7 @@ export default function ActivitiesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [typesOpen, setTypesOpen] = useState(false);
+  const [headingPresetsOpen, setHeadingPresetsOpen] = useState(false);
   const [deleting, setDeleting] = useState<Activity | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [duplicating, setDuplicating] = useState<Activity | null>(null);
@@ -317,6 +320,14 @@ export default function ActivitiesPage() {
           </Button>
           <Button
             variant="outline"
+            onClick={() => setHeadingPresetsOpen(true)}
+            className="gap-2 rounded-none h-10 px-4 font-semibold border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 shadow-xs"
+          >
+            <BookOpen className="h-4 w-4 text-purple-600" />
+            Heading Templates
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setTypesOpen(true)}
             className="gap-2 rounded-none h-10 px-4 font-semibold border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 shadow-xs"
           >
@@ -494,6 +505,10 @@ export default function ActivitiesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <HeadingPresetsDialog
+        open={headingPresetsOpen}
+        onOpenChange={setHeadingPresetsOpen}
+      />
     </div>
   );
 }
