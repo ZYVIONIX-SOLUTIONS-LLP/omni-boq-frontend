@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Plus, Trash2, Loader2, Sparkles, FolderKanban, Printer, Settings, ListOrdered, Tag, Package, Layers, Coins, TrendingUp, Percent, Receipt, FileText, Calculator, CreditCard, Zap, Type, ArrowUp, ArrowDown, MoreVertical, Hash, Maximize2, Minimize2, Copy, Lock, ShieldAlert, BookOpen, FileSpreadsheet, Briefcase, Unlock } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Loader2, Sparkles, FolderKanban, Printer, Settings, ListOrdered, Tag, Package, Layers, Coins, TrendingUp, Percent, Receipt, FileText, Calculator, CreditCard, Zap, Type, ArrowUp, ArrowDown, MoreVertical, Hash, Maximize2, Minimize2, Copy, Lock, ShieldAlert, BookOpen, FileSpreadsheet, Briefcase, Unlock, Link, Unlink } from "lucide-react";
 
 import { getQuotation, updateQuotation, updateQuotationStatus, createQuotationWithClient, getDisplayStatus, Quotation, QuotationItem, QuotationStatus } from "@/app/lib/api/quotations";
 import { listActivities, Activity, wiringTypeLabel, getActivityTypes, ActivityType } from "@/app/lib/api/activities";
@@ -33,6 +33,8 @@ import { QuotationItemMaterialDialog } from "@/components/quotations/QuotationIt
 import { CascadingMaterialMenu } from "@/components/quotations/CascadingMaterialMenu";
 import { BrandPreferencesDialog } from "@/components/quotations/BrandPreferencesDialog";
 import { HeadingPresetsDialog } from "@/components/quotations/HeadingPresetsDialog";
+import { TenderExcelImportDialog } from "@/components/quotations/TenderExcelImportDialog";
+import { LinkDatabaseItemDialog } from "@/components/quotations/LinkDatabaseItemDialog";
 import { convertQuotationToProject, getProjects, setProjectManualEdit } from "@/app/lib/api/projects";
 import Swal from "sweetalert2";
 import { exportQuotationToExcel } from "@/app/lib/api/quotationExcelExport";
@@ -74,6 +76,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
   // States for Configuration Dialog
   const [configuringIdx, setConfiguringIdx] = useState<number | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [pendingLinkActivity, setPendingLinkActivity] = useState<Activity | null>(null);
 
   // Fullscreen State
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -103,6 +106,99 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
   // Profit Shift State for Post-Negotiation Adjustments
   const [profitShift, setProfitShift] = useState<number>(0);
+  const [tenderImportOpen, setTenderImportOpen] = useState<boolean>(false);
+  const [linkingIdx, setLinkingIdx] = useState<number | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState<boolean>(false);
+
+  // Auto-save refs
+  const isInitialLoad = useRef(true);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleSaveRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  const handleImportTenderItems = (
+    importedItems: QuotationItem[],
+    activityMappings: Record<number, string>,
+    replaceExisting: boolean
+  ) => {
+    if (replaceExisting) {
+      setItems(importedItems);
+      setActivityRows(activityMappings);
+    } else {
+      const startSortOrder = items.length;
+      const reindexed = importedItems.map((it, idx) => ({
+        ...it,
+        sortOrder: startSortOrder + idx,
+      }));
+      setItems((prev) => [...prev, ...reindexed]);
+
+      // Shift & merge activity mappings
+      setActivityRows((prev) => {
+        const merged = { ...prev };
+        Object.entries(activityMappings).forEach(([k, actId]) => {
+          merged[Number(k) + startSortOrder] = actId;
+        });
+        return merged;
+      });
+    }
+  };
+
+  const handleLinkActivityToRow = (idx: number, act: Activity) => {
+    // Instead of linking immediately, we set it as pending and open the Config modal.
+    setPendingLinkActivity(act);
+    setConfiguringIdx(idx);
+    setLinkDialogOpen(false);
+    setConfigDialogOpen(true);
+  };
+
+  const handleLinkProductToRow = (idx: number, prod: ProductModel) => {
+    const mrp = Number(prod.mrp) || 0;
+
+    setActivityRows((prev) => {
+      const next = { ...prev };
+      delete next[idx];
+      return next;
+    });
+
+    updateItem(idx, {
+      rate: mrp,
+      snapshotData: {
+        ...items[idx]?.snapshotData,
+        productId: prod.id,
+        productName: prod.name || prod.modelCode,
+        materialRate: mrp,
+        labourRate: 0,
+        activityId: null,
+        activityName: null,
+      },
+    });
+  };
+
+  const handleUnlinkRow = (idx: number) => {
+    setActivityRows((prev) => {
+      const next = { ...prev };
+      delete next[idx];
+      return next;
+    });
+    setActivityCustomizations((prev) => {
+      const next = { ...prev };
+      delete next[idx];
+      return next;
+    });
+
+    updateItem(idx, {
+      rate: 0,
+      amount: 0,
+      snapshotData: {
+        ...items[idx]?.snapshotData,
+        activityId: null,
+        activityName: null,
+        productId: null,
+        productName: null,
+        materialRate: 0,
+        labourRate: 0,
+      },
+    });
+  };
 
   const handleProfitShift = (delta: number) => {
     setProfitShift((prev) => prev + delta);
@@ -222,7 +318,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
       const [qData, aRes, pRes, typesRes] = await Promise.all([
         getQuotation(id),
         listActivities({ limit: 1000 }),
-        listProducts({ limit: 1000 }),
+        listProducts({ limit: 10000 }),
         getActivityTypes(),
       ]);
       setQuotation(qData);
@@ -350,8 +446,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
              if (activityCustomizations[items.indexOf(it)]) {
                 newActivityCustomizations[idx] = activityCustomizations[items.indexOf(it)];
              }
-         } else if (activityRows[idx]) {
-             newActivityRows[idx] = activityRows[idx];
+         } else {
+             if (activityRows[idx]) {
+                 newActivityRows[idx] = activityRows[idx];
+             }
              if (activityCustomizations[idx]) {
                  newActivityCustomizations[idx] = activityCustomizations[idx];
              }
@@ -365,8 +463,12 @@ export default function QuotationEditorPage({ params }: PageProps) {
          sheetData: { pricingMode },
          brandPreferences
       });
-      setActivityRows(newActivityRows);
-      setActivityCustomizations(newActivityCustomizations);
+      if (JSON.stringify(activityRows) !== JSON.stringify(newActivityRows)) {
+        setActivityRows(newActivityRows);
+      }
+      if (JSON.stringify(activityCustomizations) !== JSON.stringify(newActivityCustomizations)) {
+        setActivityCustomizations(newActivityCustomizations);
+      }
       
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -376,6 +478,34 @@ export default function QuotationEditorPage({ params }: PageProps) {
       setSaving(false);
     }
   };
+
+  // Keep ref pointing to the latest handleSave closure
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
+
+  // Debounced Auto-Save
+  useEffect(() => {
+    if (loading) return;
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      if (handleSaveRef.current) {
+        handleSaveRef.current();
+      }
+    }, 2500);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    };
+  }, [items, activityRows, activityCustomizations, pricingMode, brandPreferences, loading]);
 
   const addItemRow = () => {
     setItems((prev) => [
@@ -615,18 +745,38 @@ export default function QuotationEditorPage({ params }: PageProps) {
   const handleSaveCustomizations = (customizations: Record<string, string>, newRate: number) => {
     if (configuringIdx === null) return;
     
+    const labRate = Number(customizations.__labourCost) || 0;
+    const matRate = newRate - labRate;
+
+    if (pendingLinkActivity) {
+      setActivityRows((prev) => ({ ...prev, [configuringIdx]: pendingLinkActivity.id }));
+    }
+    
     setActivityCustomizations(prev => ({
       ...prev,
       [configuringIdx]: customizations
     }));
     
     const currentItem = items[configuringIdx];
-    const labRate = Number(customizations.__labourCost) || 0;
-    const matRate = newRate - labRate;
+    
     updateItem(configuringIdx, { 
       rate: newRate, 
-      snapshotData: { ...(currentItem?.snapshotData || {}), materialRate: matRate, labourRate: labRate } 
+      snapshotData: pendingLinkActivity ? {
+        ...(currentItem?.snapshotData || {}),
+        activityId: pendingLinkActivity.id,
+        activityName: pendingLinkActivity.name,
+        productId: null,
+        productName: null,
+        materialRate: matRate, 
+        labourRate: labRate
+      } : { 
+        ...(currentItem?.snapshotData || {}), 
+        materialRate: matRate, 
+        labourRate: labRate 
+      } 
     });
+
+    setPendingLinkActivity(null);
   };
 
   const filteredActivities = activities.filter(
@@ -761,28 +911,57 @@ export default function QuotationEditorPage({ params }: PageProps) {
   let grandTotalAll = 0;
 
   items.forEach((it, idx) => {
-    const isActivity = !!activityRows[idx];
+    const isLinkedActivity = !!activityRows[idx];
+    const isCustomActivity = !!activityCustomizations[idx] && !isLinkedActivity;
+    const isActivity = isLinkedActivity || isCustomActivity;
     const qty = Number(it.quantity) || 0;
     const rate = Number(it.rate) || 0;
 
-    if (isActivity) {
-      const finalAmount = qty * rate;
-      subTotalAll += finalAmount;
-      grandTotalAll += finalAmount;
-    } else {
+    if (pricingMode === "separate") {
+      const matRate = Number(it.snapshotData?.materialRate ?? it.rate) || 0;
+      const labRate = Number(it.snapshotData?.labourRate) || 0;
+      const profit = Number(it.profitPct) || 0;
       const disc = Number(it.discountPct) || 0;
       const tax = Number(it.taxRate) || 0;
-      const profit = Number(it.profitPct) || 0;
 
-      const baseAmount = qty * rate;
-      const withProfit = baseAmount + (baseAmount * profit) / 100;
-      const afterDisc = withProfit - (withProfit * disc) / 100;
-      const taxAmt = (afterDisc * tax) / 100;
-      const finalAmount = afterDisc + taxAmt;
+      if (isActivity) {
+        const totalMat = matRate * qty;
+        const totalLab = labRate * qty;
+        subTotalAll += totalMat + totalLab;
+        grandTotalAll += totalMat + totalLab;
+      } else {
+        const matWithProfit = matRate + (matRate * profit) / 100;
+        const matAfterDisc = matWithProfit - (matWithProfit * disc) / 100;
+        const matTaxAmt = (matAfterDisc * tax) / 100;
+        const finalMatRate = matAfterDisc + matTaxAmt;
+        
+        const totalMat = finalMatRate * qty;
+        const totalLab = labRate * qty;
+        
+        subTotalAll += (matAfterDisc * qty) + totalLab;
+        taxTotalAll += (matTaxAmt * qty);
+        grandTotalAll += totalMat + totalLab;
+      }
+    } else {
+      if (isActivity) {
+        const finalAmount = qty * rate;
+        subTotalAll += finalAmount;
+        grandTotalAll += finalAmount;
+      } else {
+        const disc = Number(it.discountPct) || 0;
+        const tax = Number(it.taxRate) || 0;
+        const profit = Number(it.profitPct) || 0;
 
-      subTotalAll += afterDisc;
-      taxTotalAll += taxAmt;
-      grandTotalAll += finalAmount;
+        const baseAmount = qty * rate;
+        const withProfit = baseAmount + (baseAmount * profit) / 100;
+        const afterDisc = withProfit - (withProfit * disc) / 100;
+        const taxAmt = (afterDisc * tax) / 100;
+        const finalAmount = afterDisc + taxAmt;
+
+        subTotalAll += afterDisc;
+        taxTotalAll += taxAmt;
+        grandTotalAll += finalAmount;
+      }
     }
   });
 
@@ -1075,6 +1254,15 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setTenderImportOpen(true)}
+                disabled={isReadOnlyQuotation}
+                className="h-9 text-xs gap-1.5 border border-emerald-600/80 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-none shadow-xs whitespace-nowrap font-bold disabled:opacity-50 cursor-pointer"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-emerald-700" />
+                Import Tender Excel
+              </Button>
               <CascadingMaterialMenu products={products} onSelect={handleAddRawMaterial} disabled={isReadOnlyQuotation} />
               <Button 
                 onClick={addItemRow} 
@@ -1111,10 +1299,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     <th className={`${thClass} w-[110px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> UNIT</div></th>
                     <th className={`${thClass} w-[85px]`}><div className="flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-orange-500" /> QTY</div></th>
                     {pricingMode === "separate" ? (
-                      <>
-                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> MAT RATE</div></th>
-                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" /> LAB RATE</div></th>
-                      </>
+                      <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> MAT RATE</div></th>
                     ) : (
                       <th className={`${thClass} w-[125px]`}><div className="flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-amber-500" /> RATE</div></th>
                     )}
@@ -1122,7 +1307,16 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Percent className="h-3.5 w-3.5 text-red-500" /> % DISC</div></th>
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-cyan-500" /> % TAX</div></th>
                     <th className={`${thClass} w-[105px]`}><div className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-purple-500" /> TAX AMT</div></th>
-                    <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Calculator className="h-3.5 w-3.5 text-blue-600" /> SUB TOTAL</div></th>
+                    {pricingMode === "separate" ? (
+                      <>
+                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-emerald-600" /> FNL MAT RATE</div></th>
+                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-amber-500" /> LAB RATE</div></th>
+                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Calculator className="h-3.5 w-3.5 text-emerald-600" /> TOTAL MAT</div></th>
+                        <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Calculator className="h-3.5 w-3.5 text-amber-600" /> TOTAL LAB</div></th>
+                      </>
+                    ) : (
+                      <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-600" /> FNL RATE</div></th>
+                    )}
                     <th className={`${thClass} w-[125px]`}><div className="flex items-center gap-1"><CreditCard className="h-3.5 w-3.5 text-emerald-500" /> TOTAL</div></th>
                     {profitShift !== 0 && (
                       <th className={`${thClass} w-[105px] text-amber-950 bg-amber-100/90`}><div className="flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-amber-600" /> DIFF</div></th>
@@ -1142,7 +1336,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     </tr>
                   ) : (
                     items.map((it, idx) => {
-                      const isActivity = !!activityRows[idx];
+                      const isLinkedActivity = !!activityRows[idx];
+    const isCustomActivity = !!activityCustomizations[idx] && !isLinkedActivity;
+    const isActivity = isLinkedActivity || isCustomActivity;
                       const isHeading = !!it.snapshotData?.isHeading;
 
                       const qty = Number(it.quantity) || 0;
@@ -1157,14 +1353,43 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       let taxAmt = 0;
                       let finalAmount = 0;
 
-                      if (isActivity) {
-                        finalAmount = qty * rate;
+                      let matRate = 0;
+                      let labRate = 0;
+                      let finalMatRate = 0;
+                      let totalMat = 0;
+                      let totalLab = 0;
+
+                      if (pricingMode === "separate") {
+                        matRate = Number(it.snapshotData?.materialRate ?? it.rate) || 0;
+                        labRate = Number(it.snapshotData?.labourRate) || 0;
+
+                        if (isActivity) {
+                          finalMatRate = matRate;
+                          taxAmt = 0;
+                          totalMat = matRate * qty;
+                          totalLab = labRate * qty;
+                          finalAmount = totalMat + totalLab;
+                        } else {
+                          let matWithProfit = matRate + (matRate * profit) / 100;
+                          let matAfterDisc = matWithProfit - (matWithProfit * disc) / 100;
+                          let matTaxAmt = (matAfterDisc * tax) / 100;
+                          finalMatRate = matAfterDisc + matTaxAmt;
+
+                          taxAmt = matTaxAmt * qty;
+                          totalMat = finalMatRate * qty;
+                          totalLab = labRate * qty;
+                          finalAmount = totalMat + totalLab;
+                        }
                       } else {
-                        baseAmount = qty * rate;
-                        withProfit = baseAmount + (baseAmount * profit) / 100;
-                        afterDisc = withProfit - (withProfit * disc) / 100;
-                        taxAmt = (afterDisc * tax) / 100;
-                        finalAmount = afterDisc + taxAmt;
+                        if (isActivity) {
+                          finalAmount = qty * rate;
+                        } else {
+                          baseAmount = qty * rate;
+                          withProfit = baseAmount + (baseAmount * profit) / 100;
+                          afterDisc = withProfit - (withProfit * disc) / 100;
+                          taxAmt = (afterDisc * tax) / 100;
+                          finalAmount = afterDisc + taxAmt;
+                        }
                       }
 
                       if (isHeading) {
@@ -1187,7 +1412,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                 placeholder="SECTION HEADING..."
                               />
                             </td>
-                            <td className="border-r border-b border-purple-200 bg-purple-50/30" colSpan={pricingMode === "separate" ? (profitShift !== 0 ? 11 : 10) : (profitShift !== 0 ? 10 : 9)} />
+                            <td className="border-r border-b border-purple-200 bg-purple-50/30" colSpan={pricingMode === "separate" ? (profitShift !== 0 ? 13 : 12) : (profitShift !== 0 ? 10 : 9)} />
                             <td className="px-1.5 py-0.5 text-center bg-purple-50/50 align-middle border-b border-purple-200">
                               <div className="flex items-center justify-center gap-1">
                                 <DropdownMenu>
@@ -1240,6 +1465,68 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               className="w-full min-h-[34px] text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary focus:ring-1 focus:ring-purple-500 shadow-sm px-2 py-1.5 font-medium overflow-hidden leading-relaxed text-justify"
                               placeholder="Item description..."
                             />
+                            {/* Database Item Connection Badge */}
+                            {isActivity ? (
+                              <div className="mt-1 flex items-center justify-end gap-1.5 text-[11px] font-semibold">
+                                <span className="flex items-center gap-1 text-purple-700 bg-purple-50/90 border border-purple-200 px-1.5 py-0.5 rounded-none shadow-2xs mr-auto">
+                                  <Zap className="w-3 h-3 shrink-0" /> {isCustomActivity ? "Custom Activity" : "Linked Activity"}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isReadOnlyQuotation}
+                                  onClick={() => {
+                                    setConfiguringIdx(idx);
+                                    setConfigDialogOpen(true);
+                                  }}
+                                  className="h-5 px-1.5 text-[10px] font-bold text-purple-700 border-purple-200 bg-purple-50 hover:bg-purple-100 rounded-none cursor-pointer shadow-2xs"
+                                >
+                                  <Settings className="w-3 h-3 mr-0.5" /> Config
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isReadOnlyQuotation}
+                                  onClick={() => handleUnlinkRow(idx)}
+                                  className="h-5 px-1.5 text-[10px] font-bold text-red-600 border-red-200 bg-red-50 hover:bg-red-100 rounded-none cursor-pointer shadow-2xs"
+                                >
+                                  <Unlink className="w-3 h-3 mr-0.5" /> Unlink
+                                </Button>
+                              </div>
+                            ) : it.snapshotData?.productId ? (
+                              <div className="mt-1 flex items-center justify-end gap-1.5 text-[11px] font-semibold">
+                                <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50/90 border border-emerald-200 px-1.5 py-0.5 rounded-none shadow-2xs mr-auto">
+                                  <Package className="w-3 h-3 shrink-0" /> Linked Material
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isReadOnlyQuotation}
+                                  onClick={() => {
+                                    
+                                    handleUnlinkRow(idx)
+                                  }}
+                                  className="h-5 px-1.5 text-[10px] font-bold text-red-600 border-red-200 bg-red-50 hover:bg-red-100 rounded-none shrink-0 cursor-pointer shadow-2xs"
+                                >
+                                  <Unlink className="w-3 h-3 mr-0.5" /> Unlink
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isReadOnlyQuotation}
+                                  onClick={() => {
+                                    setLinkingIdx(idx);
+                                    setLinkDialogOpen(true);
+                                  }}
+                                  className="h-5 px-2 text-[10px] font-bold text-purple-700 border-purple-200 bg-purple-50/50 hover:bg-purple-100 rounded-none shadow-2xs gap-1 cursor-pointer"
+                                >
+                                  <Link className="w-3 h-3 text-purple-600" /> Link Activity / Material
+                                </Button>
+                              </div>
+                            )}
                           </td>
                           <td className={tdClass}>
                             <Input
@@ -1273,22 +1560,6 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                   }}
                                   readOnly={isActivity || isReadOnlyQuotation}
                                   title={isActivity ? "Material Rate is computed from configured materials" : undefined}
-                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
-                                />
-                              </td>
-                              <td className={tdClass}>
-                                <Input
-                                  type="number"
-                                  value={isActivity ? Number(it.snapshotData?.labourRate || 0).toFixed(2) : (it.snapshotData?.labourRate || 0)}
-                                  onChange={(e) => {
-                                    const labRate = Number(e.target.value) || 0;
-                                    const matRate = Number(it.snapshotData?.materialRate ?? it.rate) || 0;
-                                    updateItem(idx, { 
-                                      rate: matRate + labRate, 
-                                      snapshotData: { ...it.snapshotData, labourRate: labRate } 
-                                    });
-                                  }}
-                                  readOnly={isActivity || isReadOnlyQuotation}
                                   className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
                                 />
                               </td>
@@ -1353,9 +1624,39 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           <td className={`${tdClass} text-right py-3 pr-4 text-purple-600 font-medium`}>
                             {isActivity ? <span className="text-slate-400 font-bold flex justify-center">--</span> : taxAmt.toFixed(2)}
                           </td>
-                          <td className={`${tdClass} text-right py-3 pr-4 font-medium text-slate-600`}>
-                            {isActivity ? <span className="text-slate-400 font-bold flex justify-center">--</span> : afterDisc.toFixed(2)}
-                          </td>
+                          {pricingMode === "separate" ? (
+                            <>
+                              <td className={`${tdClass} text-right py-3 pr-4 text-emerald-600 font-medium`}>
+                                {isActivity ? <span className="text-slate-400 font-bold flex justify-center">--</span> : finalMatRate.toFixed(2)}
+                              </td>
+                              <td className={tdClass}>
+                                <Input
+                                  type="number"
+                                  value={isActivity ? Number(it.snapshotData?.labourRate || 0).toFixed(2) : (it.snapshotData?.labourRate || 0)}
+                                  onChange={(e) => {
+                                    const labR = Number(e.target.value) || 0;
+                                    const matR = Number(it.snapshotData?.materialRate ?? it.rate) || 0;
+                                    updateItem(idx, { 
+                                      rate: matR + labR, 
+                                      snapshotData: { ...it.snapshotData, labourRate: labR } 
+                                    });
+                                  }}
+                                  readOnly={isActivity || isReadOnlyQuotation}
+                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                />
+                              </td>
+                              <td className={`${tdClass} text-right py-3 pr-4 font-medium text-emerald-700 bg-emerald-50/30`}>
+                                {totalMat.toFixed(2)}
+                              </td>
+                              <td className={`${tdClass} text-right py-3 pr-4 font-medium text-amber-700 bg-amber-50/30`}>
+                                {totalLab.toFixed(2)}
+                              </td>
+                            </>
+                          ) : (
+                            <td className={`${tdClass} text-right py-3 pr-4 font-medium text-blue-700 bg-blue-50/20`}>
+                              {(finalAmount / (qty || 1)).toFixed(2)}
+                            </td>
+                          )}
                           <td className={`${tdClass} text-right py-3 pr-4 font-bold text-emerald-700 bg-emerald-50/30`}>
                             {finalAmount.toFixed(2)}
                           </td>
@@ -1396,6 +1697,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                       <Settings className="h-4 w-4 mr-2" /> Configure Materials
                                     </DropdownMenuItem>
                                   )}
+                                  {/* <DropdownMenuItem onClick={() => { setLinkingIdx(idx); setLinkDialogOpen(true); }} className="cursor-pointer text-purple-700 font-bold bg-purple-50/60 focus:bg-purple-100">
+                                    <Link className="h-4 w-4 mr-2 text-purple-700" /> Link Activity / Material...
+                                  </DropdownMenuItem> */}
                                   {it.snapshotData?.serialNumber === "" ? (
                                     <DropdownMenuItem onClick={() => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: undefined } })} className="cursor-pointer text-slate-600 focus:bg-slate-100">
                                       <Hash className="h-4 w-4 mr-2" /> Reset Serial Number
@@ -1516,21 +1820,31 @@ export default function QuotationEditorPage({ params }: PageProps) {
         <table className="w-full text-xs border-collapse mb-5" style={{borderColor: '#0D2B6B'}}>
           <thead>
             <tr style={{backgroundColor: '#0D2B6B', color: 'white'}}>
-              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[5%]">SL.</th>
-              <th className={`py-2.5 px-3 text-left font-bold border border-white/20 ${pricingMode === "separate" ? "w-[43%]" : "w-[53%]"}`}>ITEM DESCRIPTION</th>
-              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[10%]">UNIT</th>
-              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[8%]">QTY</th>
-              {pricingMode === "separate" && (
+              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[4%]">SL.</th>
+              <th className={`py-2.5 px-3 text-left font-bold border border-white/20 ${pricingMode === "separate" ? "w-[30%]" : "w-[45%]"}`}>ITEM DESCRIPTION</th>
+              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[8%]">UNIT</th>
+              <th className="py-2.5 px-2 text-center font-bold border border-white/20 w-[6%]">QTY</th>
+              {pricingMode === "separate" ? (
                 <>
                   <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[9%]">MAT RATE</th>
                   <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[9%]">LAB RATE</th>
+                  <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[10%]">TOTAL MAT</th>
+                  <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[10%]">TOTAL LAB</th>
                 </>
+              ) : (
+                <th className="py-2.5 px-2 text-right font-bold border border-white/20 w-[12%]">RATE</th>
               )}
-              <th className="py-2.5 px-3 text-right font-bold border border-white/20 w-[15%]">TOTAL</th>
+              <th className="py-2.5 px-3 text-right font-bold border border-white/20 w-[14%]">TOTAL</th>
             </tr>
           </thead>
           <tbody>
             {items.map((it, idx) => {
+              const isLinkedActivity = !!activityRows[idx];
+    const isCustomActivity = !!activityCustomizations[idx] && !isLinkedActivity;
+    const isActivity = isLinkedActivity || isCustomActivity;
+              const isHeading = !!it.snapshotData?.isHeading;
+              const slNo = it.snapshotData?.serialNumber ?? (idx + 1).toString();
+              
               const qty = Number(it.quantity) || 0;
               const rate = Number(it.rate) || 0;
               const disc = Number(it.discountPct) || 0;
@@ -1539,14 +1853,37 @@ export default function QuotationEditorPage({ params }: PageProps) {
               const matRate = Number(it.snapshotData?.materialRate ?? it.rate) || 0;
               const labRate = Number(it.snapshotData?.labourRate) || 0;
 
-              const baseAmount = qty * rate;
-              const withProfit = baseAmount + (baseAmount * profit) / 100;
-              const afterDisc = withProfit - (withProfit * disc) / 100;
-              const taxAmt = (afterDisc * tax) / 100;
-              const finalAmount = afterDisc + taxAmt;
+              let finalMatRate = 0;
+              let totalMat = 0;
+              let totalLab = 0;
+              let finalAmount = 0;
 
-              const isHeading = !!it.snapshotData?.isHeading;
-              const slNo = it.snapshotData?.serialNumber ?? (idx + 1).toString();
+              if (pricingMode === "separate") {
+                if (isActivity) {
+                  finalMatRate = matRate;
+                  totalMat = matRate * qty;
+                  totalLab = labRate * qty;
+                  finalAmount = totalMat + totalLab;
+                } else {
+                  const matWithProfit = matRate + (matRate * profit) / 100;
+                  const matAfterDisc = matWithProfit - (matWithProfit * disc) / 100;
+                  const matTaxAmt = (matAfterDisc * tax) / 100;
+                  finalMatRate = matAfterDisc + matTaxAmt;
+                  totalMat = finalMatRate * qty;
+                  totalLab = labRate * qty;
+                  finalAmount = totalMat + totalLab;
+                }
+              } else {
+                if (isActivity) {
+                  finalAmount = qty * rate;
+                } else {
+                  const baseAmount = qty * rate;
+                  const withProfit = baseAmount + (baseAmount * profit) / 100;
+                  const afterDisc = withProfit - (withProfit * disc) / 100;
+                  const taxAmt = (afterDisc * tax) / 100;
+                  finalAmount = afterDisc + taxAmt;
+                }
+              }
 
               if (isHeading) {
                 return (
@@ -1556,27 +1893,31 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       className="border border-slate-300 py-2 px-3 align-top font-bold text-slate-800 prose prose-xs max-w-none"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
                     />
-                    <td className="border border-slate-300 py-2 px-2" colSpan={pricingMode === "separate" ? 5 : 3} />
+                    <td className="border border-slate-300 py-2 px-2" colSpan={pricingMode === "separate" ? 7 : 4} />
                   </tr>
                 );
               }
 
               return (
                 <tr key={it.id || idx}>
-                  <td className="border border-slate-300 py-2 px-2 text-center align-top text-slate-600">{slNo}</td>
+                  <td className="border border-slate-300 py-2 px-2 text-center  text-slate-600">{slNo}</td>
                   <td className="border border-slate-300 py-2 px-3 align-top">
                     <div
                       className="text-slate-800 prose prose-xs max-w-none text-justify"
                       dangerouslySetInnerHTML={{ __html: it.description || "" }}
                     />
                   </td>
-                  <td className="border border-slate-300 py-2 px-2 text-center align-top text-slate-600">{it.unit}</td>
-                  <td className="border border-slate-300 py-2 px-2 text-center align-top font-bold text-slate-800">{qty}</td>
-                  {pricingMode === "separate" && (
+                  <td className="border border-slate-300 py-2 px-2 text-center  text-slate-600">{it.unit}</td>
+                  <td className="border border-slate-300 py-2 px-2 text-center  font-bold text-slate-800">{qty}</td>
+                  {pricingMode === "separate" ? (
                     <>
-                      <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{matRate.toFixed(2)}</td>
+                      <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{finalMatRate.toFixed(2)}</td>
                       <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{labRate.toFixed(2)}</td>
+                      <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{totalMat.toFixed(2)}</td>
+                      <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{totalLab.toFixed(2)}</td>
                     </>
+                  ) : (
+                    <td className="border border-slate-300 py-2 px-2 text-right text-slate-700">{(finalAmount / (qty || 1)).toFixed(2)}</td>
                   )}
                   <td className="border border-slate-300 py-2 px-3 text-right font-bold text-slate-900">₹ {finalAmount.toFixed(2)}</td>
                 </tr>
@@ -1640,8 +1981,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
 
       <QuotationItemMaterialDialog
         isOpen={configDialogOpen}
-        onClose={() => setConfigDialogOpen(false)}
-        activity={configuringIdx !== null && activityRows[configuringIdx] ? activities.find(a => a.id === activityRows[configuringIdx]) : undefined}
+        onClose={() => { setConfigDialogOpen(false); setPendingLinkActivity(null); }}
+        activity={pendingLinkActivity || (configuringIdx !== null && activityRows[configuringIdx] ? activities.find(a => a.id === activityRows[configuringIdx]) : undefined)}
         products={products}
         customizations={configuringIdx !== null ? activityCustomizations[configuringIdx] || {} : {}}
         brandPreferences={brandPreferences}
@@ -1734,6 +2075,32 @@ export default function QuotationEditorPage({ params }: PageProps) {
         open={headingPresetsOpen}
         onOpenChange={setHeadingPresetsOpen}
         onSelectPreset={handleInsertPresetHeading}
+      />
+      <TenderExcelImportDialog
+        open={tenderImportOpen}
+        onOpenChange={setTenderImportOpen}
+        activities={activities}
+        products={products}
+        onImportItems={handleImportTenderItems}
+      />
+      <LinkDatabaseItemDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        rowDescription={linkingIdx !== null && items[linkingIdx] ? items[linkingIdx].description : ""}
+        activities={activities}
+        products={products}
+        currentActivityId={linkingIdx !== null ? activityRows[linkingIdx] : undefined}
+        currentProductId={linkingIdx !== null && items[linkingIdx] ? items[linkingIdx].snapshotData?.productId : undefined}
+        onLinkActivity={(act) => linkingIdx !== null && handleLinkActivityToRow(linkingIdx, act)}
+        onLinkProduct={(prod) => linkingIdx !== null && handleLinkProductToRow(linkingIdx, prod)}
+        onUnlink={() => linkingIdx !== null && handleUnlinkRow(linkingIdx)}
+        onCreateCustomActivity={() => {
+          if (linkingIdx !== null) {
+            setConfiguringIdx(linkingIdx);
+            setConfigDialogOpen(true);
+            setPendingLinkActivity(null);
+          }
+        }}
       />
     </div>
   );

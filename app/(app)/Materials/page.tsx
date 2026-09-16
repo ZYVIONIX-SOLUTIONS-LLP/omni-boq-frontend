@@ -19,6 +19,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getUser } from "@/app/lib/auth-storage";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -46,8 +53,9 @@ import {
   deleteAllProducts,
   PageMeta,
   ProductListRow,
+  ProductFilters,
 } from "@/app/lib/catalog/api";
-import type { AttributeDef, ProductModel } from "@/app/lib/catalog/types";
+import type { AttributeDef, ProductModel, CatalogCategory } from "@/app/lib/catalog/types";
 
 const PAGE_SIZE = 12;
 
@@ -226,6 +234,52 @@ export default function ProductLibraryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [filtersData, setFiltersData] = useState<ProductFilters | null>(null);
+
+  // Active filters for API
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("all");
+  const [activeSeries, setActiveSeries] = useState<string>("all");
+  const [activeAttributes, setActiveAttributes] = useState<Record<string, string>>({});
+
+  // UI filters (draft)
+  const [draftCategoryId, setDraftCategoryId] = useState<string>("all");
+  const [draftSeries, setDraftSeries] = useState<string>("all");
+  const [draftAttributes, setDraftAttributes] = useState<Record<string, string>>({});
+
+  const handleCategoryChange = (val: string | null) => {
+    if (!val) return;
+    setDraftCategoryId(val);
+    setDraftSeries("all");
+    setDraftAttributes({});
+  };
+
+  const applyFilters = () => {
+    setActiveCategoryId(draftCategoryId);
+    setActiveSeries(draftSeries);
+    
+    const cleanedAttrs: Record<string, string> = {};
+    for (const [k, v] of Object.entries(draftAttributes)) {
+      if (v !== "all") cleanedAttrs[k] = v;
+    }
+    setActiveAttributes(cleanedAttrs);
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setDraftCategoryId("all");
+    setDraftSeries("all");
+    setDraftAttributes({});
+    setActiveCategoryId("all");
+    setActiveSeries("all");
+    setActiveAttributes({});
+    setPage(1);
+  };
+
+  const selectedCategoryData = draftCategoryId !== "all" 
+    ? filtersData?.categories.find(c => c.categoryId === draftCategoryId)
+    : null;
+
+
   const [viewing, setViewing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ProductListRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -250,16 +304,20 @@ export default function ProductLibraryPage() {
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
         scope,
+        categoryId: activeCategoryId === "all" ? undefined : activeCategoryId,
+        seriesId: activeSeries === "all" ? undefined : activeSeries,
+        attributes: Object.keys(activeAttributes).length > 0 ? JSON.stringify(activeAttributes) : undefined,
       });
       setItems(result.items);
       setMeta(result.meta);
+      if (result.filters) setFiltersData(result.filters);
       setSelectedIds(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load products");
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, scope]);
+  }, [page, debouncedSearch, scope, activeCategoryId, activeSeries, activeAttributes]);
 
   useEffect(() => {
     load();
@@ -373,6 +431,58 @@ export default function ProductLibraryPage() {
             className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
           />
         </div>
+
+        <div className="flex flex-wrap items-center gap-2 w-full mt-2 lg:mt-0 lg:w-auto">
+          <Select value={draftCategoryId} onValueChange={handleCategoryChange}>
+            <SelectTrigger className="w-[180px] h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {filtersData?.categories.map((c: any) => (
+                <SelectItem key={c.categoryId} value={c.categoryId}>{c.categoryName || "Unnamed"}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {selectedCategoryData && selectedCategoryData.series.length > 0 && (
+            <Select value={draftSeries} onValueChange={(val) => { if (val) setDraftSeries(val) }}>
+              <SelectTrigger className="w-[160px] h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+                <SelectValue placeholder="Series" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Series</SelectItem>
+                {selectedCategoryData.series.map((s: string) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {selectedCategoryData && selectedCategoryData.attributes.map((attr: any) => (
+            <Select key={attr.id} value={draftAttributes[attr.id] || "all"} onValueChange={(val) => { if (val) setDraftAttributes(p => ({...p, [attr.id]: val})) }}>
+              <SelectTrigger className="w-[140px] h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+                <SelectValue placeholder={attr.name} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any {attr.name}</SelectItem>
+                {attr.values.map((v: string) => (
+                  <SelectItem key={v} value={v}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ))}
+
+          <Button onClick={applyFilters} className="h-10 rounded-none bg-purple-700 hover:bg-purple-800 text-white shadow-xs">
+            Filter
+          </Button>
+          {(draftCategoryId !== "all" || draftSeries !== "all" || Object.keys(draftAttributes).length > 0) && (
+            <Button variant="outline" onClick={clearFilters} className="h-10 rounded-none border-purple-200/80 text-purple-700 bg-purple-50 hover:bg-purple-100 shadow-xs">
+              Clear
+            </Button>
+          )}
+        </div>
+
 
         <div className="flex items-center gap-2 ml-auto">
           {getUser()?.roles.includes("SUPERADMIN") && (

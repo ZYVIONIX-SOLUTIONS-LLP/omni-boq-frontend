@@ -90,13 +90,27 @@ export interface ListProductsParams {
   categoryId?: string;
   seriesId?: string;
   scope?: 'global' | 'local' | 'all';
+  attributes?: string; // JSON stringified Record<string, string>
 }
 
 export interface ProductListRow extends ProductModel {}
 
+export interface ProductFilters {
+  categories: {
+    categoryId: string;
+    categoryName: string;
+    series: string[];
+    attributes: {
+      id: string;
+      name: string;
+      values: string[];
+    }[];
+  }[];
+}
+
 export function listProducts(
   params: ListProductsParams = {}
-): Promise<{ items: ProductListRow[]; meta: PageMeta }> {
+): Promise<{ items: ProductListRow[]; meta: PageMeta; filters: ProductFilters }> {
   return apiGet(`/catalog/products${toQueryString(params)}`);
 }
 

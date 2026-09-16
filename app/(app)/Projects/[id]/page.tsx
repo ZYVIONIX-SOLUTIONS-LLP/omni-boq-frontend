@@ -93,7 +93,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
       const [aRes, pRes, typesRes] = await Promise.all([
         listActivities({ limit: 1000 }),
-        listProducts({ limit: 1000 }),
+        listProducts({ limit: 10000 }),
         getActivityTypes(),
       ]);
       setActivities(aRes.items || []);

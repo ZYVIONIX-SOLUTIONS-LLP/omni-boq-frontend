@@ -1,0 +1,43 @@
+SL.NO,ITEM DESCRIPTION,UNIT,QTY,RATE
+29,Distribution Boards,,,
+,Supply Installation Testing and Commissioning of following double door MCB DBs with necessary insulated tinned copper bus bars interconnections earthing and neutral terminal blocks etc.,,,
+a,8 way VTPN MCCB THERMOPLASTIC DB,No,RO,0
+b,12 WAY VTPN MCCB DB,No,RO,0
+c,8way VTPN MCB DB,No,RO,0
+d,6 way VTPN MCB DB,No,1,0
+e,4 way VTPN MCB DB,No,1,0
+f,12way TPN MCB DB,No,RO,0
+g,8 way TPN MCB DB,No,2,0
+h,6 way TPN MCB DB,No,4,0
+i,4 way TPN MCB DB,No,8,0
+j,6 way SPN MCB DB,No,RO,0
+k,8 way SPN MCB DB,No,RO,0
+29.1,MCB RCBO etc. for DBs,,,
+,Supply Installation Testing and Commissioning of following MCBs/RCBO/MCB Isolator/MCB type contactors in above DBs and giving connections complete.,,,
+a,6-32 SP MCB,No,850,0
+b,6-32 TP MCB,No,10,0
+c,6-32 FP MCB,No,RO,0
+d,40-63A FP MCB,No,RO,0
+e,25A DP MCB Isolator,No,99,0
+f,32A DP MCB Isolator,No,RO,0
+g,40A DP MCB Isolator,No,RO,0
+h,32A TP MCB Isolator,No,RO,0
+i,32A FP MCB Isolator,No,2,0
+j,40A FP MCB Isolator,No,2,0
+k,63A FP MCB Isolator,No,RO,0
+l,40A FP RCBO 30mA,No,RO,0
+m,32A FP RCBO 30mA,No,5,0
+n,25A FP RCBO 30mA,No,17,0
+o,16A FP RCBO 30mA,No,RO,0
+p,32A DP RCCB 30mA,No,3,0
+q,25A DP RCBO 30mA,No,99,0
+r,63A FP RCBO 100mA,No,1,0
+s,40A FP RCBO 100mA,No,RO,0
+t,32A FP RCBO 100mA,No,1,0
+u,25A FP RCBO 100mA,No,RO,0
+v,32A TP MCCB 18kA,No,RO,0
+D,WIRING FOR LV SYSTEM,,,
+39,Point Wiring,,,
+,Supply and Carrying out wiring for lights fan and plug points including testing and commissioning in surface/concealed conduit system from control board to luminaries / Fans / Plug points using single core FRLSH PVC insulated stranded 1.1kV grade copper wire of size 1.5 sq.mm along with same size wire as earth continuity conductor...,,,
+a,One Light controlled by 6A switch.,Nos,660,0
+b,One light controlled by 2 nos.6A 2 way switch.,Nos,10,0

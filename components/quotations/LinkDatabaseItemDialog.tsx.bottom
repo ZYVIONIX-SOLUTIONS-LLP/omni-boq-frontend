@@ -1,0 +1,300 @@
+  const [search, setSearch] = useState("");
+  const [filterActivityCategory, setFilterActivityCategory] = useState("");
+  const [filterActivityWiring, setFilterActivityWiring] = useState("");
+  const [filterMaterialCategory, setFilterMaterialCategory] = useState("");
+  const router = useRouter();
+
+  const cleanRowDesc = rowDescription.replace(/<[^>]*>/g, "").trim();
+
+  // Unique filter options
+  const activityCategories = Array.from(new Set(activities.map(a => a.category).filter(Boolean))) as string[];
+  const activityWiringTypes = Array.from(new Set(activities.map(a => a.wiringType).filter(Boolean))) as string[];
+  const materialCategories = Array.from(new Set(products.map(p => p.category?.name || p.categoryName).filter(Boolean))) as string[];
+
+  // Filter activities
+  const filteredActivities = activities.filter((act) => {
+    if (filterActivityCategory && act.category !== filterActivityCategory) return false;
+    if (filterActivityWiring && act.wiringType !== filterActivityWiring) return false;
+    
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      act.name.toLowerCase().includes(q) ||
+      act.code.toLowerCase().includes(q) ||
+      (act.category && act.category.toLowerCase().includes(q))
+    );
+  });
+
+  // Filter products
+  const filteredProducts = products.filter((prod) => {
+    const prodCat = prod.category?.name || prod.categoryName;
+    if (filterMaterialCategory && prodCat !== filterMaterialCategory) return false;
+
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (prod.name && prod.name.toLowerCase().includes(q)) ||
+      (prod.modelCode && prod.modelCode.toLowerCase().includes(q)) ||
+      (prod.manufacturerName && prod.manufacturerName.toLowerCase().includes(q))
+    );
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col bg-white border border-purple-200 rounded-none shadow-2xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-4 border-b border-purple-100 bg-purple-50/40">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Link className="w-4 h-4" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Link Item to Database Activity or Material
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                The original Tender description string will remain unchanged. Linking connects prices & materials.
+              </DialogDescription>
+            </div>
+          </div>
+
+          <div className="mt-3 bg-white p-2.5 border border-purple-200 rounded-none">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 block mb-0.5">
+              Target Tender Description:
+            </span>
+            <p className="text-xs font-semibold text-slate-800 line-clamp-2">{cleanRowDesc || "—"}</p>
+          </div>
+        </DialogHeader>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)] space-y-4">
+          {/* Tabs for Activity vs Material */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <TabsList className="bg-slate-100 p-1 rounded-none border border-slate-200">
+                <TabsTrigger value="activity" className="text-xs font-bold px-4 gap-1.5 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white">
+                  <Hammer className="w-3.5 h-3.5" />
+                  Database Activities ({activities.length})
+                </TabsTrigger>
+                <TabsTrigger value="material" className="text-xs font-bold px-4 gap-1.5 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white">
+                  <Package className="w-3.5 h-3.5" />
+                  Database Materials ({products.length})
+                </TabsTrigger>
+              </TabsList>
+
+              {(currentActivityId || currentProductId) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onUnlink();
+                    onOpenChange(false);
+                  }}
+                  className="h-8 text-xs font-bold text-red-600 border-red-200 bg-red-50 hover:bg-red-100 rounded-none gap-1"
+                >
+                  <Unlink className="w-3.5 h-3.5" /> Unlink Current Connection
+                </Button>
+              )}
+            </div>
+
+            {/* Search and Filters */}
+            <div className="mb-4 flex flex-wrap gap-2 items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <Input
+                  placeholder={activeTab === "activity" ? "Search activity name or code..." : "Search material name or model code..."}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-9 text-xs rounded-none border-purple-200 focus-visible:ring-purple-500"
+                />
+              </div>
+
+              {activeTab === "activity" && (
+                <>
+                  <select
+                    value={filterActivityCategory}
+                    onChange={(e) => setFilterActivityCategory(e.target.value)}
+                    className="h-9 px-2 text-xs border border-purple-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 min-w-[120px]"
+                  >
+                    <option value="">All Categories</option>
+                    {activityCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={filterActivityWiring}
+                    onChange={(e) => setFilterActivityWiring(e.target.value)}
+                    className="h-9 px-2 text-xs border border-purple-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 min-w-[120px]"
+                  >
+                    <option value="">All Tags/Types</option>
+                    {activityWiringTypes.map((t) => (
+                      <option key={t} value={t}>{wiringTypeLabel(t)}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {activeTab === "material" && (
+                <>
+                  <select
+                    value={filterMaterialCategory}
+                    onChange={(e) => setFilterMaterialCategory(e.target.value)}
+                    className="h-9 px-2 text-xs border border-purple-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 min-w-[120px]"
+                  >
+                    <option value="">All Categories</option>
+                    {materialCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => router.push(`/Materials/new`)}
+                    className="h-9 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-none gap-1.5 whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create New Material
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Tab 1: Activities */}
+            <TabsContent value="activity" className="m-0 space-y-2">
+              {filteredActivities.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400">
+                  No database activities found matching "{search}".
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 border border-slate-200 max-h-[260px] overflow-y-auto">
+                  {filteredActivities.map((act) => {
+                    const isSelected = currentActivityId === act.id;
+                    const matCost = Number(act.materialCost) || 0;
+                    const labCost = Number(act.labourCost) || 0;
+                    const totalRate = matCost + labCost;
+
+                    return (
+                      <div
+                        key={act.id}
+                        onClick={() => {
+                          onLinkActivity(act);
+                          onOpenChange(false);
+                        }}
+                        className={`p-3 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                          isSelected ? "bg-purple-50 border-l-4 border-purple-600 font-bold" : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">{act.name}</span>
+                            {act.code && (
+                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 font-mono">
+                                {act.code}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Unit: <strong className="text-slate-700">{act.unit}</strong> | Requirements: <strong className="text-slate-700">{act.requirements?.length || 0} materials</strong>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs font-black text-purple-700 block">
+                              ₹{totalRate.toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Mat: ₹{matCost.toFixed(2)} | Lab: ₹{labCost.toFixed(2)}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className={`h-7 px-3 text-xs font-bold rounded-none ${
+                              isSelected ? "bg-purple-700 text-white" : "bg-slate-900 text-white hover:bg-purple-600"
+                            }`}
+                          >
+                            {isSelected ? <Check className="w-3.5 h-3.5 mr-1" /> : null}
+                            {isSelected ? "Linked" : "Connect"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Tab 2: Materials */}
+            <TabsContent value="material" className="m-0 space-y-2">
+              {filteredProducts.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400">
+                  No database materials found matching "{search}".
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 border border-slate-200 max-h-[260px] overflow-y-auto">
+                  {filteredProducts.map((prod) => {
+                    const isSelected = currentProductId === prod.id;
+                    const mrp = Number(prod.mrp) || 0;
+
+                    return (
+                      <div
+                        key={prod.id}
+                        onClick={() => {
+                          onLinkProduct(prod);
+                          onOpenChange(false);
+                        }}
+                        className={`p-3 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                          isSelected ? "bg-purple-50 border-l-4 border-purple-600 font-bold" : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">{prod.name || prod.modelCode}</span>
+                            {prod.manufacturerName && (
+                              <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 font-bold">
+                                {prod.manufacturerName}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Unit: <strong className="text-slate-700">{prod.unit || "NOS"}</strong> {prod.modelCode ? `| Model: ${prod.modelCode}` : ""}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs font-black text-purple-700 block">
+                              ₹{mrp.toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-slate-400">MRP List Price</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className={`h-7 px-3 text-xs font-bold rounded-none ${
+                              isSelected ? "bg-purple-700 text-white" : "bg-slate-900 text-white hover:bg-purple-600"
+                            }`}
+                          >
+                            {isSelected ? <Check className="w-3.5 h-3.5 mr-1" /> : null}
+                            {isSelected ? "Linked" : "Connect"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <DialogFooter className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-none border-slate-300 h-9 text-xs font-semibold"
+          >
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

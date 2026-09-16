@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Activity } from "@/app/lib/api/activities";
 import { ProductModel, AttributeDef } from "@/app/lib/catalog/types";
 import { attributeDefsApi } from "@/app/lib/catalog/api";
-import { ChevronRight, Settings } from "lucide-react";
+import { ChevronRight, Settings, Plus, Trash2 } from "lucide-react";
 
 export interface ConfiguredMaterial {
   reqId: string;
@@ -88,18 +88,34 @@ function CascadingMaterialSelect({
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      <button
-        onClick={() => {
-          setIsOpen(!isOpen);
-          if (isOpen) {
-            setActiveMake(null);
-            setActiveSeries(null);
-          }
-        }}
-        className="w-full h-auto min-h-8 py-1.5 px-2 text-left text-xs bg-white border border-slate-200 hover:border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-primary text-wrap break-words"
-      >
-        {selectedProduct ? `${selectedProduct.manufacturerName ? selectedProduct.manufacturerName + ' ' : ''}${selectedProduct.name}` : "Select Material..."}
-      </button>
+      <div className="flex w-full">
+        <input
+          type="text"
+          value={selectedProduct ? `${selectedProduct.manufacturerName ? selectedProduct.manufacturerName + ' ' : ''}${selectedProduct.name}` : value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onClick={() => {
+            if (!isOpen) setIsOpen(true);
+          }}
+          placeholder="Type or select material..."
+          className="flex-1 w-full min-h-8 py-1.5 px-2 text-left text-xs bg-white border border-slate-200 border-r-0 hover:border-slate-300 rounded-l focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-wrap break-words"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(!isOpen);
+            if (isOpen) {
+              setActiveMake(null);
+              setActiveSeries(null);
+            }
+          }}
+          className="min-h-8 px-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-r text-slate-400 flex items-center justify-center transition-colors"
+        >
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+        </button>
+      </div>
 
       {isOpen && (
         <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-md shadow-lg z-50 py-1">
@@ -290,13 +306,41 @@ export function QuotationItemMaterialDialog({
   const [localLabourCost, setLocalLabourCost] = useState<number>(0);
   const [attributeDefs, setAttributeDefs] = useState<AttributeDef[]>([]);
 
-  const requirements = activity?.requirements || [];
+    const [localRequirements, setLocalRequirements] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (activity?.requirements) {
+        setLocalRequirements(activity.requirements);
+      } else {
+        let reqs = Object.keys(customizations)
+          .filter(k => k !== '__labourCost')
+          .map(reqId => ({
+            id: reqId,
+            categoryId: null,
+            description: "Custom Material"
+          }));
+        if (reqs.length === 0) {
+          const reqId = "custom_" + Date.now();
+          reqs = [{ id: reqId, categoryId: null, description: "Custom Material" }];
+        }
+        setLocalRequirements(reqs);
+      }
+    }
+  }, [isOpen, activity, customizations]);
 
   useEffect(() => {
     if (isOpen && attributeDefs.length === 0) {
       attributeDefsApi.all().then(setAttributeDefs).catch(console.error);
     }
   }, [isOpen, attributeDefs.length]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setLocalCustoms({});
+      setLocalRequirements([]);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -307,7 +351,7 @@ export function QuotationItemMaterialDialog({
       );
       const parsed: Record<string, ConfiguredMaterial> = {};
       
-      requirements.forEach((req: any) => {
+      localRequirements.forEach((req: any) => {
         const reqId = req.id || req.key;
         const existing = customizations[reqId];
         const categoryPref = req.categoryId ? (brandPreferences as any)[req.categoryId] : undefined;
@@ -327,16 +371,17 @@ export function QuotationItemMaterialDialog({
 
           if (!selectedProdId) {
             const validProducts = products.filter(p => {
-               if (p.categoryId !== req.categoryId) return false;
+               if (req.categoryId && p.categoryId !== req.categoryId) return false;
                if (req.subCategoryId && p.subCategoryId !== req.subCategoryId) return false;
                if (req.requiredAttributes) {
                  for (const [key, val] of Object.entries(req.requiredAttributes)) {
                    // @ts-ignore
                    const pVal = p.attributes?.[key];
+                   const pVals = Array.isArray(pVal) ? pVal.map((x: any) => normalizeAttr(x)) : [normalizeAttr(pVal)];
                    if (Array.isArray(val)) {
-                     if (!val.some(v => normalizeAttr(pVal) === normalizeAttr(v))) return false;
+                     if (!val.some((v: any) => pVals.includes(normalizeAttr(v)))) return false;
                    } else {
-                     if (normalizeAttr(pVal) !== normalizeAttr(val)) return false;
+                     if (!pVals.includes(normalizeAttr(val))) return false;
                    }
                  }
                }
@@ -391,9 +436,28 @@ export function QuotationItemMaterialDialog({
           };
         }
       });
-      setLocalCustoms(parsed);
+      setLocalCustoms(prev => {
+        const next = { ...prev };
+        const reqIds = new Set(localRequirements.map((r: any) => r.id || r.key));
+        
+        // Remove keys that are no longer in requirements
+        Object.keys(next).forEach(k => {
+          if (!reqIds.has(k)) {
+            delete next[k];
+          }
+        });
+        
+        // Add new keys from parsed without overwriting existing typed values
+        Object.keys(parsed).forEach(k => {
+          if (!next[k]) {
+            next[k] = parsed[k];
+          }
+        });
+        
+        return next;
+      });
     }
-  }, [isOpen, customizations, activity, brandPreferences]);
+  }, [isOpen, customizations, activity, brandPreferences, localRequirements]);
 
   const updateCustom = (reqId: string, updates: Partial<ConfiguredMaterial>) => {
     setLocalCustoms(prev => ({
@@ -413,6 +477,8 @@ export function QuotationItemMaterialDialog({
         discountPct: categoryPref?.defaultDiscountPct ?? (Number(prod.discountPercent) || 0),
         taxRate: categoryPref?.defaultTaxPct ?? localCustoms[reqId]?.taxRate ?? 0,
       });
+    } else {
+      updateCustom(reqId, { productId });
     }
   };
 
@@ -443,10 +509,17 @@ export function QuotationItemMaterialDialog({
           <div>
             <DialogTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <Settings className="w-5 h-5 text-blue-600" />
-              Configure Materials
+              {activity ? "Configure Activity Requirements" : "Configure Custom Materials"}
             </DialogTitle>
-            <DialogDescription className="text-slate-500 font-medium mt-1">
-              {activity?.name}
+            <DialogDescription className="text-slate-500 font-medium mt-1 flex items-center gap-2">
+              {activity ? (
+                <>
+                  <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-semibold border border-purple-200">Linked Activity</span>
+                  {activity.name}
+                </>
+              ) : (
+                 <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-semibold border border-slate-200">Custom Activity</span>
+              )}
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -466,25 +539,29 @@ export function QuotationItemMaterialDialog({
                     <th className="px-4 py-3 font-semibold text-slate-700 text-xs w-24 text-right">% DISC</th>
                     <th className="px-4 py-3 font-semibold text-slate-700 text-xs w-24 text-right">% TAX</th>
                     <th className="px-4 py-3 font-semibold text-slate-700 text-xs min-w-[100px] text-right">AMOUNT</th>
+                    {!activity && <th className="px-2 py-3 font-semibold text-slate-700 text-xs w-10 text-center"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {requirements.map((req: any, idx: number) => {
+                  {localRequirements.map((req: any, idx: number) => {
                     const reqId = req.id || req.key;
                     const conf = localCustoms[reqId];
                     if (!conf) return null;
 
                     const validProducts = products.filter(p => {
-                      if (p.categoryId !== req.categoryId) return false;
+                      if (req.categoryId && p.categoryId !== req.categoryId) return false;
                       if (req.subCategoryId && p.subCategoryId !== req.subCategoryId) return false;
                       if (req.requiredAttributes) {
                         for (const [key, val] of Object.entries(req.requiredAttributes)) {
                           // @ts-ignore
                           const pVal = p.attributes?.[key];
+                          const pVals = Array.isArray(pVal) ? pVal.map((x: any) => String(x ?? "").trim().toLowerCase()) : [String(pVal ?? "").trim().toLowerCase()];
                           if (Array.isArray(val)) {
-                            if (!val.some(v => String(pVal ?? "").trim().toLowerCase() === String(v).trim().toLowerCase())) return false;
+                            const reqVals = val.map((v: any) => String(v).trim().toLowerCase());
+                            if (!reqVals.some((v: any) => pVals.includes(v))) return false;
                           } else {
-                            if (String(pVal ?? "").trim().toLowerCase() !== String(val ?? "").trim().toLowerCase()) return false;
+                            const reqVal = String(val ?? "").trim().toLowerCase();
+                            if (!pVals.includes(reqVal)) return false;
                           }
                         }
                       }
@@ -530,13 +607,46 @@ export function QuotationItemMaterialDialog({
                         <td className="px-4 py-2 text-right font-bold text-slate-700">
                           {amount.toFixed(2)}
                         </td>
+                        {!activity && (
+                        <td className="px-2 py-2 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              setLocalRequirements(prev => prev.filter((r: any) => (r.id || r.key) !== reqId));
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      )}
                       </tr>
                     );
                   })}
                   
-                  {requirements.length === 0 && (
-                     <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">No materials required.</td></tr>
+                  {localRequirements.length === 0 && (
+                     <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">No materials required.</td></tr>
                   )}
+                  <tr>
+                    <td colSpan={10} className="px-4 py-3 bg-slate-50/50">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const reqId = "custom_" + Date.now();
+                          setLocalRequirements(prev => [...prev, { id: reqId, categoryId: null, description: "Custom Material" }]);
+                          setLocalCustoms(prev => ({
+                            ...prev,
+                            [reqId]: { reqId, productId: "", quantity: 1, rate: 0, profitPct: 0, discountPct: 0, taxRate: 0 }
+                          }));
+                        }}
+                        className="text-xs font-bold text-purple-700 hover:text-purple-800 bg-white"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" /> Add Material Row
+                      </Button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -581,3 +691,4 @@ export function QuotationItemMaterialDialog({
     </Dialog>
   );
 }
+
