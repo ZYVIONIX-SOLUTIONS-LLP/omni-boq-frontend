@@ -14,7 +14,7 @@ export interface PageMeta {
 
 // const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://200.141.6.187:3001";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://api.omnielectrics.in";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.omnielectrics.in";
 // const BASE_URL = "https://omnibackend.zyvionixsolutions.com";
 
 
