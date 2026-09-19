@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { getUser } from "@/app/lib/auth-storage";
+import { categoriesApi, CatalogCategory } from "@/app/lib/catalog/api";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -221,6 +222,8 @@ export default function ProductLibraryPage() {
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -249,6 +252,7 @@ export default function ProductLibraryPage() {
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
+        categoryId: categoryId || undefined,
         scope: "global",
       });
       setItems(result.items);
@@ -259,7 +263,7 @@ export default function ProductLibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, categoryId]);
 
   useEffect(() => {
     load();
@@ -316,23 +320,26 @@ export default function ProductLibraryPage() {
   };
 
   const handleDeleteAll = async () => {
+    const targetName = categoryId ? (categories.find(c => c.id === categoryId)?.name || "this category") : "ALL materials";
     const result = await Swal.fire({
-      title: "Delete ALL Materials?",
-      text: "This will permanently delete ALL materials in the database, ignoring pagination and filters. This action cannot be undone!",
+      title: `Delete ${targetName}?`,
+      text: categoryId 
+        ? `This will permanently delete all materials in ${targetName}, ignoring pagination. This action cannot be undone!`
+        : `This will permanently delete ALL materials in the database, ignoring pagination and filters. This action cannot be undone!`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete everything!"
+      confirmButtonText: "Yes, delete!"
     });
 
     if (result.isConfirmed) {
       setLoading(true);
       try {
-        await deleteAllProducts();
+        await deleteAllProducts(categoryId || undefined);
         Swal.fire({
           title: "Deleted!",
-          text: "All materials have been deleted.",
+          text: `Products have been deleted.`,
           icon: "success",
           timer: 2000,
           showConfirmButton: false
@@ -343,7 +350,7 @@ export default function ProductLibraryPage() {
       } catch (err) {
         Swal.fire(
           "Error!",
-          err instanceof Error ? err.message : "Failed to delete all products",
+          err instanceof Error ? err.message : "Failed to delete products",
           "error"
         );
         setLoading(false);
@@ -364,6 +371,17 @@ export default function ProductLibraryPage() {
             className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
           />
         </div>
+        
+        <select
+          value={categoryId}
+          onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}
+          className="flex h-10 w-[200px] items-center justify-between rounded-xl border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <option value="">All Categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
 
         <div className="flex items-center gap-2 ml-auto">
           {getUser()?.roles.includes("SUPERADMIN") && (
