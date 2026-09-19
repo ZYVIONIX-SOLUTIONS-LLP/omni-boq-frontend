@@ -244,6 +244,12 @@ export default function ProductLibraryPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    categoriesApi.list({ limit: 1000, scope: "global" } as any)
+      .then(res => setCategories(res.items || []))
+      .catch(console.error);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");

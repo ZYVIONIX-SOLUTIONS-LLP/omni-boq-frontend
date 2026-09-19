@@ -186,7 +186,7 @@ export function deleteProduct(id: string): Promise<void> {
 }
 
 export function deleteAllProducts(categoryId?: string): Promise<void> {
-  return apiDelete(`/catalog/products/all${categoryId ? `?categoryId=${categoryId}` : '}`);
+  return apiDelete(`/catalog/products/all${categoryId ? `?categoryId=${categoryId}` : ""}`);
 }
 
 /** Counts for the management dashboards (e.g. products per manufacturer). */
