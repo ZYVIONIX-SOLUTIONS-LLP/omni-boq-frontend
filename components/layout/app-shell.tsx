@@ -92,7 +92,7 @@ function SettingsIcon() {
 // Top-level main menu items
 const MAIN_NAV_ITEMS = [
   { label: "Dashboard", href: "/Dashboard", icon: <DashboardIcon /> },
-  { label: "Projects & Quatations", href: "/Quotations", icon: <QuotationsIcon /> },
+  { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
   // { label: "Projects", href: "/Projects", icon: <ProjectsIcon /> },
   { label: "Staff", href: "/Staff", icon: <UsersIcon /> },
   { label: "Settings", href: "/Settings", icon: <SettingsIcon /> },
@@ -101,7 +101,6 @@ const MAIN_NAV_ITEMS = [
 // Contextual sub-menu items when inside Projects / Quotations workspace
 const WORKSPACE_NAV_ITEMS = [
   { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
-  { label: "Projects", href: "/Projects", icon: <ProjectsIcon /> },
   { label: "Materials", href: "/Materials", icon: <MaterialsIcon /> },
   { label: "Activities", href: "/Activities", icon: <ActivitiesIcon /> },
 ];

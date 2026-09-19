@@ -1042,15 +1042,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
             </Button>
           </div>
 
-          {currentStatus === "ACCEPTED" && !isConvertedToProject && (
-            <Button
-              onClick={handleConvertToProject}
-              className="gap-1.5 h-9 px-3.5 rounded-none text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md print:hidden cursor-pointer"
-              title="Convert this Accepted Quotation into an Active Project"
-            >
-              <Briefcase className="h-4 w-4" /> Convert to Project
-            </Button>
-          )}
+
 
           {isAdmin && isNegotiationEligible && (
             <Button
