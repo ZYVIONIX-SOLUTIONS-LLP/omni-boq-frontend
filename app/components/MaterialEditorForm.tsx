@@ -593,6 +593,7 @@ export function MaterialEditorForm({
                         ) : (
                           <Input
                             type={def.type === "NUMBER" ? "number" : "text"}
+                              step="any"
                             value={specValues[def.id] ?? ""}
                             onChange={(e) =>
                               setSpecValues((prev) => ({ ...prev, [def.id]: e.target.value }))
@@ -664,6 +665,7 @@ export function MaterialEditorForm({
                 <Field label="MRP (₹)">
                   <Input
                     type="number"
+                    step="any"
                     value={mrp}
                     onChange={(e) => setMrp(e.target.value)}
                     placeholder="e.g. 500"
@@ -673,6 +675,7 @@ export function MaterialEditorForm({
                 <Field label="Discount Percent (%)">
                   <Input
                     type="number"
+                    step="any"
                     value={discountPercent}
                     onChange={(e) => setDiscountPercent(e.target.value)}
                     placeholder="e.g. 10"

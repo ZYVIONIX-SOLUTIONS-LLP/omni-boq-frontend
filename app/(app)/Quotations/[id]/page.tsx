@@ -1540,7 +1540,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                             <>
                               <td className={tdClass}>
                                 <Input
-                                  type="number"
+                                  type="number" step="any"
                                   value={isActivity ? Number(it.snapshotData?.materialRate ?? it.rate).toFixed(2) : (it.snapshotData?.materialRate ?? it.rate)}
                                   onChange={(e) => {
                                     const matRate = Number(e.target.value) || 0;
@@ -1559,7 +1559,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                           ) : (
                             <td className={tdClass}>
                               <Input
-                                type="number"
+                                type="number" step="any"
                                 value={isActivity ? Number(it.rate).toFixed(2) : it.rate}
                                 onChange={(e) => {
                                   const newRate = Number(e.target.value) || 0;
@@ -1579,7 +1579,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               <div className="h-8 flex items-center justify-center text-xs text-slate-400 font-bold">--</div>
                             ) : (
                               <Input
-                                type="number"
+                                type="number" step="any"
                                 disabled={isReadOnlyQuotation}
                                 value={it.profitPct}
                                 onChange={(e) => updateItem(idx, { profitPct: Number(e.target.value) || 0 })}
@@ -1592,7 +1592,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               <div className="h-8 flex items-center justify-center text-xs text-slate-400 font-bold">--</div>
                             ) : (
                               <Input
-                                type="number"
+                                type="number" step="any"
                                 disabled={isReadOnlyQuotation}
                                 value={it.discountPct}
                                 onChange={(e) => updateItem(idx, { discountPct: Number(e.target.value) || 0 })}
@@ -1605,7 +1605,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               <div className="h-8 flex items-center justify-center text-xs text-slate-400 font-bold">--</div>
                             ) : (
                               <Input
-                                type="number"
+                                type="number" step="any"
                                 disabled={isReadOnlyQuotation}
                                 value={it.taxRate}
                                 onChange={(e) => updateItem(idx, { taxRate: Number(e.target.value) || 0 })}
@@ -1623,7 +1623,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               </td>
                               <td className={tdClass}>
                                 <Input
-                                  type="number"
+                                  type="number" step="any"
                                   value={isActivity ? Number(it.snapshotData?.labourRate || 0).toFixed(2) : (it.snapshotData?.labourRate || 0)}
                                   onChange={(e) => {
                                     const labR = Number(e.target.value) || 0;

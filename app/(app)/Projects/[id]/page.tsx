@@ -596,7 +596,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                       </td>
                       <td className="p-2 border-r border-purple-100">
                         <Input
-                          type="number"
+                          type="number" step="any"
                           value={qty}
                           onChange={(e) => updateItemField(index, "quantity", Number(e.target.value))}
                           className="h-8 text-xs text-right font-bold border-purple-200 rounded-none bg-white"
@@ -659,7 +659,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     </td>
                     <td className="p-2 border-r border-purple-100">
                       <Input
-                        type="number"
+                        type="number" step="any"
                         value={qty}
                         onChange={(e) => updateItemField(index, "quantity", Number(e.target.value))}
                         className="h-8 text-xs text-right font-bold border-purple-200 rounded-none bg-white"
@@ -667,7 +667,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     </td>
                     <td className="p-2 border-r border-purple-100">
                       <Input
-                        type="number"
+                        type="number" step="any"
                         value={rate}
                         onChange={(e) => updateItemField(index, "rate", Number(e.target.value))}
                         className="h-8 text-xs text-right font-bold border-purple-200 rounded-none bg-white"
@@ -675,7 +675,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     </td>
                     <td className="p-2 border-r border-purple-100">
                       <Input
-                        type="number"
+                        type="number" step="any"
                         value={p}
                         onChange={(e) => updateItemField(index, "profitPct", Number(e.target.value))}
                         className="h-8 text-xs text-right font-bold border-purple-200 rounded-none bg-white text-emerald-700"
@@ -683,7 +683,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     </td>
                     <td className="p-2 border-r border-purple-100">
                       <Input
-                        type="number"
+                        type="number" step="any"
                         value={d}
                         onChange={(e) => updateItemField(index, "discountPct", Number(e.target.value))}
                         className="h-8 text-xs text-right font-bold border-purple-200 rounded-none bg-white text-red-600"
@@ -691,7 +691,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     </td>
                     <td className="p-2 border-r border-purple-100">
                       <Input
-                        type="number"
+                        type="number" step="any"
                         value={t}
                         onChange={(e) => updateItemField(index, "taxRate", Number(e.target.value))}
                         className="h-8 text-xs text-right font-bold border-purple-200 rounded-none bg-white text-cyan-700"

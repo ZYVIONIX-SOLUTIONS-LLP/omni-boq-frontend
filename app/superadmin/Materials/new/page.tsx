@@ -656,7 +656,7 @@ function ProductFormInner() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="MRP (₹)">
                   <Input
-                    type="number"
+                    type="number" step="any"
                     value={mrp}
                     onChange={(e) => setMrp(e.target.value)}
                     placeholder="e.g. 500"
@@ -665,7 +665,7 @@ function ProductFormInner() {
                 </Field>
                 <Field label="Discount Percent (%)">
                   <Input
-                    type="number"
+                    type="number" step="any"
                     value={discountPercent}
                     onChange={(e) => setDiscountPercent(e.target.value)}
                     placeholder="e.g. 10"

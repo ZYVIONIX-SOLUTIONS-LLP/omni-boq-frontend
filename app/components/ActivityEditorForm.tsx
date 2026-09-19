@@ -331,7 +331,7 @@ export function ActivityEditorForm({
                       </td>
                       <td className={tdClass}>
                         <Input
-                          type="number"
+                          type="number" step="any"
                           value={row.quantity}
                           onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) || 0 })}
                           className="h-8 w-full text-xs text-right font-semibold text-slate-700 bg-transparent border-transparent hover:border-slate-200 focus:bg-white shadow-none text-right"
@@ -339,7 +339,7 @@ export function ActivityEditorForm({
                       </td>
                       <td className={`${tdClass} text-right`}>
                         <Input
-                          type="number"
+                          type="number" step="any"
                           value={row.rate}
                           onChange={(e) => updateRow(row.key, { rate: Number(e.target.value) || 0 })}
                           className="h-8 w-full text-xs text-right text-slate-500 bg-transparent border-transparent hover:border-slate-200 focus:bg-white shadow-none text-right"
@@ -347,7 +347,7 @@ export function ActivityEditorForm({
                       </td>
                       <td className={`${tdClass} text-right`}>
                         <Input
-                          type="number"
+                          type="number" step="any"
                           value={row.discountPct}
                           onChange={(e) => updateRow(row.key, { discountPct: Number(e.target.value) || 0 })}
                           className="h-8 w-full text-xs text-right text-slate-500 bg-transparent border-transparent hover:border-slate-200 focus:bg-white shadow-none text-right"
@@ -355,7 +355,7 @@ export function ActivityEditorForm({
                       </td>
                       <td className={`${tdClass} text-right`}>
                         <Input
-                          type="number"
+                          type="number" step="any"
                           value={row.taxRate}
                           onChange={(e) => updateRow(row.key, { taxRate: Number(e.target.value) || 0 })}
                           className="h-8 w-full text-xs text-right text-slate-500 bg-transparent border-transparent hover:border-slate-200 focus:bg-white shadow-none text-right"
@@ -415,7 +415,7 @@ export function ActivityEditorForm({
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₹</span>
                   <Input
-                    type="number"
+                    type="number" step="any"
                     placeholder="0.00"
                     value={c.amount}
                     onChange={(e) => updateCharge(c.key, { amount: Number(e.target.value) || 0 })}

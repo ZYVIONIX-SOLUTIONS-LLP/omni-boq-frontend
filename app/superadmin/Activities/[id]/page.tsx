@@ -400,7 +400,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                       </td>
                       <td className={tdClass}>
                         <Input
-                          type="number"
+                          type="number" step="any"
                           value={row.quantity}
                           onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) || 0 })}
                           className="h-7 w-16 text-xs"
@@ -453,7 +453,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                       </td>
                       <td className={tdClass}>
                         <Input
-                          type="number"
+                          type="number" step="any"
                           placeholder="Amount"
                           value={c.amount}
                           onChange={(e) => updateCharge(c.key, { amount: Number(e.target.value) || 0 })}
@@ -601,7 +601,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold">Qty</label>
-                <Input type="number" value={reqQuantity} onChange={e => setReqQuantity(Number(e.target.value) || 1)} className="h-9 text-xs" />
+                <Input type="number" step="any" value={reqQuantity} onChange={e => setReqQuantity(Number(e.target.value) || 1)} className="h-9 text-xs" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold">Unit</label>
