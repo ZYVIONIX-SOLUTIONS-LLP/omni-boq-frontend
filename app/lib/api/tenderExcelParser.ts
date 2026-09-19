@@ -3046,6 +3046,9 @@ export function convertTenderRowsToQuotationItems(
   items: QuotationItem[];
   activityMappings: Record<number, string>;
 } {
+  // USER REQUEST: Do not auto-link activities or materials during Excel import.
+  activities = [];
+  products = [];
   const activityMappings:
     Record<number, string> = {};
 

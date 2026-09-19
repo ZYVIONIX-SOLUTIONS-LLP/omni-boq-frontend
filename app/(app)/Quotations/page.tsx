@@ -322,7 +322,7 @@ export default function QuotationsPage() {
         valueGetter: (p) => p.data?.customer?.name ?? "—",
       },
       {
-        headerName: "Project",
+        headerName: "Quatation",
         flex: 1.6,
         minWidth: 180,
         valueGetter: (p) => p.data?.project?.name ?? "—",
@@ -499,7 +499,7 @@ export default function QuotationsPage() {
                       <FolderOpen className="w-5 h-5 text-purple-700 fill-purple-200" />
                       <div>
                         <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                          Project: {group.projectName}
+                          Quatation: {group.projectName}
                         </h3>
                         <p className="text-xs font-semibold text-slate-500">
                           Client: <span className="text-purple-900">{group.clientName}</span>
@@ -699,7 +699,7 @@ export default function QuotationsPage() {
             </div>
 
             <div className="p-3 bg-amber-50 border border-amber-200 text-xs text-amber-900 rounded-none space-y-1">
-              <p className="font-bold">Project: {revisionTarget?.project?.name}</p>
+              <p className="font-bold">Quatation: {revisionTarget?.project?.name}</p>
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 The new revision will be grouped in the Directory Tree under this project and start in <span className="font-bold">DRAFT</span> status.
               </p>
