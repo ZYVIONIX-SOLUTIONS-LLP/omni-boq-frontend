@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  FileDigit, FileText, Clock, CheckSquare, PlusCircle, 
-  Boxes, Users, FileArchive
+  FileText, Clock, CheckCircle2, Plus, 
+  Package, Users, FileStack, Bell, ChevronRight
 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { listQuotations, Quotation } from "@/app/lib/api/quotations";
 
 function inr(value: number | null | undefined): string {
@@ -18,15 +18,6 @@ function inr(value: number | null | undefined): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
-
-const STATUS_COLORS = {
-  DRAFT: "#94A3B8",
-  FINAL: "#0284C7",
-  SENT: "#3B82F6",
-  ACCEPTED: "#10B981",
-  REJECTED: "#EF4444",
-  EXPIRED: "#F59E0B"
-};
 
 export default function Dashboard() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -48,12 +39,15 @@ export default function Dashboard() {
   const completed = quotations.filter(q => ["ACCEPTED", "REJECTED", "EXPIRED"].includes(q.status)).length;
   const recentQuotations = [...quotations].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 5);
 
-  const statusCounts = quotations.reduce((acc, q) => {
-    acc[q.status] = (acc[q.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const draftCount = quotations.filter(q => q.status === "DRAFT" || q.status === "FINAL").length;
+  const sentCount = quotations.filter(q => q.status === "SENT").length;
+  const completedCount = completed;
 
-  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  const pieData = [
+    { name: "Draft", value: draftCount, color: "#94A3B8" },
+    { name: "Sent", value: sentCount, color: "#3B82F6" },
+    { name: "Completed", value: completedCount, color: "#10B981" }
+  ];
 
   const getStatusLabel = (status: string) => {
     switch(status) {
@@ -69,7 +63,7 @@ export default function Dashboard() {
 
   const getStatusBg = (status: string) => {
     switch(status) {
-      case "DRAFT": return "bg-slate-100 text-slate-600";
+      case "DRAFT": return "bg-slate-100 text-slate-700";
       case "FINAL": return "bg-sky-100 text-sky-700";
       case "SENT": return "bg-blue-100 text-blue-700";
       case "ACCEPTED": return "bg-emerald-100 text-emerald-700";
@@ -79,117 +73,176 @@ export default function Dashboard() {
     }
   };
 
+  const dateOptions: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  const today = new Date().toLocaleDateString("en-US", dateOptions);
+
   return (
-    <div className="h-[calc(100vh-80px)] w-full overflow-hidden bg-slate-50 p-6 font-sans flex flex-col">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          { icon: FileDigit, label: "Total Quotations", val: loading ? "..." : totalQuotations, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { icon: FileText, label: "Total Value", val: loading ? "..." : inr(totalValue), color: "text-emerald-600", bg: "bg-emerald-50" },
-          { icon: Clock, label: "In Progress", val: loading ? "..." : inProgress, color: "text-blue-600", bg: "bg-blue-50" },
-          { icon: CheckSquare, label: "Completed", val: loading ? "..." : completed, color: "text-violet-600", bg: "bg-violet-50" }
-        ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex flex-col gap-3 transition-transform hover:-translate-y-1 hover:shadow-md">
-            <div className="flex items-center gap-3">
-               <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.color}`}>
-                 <stat.icon className="h-5 w-5" />
-               </div>
-               <span className="text-sm font-bold text-slate-500">{stat.label}</span>
-            </div>
-            <div className="text-2xl font-black text-slate-800">{stat.val}</div>
-          </div>
-        ))}
+    <div className="min-h-screen w-full relative overflow-y-auto overflow-x-hidden font-sans">
+      {/* Background gradients */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[#F4F7FE]">
+        <div className="absolute top-[-10%] right-[-5%] w-[60%] h-[50%] rounded-full bg-blue-100/40 blur-3xl"></div>
+        <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-100/40 blur-3xl"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-200/30 blur-3xl"></div>
       </div>
 
-      {/* Chart & Recent Row */}
-      <div className="flex gap-4 mb-6 flex-1 min-h-[250px]">
-        {/* Pie Chart Area */}
-        <div className="flex-[1.5] bg-white rounded-xl p-5 flex flex-col shadow-sm border border-slate-100">
-          <div className="text-sm font-bold text-slate-800 mb-2">Quotations by Status</div>
-          <div className="flex-1 relative">
-            {loading ? (
-              <div className="w-full h-full flex items-center justify-center text-sm text-slate-400">Loading chart...</div>
-            ) : pieData.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-sm text-slate-400">No data available</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({name, percent}) => `${getStatusLabel(name)} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS] || "#cbd5e1"} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip formatter={(value, name) => [value, getStatusLabel(name as string)]} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+      <div className="relative z-10 p-4 sm:p-8 max-w-[1400px] mx-auto flex flex-col gap-6">
+        
+        {/* Header */}
+        <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4 mb-2">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white font-black text-xl italic shadow-lg shadow-blue-500/30">Z</div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dashboard</h1>
+              <p className="text-sm font-medium text-slate-500 mt-0.5">Good to see you again! Keep building great quotations.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-bold text-slate-500">{today}</span>
+            <button className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors">
+              <Bell className="w-5 h-5" />
+            </button>
+            <div className="w-10 h-10 rounded-full bg-blue-900 text-white font-bold flex items-center justify-center shadow-sm">
+              VP
+            </div>
           </div>
         </div>
 
-        {/* Recent Quotations */}
-        <div className="flex-[1] bg-white rounded-xl p-5 flex flex-col shadow-sm border border-slate-100">
-          <div className="flex justify-between items-center mb-4">
-             <div className="text-sm font-bold text-slate-800">Recent Quotations</div>
-             <Link href="/Quotations" className="text-xs font-bold text-blue-600 hover:underline">View All</Link>
-          </div>
-          <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-2">
-            {loading ? (
-               <div className="text-sm text-slate-400">Loading...</div>
-            ) : recentQuotations.length === 0 ? (
-               <div className="text-sm text-slate-400">No recent quotations</div>
-            ) : (
-              recentQuotations.map((q, i) => (
-                <div key={i} className="flex justify-between items-center p-3 rounded-lg border border-slate-50 hover:bg-slate-50 transition-colors">
-                  <div className="flex-1 min-w-0 pr-3">
-                    <div className="text-xs font-bold text-slate-800 truncate">{q.code || "N/A"}</div>
-                    <div className="text-[10px] text-slate-500 truncate mt-0.5">{q.customer?.name || "Unknown Customer"}</div>
-                  </div>
-                  <div className="text-right flex items-center gap-3 shrink-0">
-                    <div className="text-xs font-bold text-slate-800">{inr(Number(q.grandTotal || 0))}</div>
-                    <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md w-16 text-center ${getStatusBg(q.status)}`}>
-                      {getStatusLabel(q.status)}
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[
+            { icon: FileText, label: "Total Quotations", val: loading ? "..." : totalQuotations, color: "text-blue-500", bg: "bg-blue-50" },
+            { icon: CheckCircle2, label: "Total Value", val: loading ? "..." : inr(totalValue), color: "text-emerald-500", bg: "bg-emerald-50" },
+            { icon: Clock, label: "In Progress", val: loading ? "..." : inProgress, color: "text-amber-500", bg: "bg-amber-50" },
+            { icon: CheckCircle2, label: "Completed", val: loading ? "..." : completed, color: "text-purple-500", bg: "bg-purple-50" }
+          ].map((stat, i) => (
+            <div key={i} className="bg-white/80 backdrop-blur-xl rounded-2xl p-5 shadow-sm border border-white flex items-center gap-4">
+              <div className={`w-14 h-14 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shrink-0`}>
+                <stat.icon className="w-6 h-6" />
+              </div>
+              <div className="flex flex-col">
+                 <span className="text-xs font-bold text-slate-500">{stat.label}</span>
+                 <div className="text-xl font-black text-slate-900 mt-1">{stat.val}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Chart & Recent Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Pie Chart */}
+          <div className="lg:col-span-5 bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-white flex flex-col min-h-[320px]">
+            <h2 className="text-base font-black text-slate-900 mb-6">Quotations by Status</h2>
+            <div className="flex-1 flex items-center">
+              {loading ? (
+                <div className="w-full flex justify-center text-sm font-medium text-slate-400">Loading chart...</div>
+              ) : totalQuotations === 0 ? (
+                <div className="w-full flex justify-center text-sm font-medium text-slate-400">No data available</div>
+              ) : (
+                <>
+                  <div className="w-1/2 h-[200px] relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={65}
+                          outerRadius={90}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-black text-slate-900">{totalQuotations}</span>
+                      <span className="text-xs font-bold text-slate-500">Total</span>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                  <div className="w-1/2 pl-4 flex flex-col justify-center gap-4">
+                    {pieData.map((entry, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                          <span className="text-sm font-bold text-slate-600">{entry.name}</span>
+                        </div>
+                        <span className="text-sm font-black text-slate-900">
+                          {totalQuotations > 0 ? Math.round((entry.value / totalQuotations) * 100) : 0}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Quotations */}
+          <div className="lg:col-span-7 bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-sm border border-white flex flex-col min-h-[320px]">
+            <div className="flex justify-between items-center mb-6">
+               <h2 className="text-base font-black text-slate-900">Recent Quotations</h2>
+               <Link href="/Quotations" className="text-sm font-bold text-blue-600 hover:text-blue-700">View All</Link>
+            </div>
+            <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
+              {loading ? (
+                 <div className="text-sm font-medium text-slate-400">Loading...</div>
+              ) : recentQuotations.length === 0 ? (
+                 <div className="text-sm font-medium text-slate-400">No recent quotations</div>
+              ) : (
+                recentQuotations.map((q, i) => (
+                  <div key={i} className="flex justify-between items-center p-2 rounded-2xl hover:bg-slate-50 transition-colors group">
+                    <div className="flex items-center gap-4 flex-1 min-w-0 pr-4">
+                      <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-black text-slate-900 truncate">{q.code || "N/A"}</div>
+                        <div className="text-[11px] font-bold text-slate-500 truncate mt-0.5">{q.customer?.name || "Unknown"}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 shrink-0">
+                      <div className="text-sm font-black text-slate-900">{inr(Number(q.grandTotal || 0))}</div>
+                      <div className={`text-xs font-bold px-3 py-1.5 rounded-lg w-20 text-center ${getStatusBg(q.status)}`}>
+                        {getStatusLabel(q.status)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-4 items-end mt-auto shrink-0">
-         <div className="flex-1">
-            <div className="text-sm font-bold text-slate-800 mb-3">Quick Actions</div>
-            <div className="flex gap-3">
-              {[
-                { icon: PlusCircle, title: "New Quotation", desc: "Create a new quotation", href: "/Quotations" },
-                { icon: Boxes, title: "Add Material", desc: "Add new material to database", href: "/Materials" },
-                { icon: Users, title: "Employees", desc: "Manage your team", href: "/Staff" },
-                { icon: FileArchive, title: "Activity Template", desc: "Create or edit templates", href: "/Activities" },
-              ].map((action, i) => (
-                <Link key={i} href={action.href} className="flex-1 bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-4 hover:border-blue-200 hover:shadow-md transition-all group">
-                   <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                     <action.icon className="h-5 w-5" />
+        {/* Quick Actions */}
+        <div>
+          <h2 className="text-base font-black text-slate-900 mb-4 ml-1">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { icon: Plus, title: "New Quotation", desc: "Create a new quotation", href: "/Quotations", color: "text-blue-500", bg: "bg-blue-50", iconBg: "bg-blue-500" },
+              { icon: Package, title: "Add Material", desc: "Add new material to database", href: "/Materials", color: "text-emerald-500", bg: "bg-emerald-50", iconBg: "bg-emerald-500" },
+              { icon: Users, title: "Employees", desc: "Manage your team", href: "/Staff", color: "text-orange-500", bg: "bg-orange-50", iconBg: "bg-orange-500" },
+              { icon: FileStack, title: "Activity Template", desc: "Create or edit templates", href: "/Activities", color: "text-purple-500", bg: "bg-purple-50", iconBg: "bg-purple-500" },
+            ].map((action, i) => (
+              <Link key={i} href={action.href} className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 shadow-sm border border-white flex items-center justify-between group hover:shadow-md transition-all">
+                 <div className="flex items-center gap-3">
+                   <div className={`w-10 h-10 rounded-full ${action.iconBg} text-white flex items-center justify-center shrink-0 shadow-sm`}>
+                     <action.icon className="w-5 h-5" />
                    </div>
                    <div className="flex flex-col text-left">
-                     <div className="text-xs font-bold text-slate-800 leading-tight">{action.title}</div>
-                     <div className="text-[10px] font-medium text-slate-500 leading-tight mt-1">{action.desc}</div>
+                     <div className="text-sm font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">{action.title}</div>
+                     <div className="text-[10px] font-bold text-slate-500 leading-tight mt-1">{action.desc}</div>
                    </div>
-                </Link>
-              ))}
-            </div>
-         </div>
+                 </div>
+                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+              </Link>
+            ))}
+          </div>
+        </div>
+        
       </div>
     </div>
   );
