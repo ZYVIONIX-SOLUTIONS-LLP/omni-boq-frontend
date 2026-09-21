@@ -1,326 +1,196 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+  FileDigit, FileText, Clock, CheckSquare, PlusCircle, 
+  Boxes, Users, FileArchive
+} from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
+import { listQuotations, Quotation } from "@/app/lib/api/quotations";
 
-// API
-import { listUsers, User } from "@/app/lib/api/auth";
-import { listProducts } from "@/app/lib/catalog/api";
-import { listActivities } from "@/app/lib/api/activities";
-
-// ── Icons ──────────────────────────────────────────────────────────────────
-import { Users, ShieldCheck, Package, Hammer, Plus, RefreshCw } from "lucide-react";
-
-// ── Donut Chart ─────────────────────────────────────────────────────────────
-function DonutChart({ admins, staff }: { admins: number; staff: number }) {
-  const total = admins + staff;
-  const adminPct = total === 0 ? 0 : (admins / total) * 100;
-  const staffPct = total === 0 ? 0 : (staff / total) * 100;
-
-  const segments = [
-    { pct: adminPct, color: "#6c63ff", label: "Admins (Vendors)" },
-    { pct: staffPct, color: "#00C8FF", label: "Staff (Users)" },
-  ];
-
-  const r = 58;
-  const cx = 75;
-  const cy = 75;
-  const circ = 2 * Math.PI * r;
-  const gap = total > 0 && admins > 0 && staff > 0 ? 2 : 0;
-  let offset = 0;
-
-  const arcs = segments.map((seg, i) => {
-    if (seg.pct === 0) return null;
-    const dash = (seg.pct / 100) * circ - gap;
-    const space = circ - dash;
-    const node = (
-      <circle
-        key={i}
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        stroke={seg.color}
-        strokeWidth={24}
-        strokeDasharray={`${dash} ${space}`}
-        strokeDashoffset={-offset}
-        style={{ transform: "rotate(-90deg)", transformOrigin: `${cx}px ${cy}px`, transition: "all 1s ease-out" }}
-      />
-    );
-    offset += (seg.pct / 100) * circ;
-    return node;
-  });
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <svg width={150} height={150} viewBox="0 0 150 150">
-        {total === 0 ? (
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth={24} />
-        ) : (
-          arcs
-        )}
-        <circle cx={cx} cy={cy} r={46} fill="white" />
-      </svg>
-      <div className="grid grid-cols-1 gap-x-5 gap-y-2 w-full px-4 mt-2">
-        {segments.map((seg) => (
-          <span key={seg.label} className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: seg.color }} />
-            {seg.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
+function inr(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "?0";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
-export default function SuperAdminDashboard() {
-  const router = useRouter();
+const STATUS_COLORS = {
+  DRAFT: "#94A3B8",
+  FINAL: "#0284C7",
+  SENT: "#3B82F6",
+  ACCEPTED: "#10B981",
+  REJECTED: "#EF4444",
+  EXPIRED: "#F59E0B"
+};
+
+export default function Dashboard() {
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Stats
-  const [totalAdmins, setTotalAdmins] = useState(0);
-  const [totalStaff, setTotalStaff] = useState(0);
-  const [totalMaterials, setTotalMaterials] = useState(0);
-  const [totalActivities, setTotalActivities] = useState(0);
 
-  // Recent Users
-  const [recentUsers, setRecentUsers] = useState<User[]>([]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [usersRes, productsRes, activitiesRes] = await Promise.all([
-        listUsers(),
-        listProducts({ limit: 1 }), // Just need meta.totalItems
-        listActivities({ limit: 1 }), // Just need meta.totalItems
-      ]);
-
-      const admins = usersRes.filter(u => u.role === "ADMIN");
-      const staff = usersRes.filter(u => u.role === "STAFF");
-
-      setTotalAdmins(admins.length);
-      setTotalStaff(staff.length);
-      setTotalMaterials(productsRes.meta?.totalItems || 0);
-      setTotalActivities(activitiesRes.meta?.totalItems || 0);
-
-      // Get 5 most recent admins
-      const sortedAdmins = [...admins].sort((a, b) => {
-        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-      });
-      setRecentUsers(sortedAdmins.slice(0, 5));
-
-    } catch (err) {
-      console.error("Failed to load superadmin dashboard data", err);
-    } finally {
+  useEffect(() => {
+    listQuotations({ limit: 1000 }).then(res => {
+      setQuotations(res.items || []);
       setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
+  const totalQuotations = quotations.length;
+  const totalValue = quotations.reduce((sum, q) => sum + Number(q.grandTotal || 0), 0);
+  const inProgress = quotations.filter(q => ["DRAFT", "FINAL", "SENT"].includes(q.status)).length;
+  const completed = quotations.filter(q => ["ACCEPTED", "REJECTED", "EXPIRED"].includes(q.status)).length;
+  const recentQuotations = [...quotations].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 5);
+
+  const statusCounts = quotations.reduce((acc, q) => {
+    acc[q.status] = (acc[q.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case "DRAFT": return "Draft";
+      case "FINAL": return "Final";
+      case "SENT": return "Sent";
+      case "ACCEPTED": return "Accepted";
+      case "REJECTED": return "Rejected";
+      case "EXPIRED": return "Expired";
+      default: return status;
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const getStatusBg = (status: string) => {
+    switch(status) {
+      case "DRAFT": return "bg-slate-100 text-slate-600";
+      case "FINAL": return "bg-sky-100 text-sky-700";
+      case "SENT": return "bg-blue-100 text-blue-700";
+      case "ACCEPTED": return "bg-emerald-100 text-emerald-700";
+      case "REJECTED": return "bg-red-100 text-red-700";
+      case "EXPIRED": return "bg-amber-100 text-amber-700";
+      default: return "bg-slate-100 text-slate-700";
+    }
+  };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-0rem)] bg-[#f8f7ff]">
-      <div className="px-7 py-5 space-y-5 flex-1">
-        
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">System Overview</h1>
-          <Button onClick={loadData} variant="outline" size="sm" className="gap-2 rounded-xl bg-white h-9 shadow-sm">
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+    <div className="h-[calc(100vh-80px)] w-full overflow-hidden bg-slate-50 p-6 font-sans flex flex-col">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {[
+          { icon: FileDigit, label: "Total Quotations", val: loading ? "..." : totalQuotations, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { icon: FileText, label: "Total Value", val: loading ? "..." : inr(totalValue), color: "text-emerald-600", bg: "bg-emerald-50" },
+          { icon: Clock, label: "In Progress", val: loading ? "..." : inProgress, color: "text-blue-600", bg: "bg-blue-50" },
+          { icon: CheckSquare, label: "Completed", val: loading ? "..." : completed, color: "text-violet-600", bg: "bg-violet-50" }
+        ].map((stat, i) => (
+          <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex flex-col gap-3 transition-transform hover:-translate-y-1 hover:shadow-md">
+            <div className="flex items-center gap-3">
+               <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.color}`}>
+                 <stat.icon className="h-5 w-5" />
+               </div>
+               <span className="text-sm font-bold text-slate-500">{stat.label}</span>
+            </div>
+            <div className="text-2xl font-black text-slate-800">{stat.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart & Recent Row */}
+      <div className="flex gap-4 mb-6 flex-1 min-h-[250px]">
+        {/* Pie Chart Area */}
+        <div className="flex-[1.5] bg-white rounded-xl p-5 flex flex-col shadow-sm border border-slate-100">
+          <div className="text-sm font-bold text-slate-800 mb-2">Quotations by Status</div>
+          <div className="flex-1 relative">
+            {loading ? (
+              <div className="w-full h-full flex items-center justify-center text-sm text-slate-400">Loading chart...</div>
+            ) : pieData.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-sm text-slate-400">No data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({name, percent}) => `${getStatusLabel(name)} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name as keyof typeof STATUS_COLORS] || "#cbd5e1"} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={(value, name) => [value, getStatusLabel(name as string)]} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
-        {/* ── Stat Cards ─────────────────────────── */}
-        <div className="grid grid-cols-4 gap-4">
-
-          <Card className="rounded-2xl shadow-sm border-border bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="w-16 h-16 text-[#6c63ff]" />
-            </div>
-            <CardHeader className="pb-0 pt-5 relative z-10">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Total Admins
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2 pb-6 relative z-10">
-              <p className="text-4xl font-extrabold text-foreground leading-none">{loading ? "..." : totalAdmins}</p>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">Registered Companies</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm border-border bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform">
-              <Users className="w-16 h-16 text-[#00C8FF]" />
-            </div>
-            <CardHeader className="pb-0 pt-5 relative z-10">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Total Staff
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2 pb-6 relative z-10">
-              <p className="text-4xl font-extrabold text-foreground leading-none">{loading ? "..." : totalStaff}</p>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">System Estimators</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm border-border bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform">
-              <Package className="w-16 h-16 text-emerald-500" />
-            </div>
-            <CardHeader className="pb-0 pt-5 relative z-10">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Master Materials
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2 pb-6 relative z-10">
-              <p className="text-4xl font-extrabold text-foreground leading-none">{loading ? "..." : totalMaterials}</p>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">Products in catalog</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm border-border bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform">
-              <Hammer className="w-16 h-16 text-amber-500" />
-            </div>
-            <CardHeader className="pb-0 pt-5 relative z-10">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Master Activities
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2 pb-6 relative z-10">
-              <p className="text-4xl font-extrabold text-foreground leading-none">{loading ? "..." : totalActivities}</p>
-              <p className="text-xs text-muted-foreground mt-2 font-medium">Standard assemblies</p>
-            </CardContent>
-          </Card>
-
-        </div>
-
-        {/* ── Bottom section ───────────────────────────────────── */}
-        <div className="flex gap-4 items-start">
-
-          {/* Recent Users Table */}
-          <Card className="flex-1 min-w-0 rounded-2xl shadow-sm border-border bg-white overflow-hidden">
-            <CardHeader className="flex-row items-center justify-between pb-3 pt-5 border-b border-border/50">
-              <CardTitle className="text-base font-bold text-zinc-800">Recently Added Admins</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b border-border/50">
-                    <TableHead className="px-5 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-[120px]">
-                      Date
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Name
-                    </TableHead>
-                    <TableHead className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Username / ID
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="h-32 text-center text-sm text-muted-foreground">
-                        Loading recent admins...
-                      </TableCell>
-                    </TableRow>
-                  ) : recentUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="h-32 text-center text-sm text-muted-foreground">
-                        No admins found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    recentUsers.map((u) => (
-                      <TableRow
-                        key={u.id}
-                        className="hover:bg-accent/40 transition-colors border-b border-border/50"
-                      >
-                        <TableCell className="px-5 py-3 text-xs font-medium text-muted-foreground">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "System"}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 font-semibold text-zinc-800">
-                          {u.firstName} {u.lastName}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-xs font-mono text-muted-foreground">
-                          {u.username}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Right panel */}
-          <div className="w-[280px] flex-shrink-0 flex flex-col gap-4">
-
-            {/* Users Breakdown */}
-            <Card className="rounded-2xl shadow-sm border-border bg-white">
-              <CardHeader className="pb-4 pt-5">
-                <CardTitle className="text-sm font-bold text-zinc-800">Users Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent className="pb-6">
-                <DonutChart admins={totalAdmins} staff={totalStaff} />
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="rounded-2xl shadow-sm border-border bg-white">
-              <CardHeader className="pb-3 pt-5">
-                <CardTitle className="text-sm font-bold text-zinc-800">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 pb-5">
-                <Button
-                  onClick={() => router.push("/superadmin/Admins")}
-                  variant="outline"
-                  className="w-full h-auto py-3 px-4 rounded-xl justify-start gap-3 hover:bg-[#6c63ff]/5 hover:border-[#6c63ff]/30 hover:text-[#6c63ff] transition-all text-zinc-700 shadow-sm"
-                >
-                  <div className="p-2 bg-[#6c63ff]/10 rounded-lg text-[#6c63ff]">
-                    <ShieldCheck className="w-5 h-5" />
+        {/* Recent Quotations */}
+        <div className="flex-[1] bg-white rounded-xl p-5 flex flex-col shadow-sm border border-slate-100">
+          <div className="flex justify-between items-center mb-4">
+             <div className="text-sm font-bold text-slate-800">Recent Quotations</div>
+             <Link href="/superadmin/Quotations" className="text-xs font-bold text-blue-600 hover:underline">View All</Link>
+          </div>
+          <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-2">
+            {loading ? (
+               <div className="text-sm text-slate-400">Loading...</div>
+            ) : recentQuotations.length === 0 ? (
+               <div className="text-sm text-slate-400">No recent quotations</div>
+            ) : (
+              recentQuotations.map((q, i) => (
+                <div key={i} className="flex justify-between items-center p-3 rounded-lg border border-slate-50 hover:bg-slate-50 transition-colors">
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className="text-xs font-bold text-slate-800 truncate">{q.code || "N/A"}</div>
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">{q.customer?.name || "Unknown Customer"}</div>
                   </div>
-                  <span className="font-bold text-sm">Manage Admins</span>
-                </Button>
-
-                <Button
-                  onClick={() => router.push("/superadmin/Materials")}
-                  variant="outline"
-                  className="w-full h-auto py-3 px-4 rounded-xl justify-start gap-3 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all text-zinc-700 shadow-sm"
-                >
-                  <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
-                    <Package className="w-5 h-5" />
+                  <div className="text-right flex items-center gap-3 shrink-0">
+                    <div className="text-xs font-bold text-slate-800">{inr(Number(q.grandTotal || 0))}</div>
+                    <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md w-16 text-center ${getStatusBg(q.status)}`}>
+                      {getStatusLabel(q.status)}
+                    </div>
                   </div>
-                  <span className="font-bold text-sm">Manage Materials</span>
-                </Button>
-              </CardContent>
-            </Card>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      <Separator className="bg-border/60" />
-      <footer className="text-center py-4 text-xs font-medium text-muted-foreground flex-shrink-0 bg-white">
-        Zyvionix Solutions © 2026. All Rights Reserved.
-      </footer>
+      {/* Quick Actions */}
+      <div className="flex gap-4 items-end mt-auto shrink-0">
+         <div className="flex-1">
+            <div className="text-sm font-bold text-slate-800 mb-3">Quick Actions</div>
+            <div className="flex gap-3">
+              {[
+                { icon: PlusCircle, title: "New Quotation", desc: "Create a new quotation", href: "/superadmin/Quotations" },
+                { icon: Boxes, title: "Add Material", desc: "Add new material to database", href: "/superadmin/Materials" },
+                { icon: Users, title: "Employees", desc: "Manage your team", href: "/superadmin/Staff" },
+                { icon: FileArchive, title: "Activity Template", desc: "Create or edit templates", href: "/superadmin/Activities" },
+              ].map((action, i) => (
+                <Link key={i} href={action.href} className="flex-1 bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-4 hover:border-blue-200 hover:shadow-md transition-all group">
+                   <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                     <action.icon className="h-5 w-5" />
+                   </div>
+                   <div className="flex flex-col text-left">
+                     <div className="text-xs font-bold text-slate-800 leading-tight">{action.title}</div>
+                     <div className="text-[10px] font-medium text-slate-500 leading-tight mt-1">{action.desc}</div>
+                   </div>
+                </Link>
+              ))}
+            </div>
+         </div>
+      </div>
     </div>
   );
 }

@@ -283,19 +283,7 @@ export default function LandingPage() {
                     </div>
                  </div>
 
-                 {/* Floating price update widget */}
-                 <div className="w-[240px] bg-[#F8FAFC] rounded-xl p-3 border border-[#E2E8F0] shadow-sm flex flex-col gap-2 relative">
-                    <div className="absolute top-[-10px] left-4 bg-[#10B981]/10 text-[#10B981] p-1 rounded">
-                       <FileSpreadsheet className="h-4 w-4" />
-                    </div>
-                    <div className="ml-10">
-                       <div className="text-[11px] font-bold text-[#0F172A]">Materials Price Update</div>
-                       <div className="text-[9px] text-[#64748B] mt-0.5">Schneider Electric price list updated on 28 May, 2024</div>
-                    </div>
-                    <div className="text-right mt-1">
-                       <button className="text-[9px] font-bold text-[#0066FF] border border-[#E2E8F0] px-2 py-1 rounded bg-white hover:bg-slate-50">View Details →</button>
-                    </div>
-                 </div>
+
               </div>
 
             </div>
