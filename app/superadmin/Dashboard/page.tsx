@@ -158,7 +158,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Bar Chart */}
-          <div className="md:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
+          <div className="md:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Quotation Overview</h2>
             <div className="flex-1 w-full h-[250px]">
               {loading ? (
