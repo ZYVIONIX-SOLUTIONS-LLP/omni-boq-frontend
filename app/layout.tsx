@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Omni BOQ",
+  title: "Omni electrics - BOQ Application",
   description: "Omni BOQ Application",
 };
 

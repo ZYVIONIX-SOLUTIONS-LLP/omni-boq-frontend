@@ -55,7 +55,7 @@ export default function SuperAdminLogin() {
 
           {/* Custom Logo Image */}
           <div className="relative mb-8 flex h-32 w-48 items-center justify-center z-10 drop-shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
-             <img src="/logo.png" alt="Zyvionix Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+             <img src="/logo.png" alt="Zyvionix Logo" className="w-full h-full object-contain drop-shadow-2xl rounded-full" />
           </div>
 
           <h2 className="text-[28px] font-sans tracking-tight flex items-center justify-center whitespace-nowrap z-10">

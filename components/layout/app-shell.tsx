@@ -197,19 +197,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className={`flex items-center mb-4 px-4 ${collapsed ? "flex-col gap-2" : "justify-between gap-2"}`}>
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-              <img
-                src="/logo.png"
-                alt="Zyvionix Logo"
-                className="w-full h-full object-contain"
-              />
+      <img
+  src="/logo.png"
+  alt="Omni Logo"
+  className="w-full h-full object-contain rounded-full"
+/>
             </div>
             {!collapsed && (
               <div className="leading-tight min-w-0">
                 <p className="text-sm font-bold truncate" style={{ color: THEME.ink }}>
-                  Zyvionix
+                  Omni
                 </p>
                 <p className="text-[10px] font-semibold truncate" style={{ color: THEME.deepwater }}>
-                  Solutions
+                  Electrics
                 </p>
               </div>
             )}

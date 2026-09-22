@@ -288,7 +288,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-7 text-[13.5px] text-[#6B7690]">
+          {/* <div className="mt-7 text-[13.5px] text-[#6B7690]">
             {isSignUp ? (
               <>
                 Already have an account?{" "}
@@ -304,7 +304,7 @@ export default function Login() {
                 </button>
               </>
             )}
-          </div>
+          </div> */}
         </div>
       </main>
 
