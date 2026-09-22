@@ -158,7 +158,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Bar Chart */}
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
+          <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Quotation Overview</h2>
             <div className="flex-1 w-full h-[250px]">
               {loading ? (
@@ -239,7 +239,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Recent Quotations Table */}
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[300px]">
+          <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[300px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Recent Quotations</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[500px]">
@@ -278,25 +278,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Promotional / Action Card */}
-          <div className="lg:col-span-1 bg-emerald-50 rounded-2xl p-8 shadow-sm border border-emerald-100 flex flex-col items-center justify-center text-center min-h-[300px]">
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 relative">
-               <FileText className="w-8 h-8 text-emerald-400" />
-               <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white rounded-full p-1 border-2 border-emerald-50">
-                 <CheckCircle2 className="w-4 h-4" />
-               </div>
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-3 leading-tight">Turn your projects<br/>into success</h3>
-            <p className="text-sm font-medium text-slate-600 mb-8 px-4">
-              Create accurate quotations<br/>in minutes.
-            </p>
-            <Link 
-              href="/Quotations" 
-              className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-3 px-8 rounded-xl shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
-            >
-              Create Quotation
-            </Link>
-          </div>
+          
 
         </div>
       </div>
