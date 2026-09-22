@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { getUser } from "@/app/lib/auth-storage";
-import { categoriesApi, CatalogCategory } from "@/app/lib/catalog/api";
+import { categoriesApi } from "@/app/lib/catalog/api";
+import { CatalogCategory } from "@/app/lib/catalog/types";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

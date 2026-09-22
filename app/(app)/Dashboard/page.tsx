@@ -90,7 +90,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4 mb-2">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white font-black text-xl italic shadow-lg shadow-blue-500/30">Z</div>
+            {/* <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white font-black text-xl italic shadow-lg shadow-blue-500/30">Z</div> */}
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dashboard</h1>
               <p className="text-sm font-medium text-slate-500 mt-0.5">Good to see you again! Keep building great quotations.</p>
@@ -98,12 +98,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-bold text-slate-500">{today}</span>
-            <button className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors">
-              <Bell className="w-5 h-5" />
-            </button>
-            <div className="w-10 h-10 rounded-full bg-blue-900 text-white font-bold flex items-center justify-center shadow-sm">
-              VP
-            </div>
+
           </div>
         </div>
 
