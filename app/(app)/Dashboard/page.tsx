@@ -155,10 +155,10 @@ export default function Dashboard() {
         </div>
 
         {/* Middle Row: Bar Chart & Donut Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Bar Chart */}
-          <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
+          <div className="md:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Quotation Overview</h2>
             <div className="flex-1 w-full h-[250px]">
               {loading ? (
@@ -185,7 +185,7 @@ export default function Dashboard() {
           </div>
 
           {/* Donut Chart */}
-          <div className="lg:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
+          <div className="md:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Status Distribution</h2>
             <div className="flex-1 flex flex-col sm:flex-row items-center gap-6">
               {loading ? (
@@ -236,10 +236,10 @@ export default function Dashboard() {
         </div>
 
         {/* Bottom Row: Recent Quotations & Promo Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Recent Quotations Table */}
-          <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[300px]">
+          <div className="md:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[300px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Recent Quotations</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[500px]">
