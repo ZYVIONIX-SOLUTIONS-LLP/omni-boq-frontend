@@ -21,6 +21,27 @@ function inr(value: number | null | undefined): string {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT: "#94A3B8",
+  FINAL: "#0ea5e9",
+  SENT: "#3B82F6",
+  ACCEPTED: "#10B981",
+  REJECTED: "#EF4444",
+  EXPIRED: "#F59E0B"
+};
+
+const getStatusLabel = (status: string) => {
+  switch(status) {
+    case "DRAFT": return "Draft";
+    case "FINAL": return "Final";
+    case "SENT": return "Sent";
+    case "ACCEPTED": return "Accepted";
+    case "REJECTED": return "Rejected";
+    case "EXPIRED": return "Expired";
+    default: return status;
+  }
+};
+
 export default function Dashboard() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,15 +62,18 @@ export default function Dashboard() {
   const completed = quotations.filter(q => ["ACCEPTED", "REJECTED", "EXPIRED"].includes(q.status)).length;
   const recentQuotations = [...quotations].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 5);
 
-  const draftCount = quotations.filter(q => q.status === "DRAFT" || q.status === "FINAL").length;
-  const sentCount = quotations.filter(q => q.status === "SENT").length;
-  const completedCount = completed;
+  const statusCounts = quotations.reduce((acc, q) => {
+    acc[q.status] = (acc[q.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-  const pieData = [
-    { name: "Draft", value: draftCount, color: "#94A3B8" },
-    { name: "Sent", value: sentCount, color: "#3B82F6" },
-    { name: "Completed", value: completedCount, color: "#10B981" }
-  ].filter(d => d.value > 0);
+  const pieData = Object.entries(statusCounts)
+    .map(([status, count]) => ({
+      name: getStatusLabel(status),
+      value: count,
+      color: STATUS_COLORS[status] || "#94A3B8"
+    }))
+    .filter(d => d.value > 0);
 
   // Generate Bar Chart Data by grouping existing quotations by month
   const currentYear = new Date().getFullYear();
@@ -60,7 +84,10 @@ export default function Dashboard() {
   for (let i = 5; i >= 0; i--) {
     let mIdx = currentMonthIdx - i;
     if (mIdx < 0) mIdx += 12;
-    barDataMap[MONTHS[mIdx]] = { name: MONTHS[mIdx], Draft: 0, Sent: 0, Completed: 0 };
+    barDataMap[MONTHS[mIdx]] = { name: MONTHS[mIdx] };
+    Object.keys(STATUS_COLORS).forEach(status => {
+       barDataMap[MONTHS[mIdx]][getStatusLabel(status)] = 0;
+    });
   }
 
   quotations.forEach(q => {
@@ -69,37 +96,18 @@ export default function Dashboard() {
     if (d.getFullYear() === currentYear || d.getFullYear() === currentYear - 1) {
       const mName = MONTHS[d.getMonth()];
       if (barDataMap[mName]) {
-        if (q.status === "DRAFT" || q.status === "FINAL") barDataMap[mName].Draft += 1;
-        else if (q.status === "SENT") barDataMap[mName].Sent += 1;
-        else barDataMap[mName].Completed += 1;
+        const label = getStatusLabel(q.status);
+        barDataMap[mName][label] = (barDataMap[mName][label] || 0) + 1;
       }
     }
   });
   
   const barData = Object.values(barDataMap);
-  // Fallback mock data if completely empty so chart doesn't look broken
-  if (totalQuotations === 0) {
-    barData[0] = { name: MONTHS[(currentMonthIdx - 5 + 12) % 12], Draft: 2, Sent: 1, Completed: 0 };
-    barData[2] = { name: MONTHS[(currentMonthIdx - 3 + 12) % 12], Draft: 5, Sent: 3, Completed: 2 };
-    barData[5] = { name: MONTHS[currentMonthIdx], Draft: 8, Sent: 4, Completed: 1 };
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch(status) {
-      case "DRAFT": return "Draft";
-      case "FINAL": return "Final";
-      case "SENT": return "Sent";
-      case "ACCEPTED": return "Accepted";
-      case "REJECTED": return "Rejected";
-      case "EXPIRED": return "Expired";
-      default: return status;
-    }
-  };
 
   const getStatusBg = (status: string) => {
     switch(status) {
       case "DRAFT": return "bg-slate-100 text-slate-700";
-      case "FINAL": return "bg-slate-100 text-slate-700";
+      case "FINAL": return "bg-sky-100 text-sky-700";
       case "SENT": return "bg-blue-100 text-blue-700";
       case "ACCEPTED": return "bg-emerald-100 text-emerald-700";
       case "REJECTED": return "bg-red-100 text-red-700";
@@ -153,18 +161,26 @@ export default function Dashboard() {
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col min-h-[350px]">
             <h2 className="text-base font-bold text-slate-900 mb-6">Quotation Overview</h2>
             <div className="flex-1 w-full h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} />
-                  <RechartsTooltip cursor={{ fill: "#f8fafc" }} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", top: -30, right: 0 }} />
-                  <Bar dataKey="Draft" fill="#94A3B8" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                  <Bar dataKey="Sent" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                  <Bar dataKey="Completed" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
+              {loading ? (
+                <div className="w-full h-full flex justify-center items-center text-sm font-medium text-slate-400">Loading chart...</div>
+              ) : totalQuotations === 0 ? (
+                <div className="w-full h-full flex justify-center items-center text-sm font-medium text-slate-400">No data available</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} />
+                    <RechartsTooltip cursor={{ fill: "#f8fafc" }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", top: -30, right: 0 }} />
+                    {Object.entries(STATUS_COLORS).map(([status, color]) => {
+                       const hasData = barData.some(d => d[getStatusLabel(status)] > 0);
+                       if (!hasData) return null;
+                       return <Bar key={status} dataKey={getStatusLabel(status)} fill={color} radius={[4, 4, 0, 0]} maxBarSize={20} />;
+                    })}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -203,17 +219,13 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="flex-1 flex flex-col gap-4 w-full">
-                    {[
-                      { label: "Draft", val: draftCount, color: "#94A3B8" },
-                      { label: "Sent", val: sentCount, color: "#3B82F6" },
-                      { label: "Completed", val: completedCount, color: "#10B981" }
-                    ].map((entry, i) => (
+                    {pieData.map((entry, i) => (
                       <div key={i} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                          <span className="text-xs font-semibold text-slate-600">{entry.label}</span>
+                          <span className="text-xs font-semibold text-slate-600">{entry.name}</span>
                         </div>
-                        <span className="text-sm font-bold text-slate-900">{entry.val}</span>
+                        <span className="text-sm font-bold text-slate-900">{entry.value}</span>
                       </div>
                     ))}
                   </div>
