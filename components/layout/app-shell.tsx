@@ -188,8 +188,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }`}
         style={{
           width: sidebarWidth,
-          backgroundColor: THEME.surface,
-          borderRight: `1px solid ${THEME.hairline}`,
+          backgroundColor: "#163848", borderRight: "none",
           display: isFullscreen ? "none" : undefined,
         }}
       >
@@ -205,10 +204,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-sm font-bold truncate" style={{ color: THEME.ink }}>
+                <p className="text-sm font-bold truncate" className="text-white">
                   Omni
                 </p>
-                <p className="text-[10px] font-semibold truncate" style={{ color: THEME.deepwater }}>
+                <p className="text-[10px] font-semibold truncate" className="text-[#D4B86A]">
                   Electrics
                 </p>
               </div>
@@ -220,7 +219,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             size="icon"
             onClick={toggleCollapsed}
             className="h-7 w-7 rounded-lg flex-shrink-0"
-            style={{ color: THEME.muted }}
+            className="text-slate-300"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -262,24 +261,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 title={collapsed ? item.label : undefined}
                 className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-xs transition-all ${
                   isActive
-                    ? "font-bold rounded-md border border-purple-200"
+                    ? "font-bold rounded-md border-transparent"
                     : "font-medium rounded-md border border-transparent"
                 } ${collapsed ? "justify-center" : ""}`}
                 style={
                   isActive
-                    ? { backgroundColor: "#faf5ff", color: "#7e22ce" }
-                    : { color: THEME.muted }
+                    ? { backgroundColor: "transparent", color: "#D4B86A" }
+                    : { color: "#FFFFFF" }
                 }
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.backgroundColor = THEME.hoverTint;
-                    e.currentTarget.style.color = THEME.deepwater;
+                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = THEME.muted;
                   }
                 }}
               >
@@ -293,7 +290,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* User profile + logout */}
         <div
           className={`pt-4 px-3 flex ${collapsed ? "flex-col items-center gap-2" : "items-center gap-2.5"}`}
-          style={{ borderTop: `1px solid ${THEME.hairline}` }}
+          style={{ borderTop: `1px solid rgba(255,255,255,0.1)` }}
         >
           <div className={`flex items-center gap-2.5 min-w-0 ${collapsed ? "" : "flex-1"}`}>
             <Avatar className="w-9 h-9 shadow-sm flex-shrink-0" style={{ border: `1px solid THEME.hairline` }}>
@@ -306,10 +303,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Avatar>
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-[11px] leading-none mb-0.5" style={{ color: THEME.muted }}>
+                <p className="text-[11px] leading-none mb-0.5" className="text-slate-300">
                   Welcome back,
                 </p>
-                <p className="text-sm font-bold leading-none truncate" style={{ color: THEME.ink }}>
+                <p className="text-sm font-bold leading-none truncate" className="text-white">
                   {displayName}!
                 </p>
               </div>
@@ -322,7 +319,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             onClick={handleLogout}
             disabled={loggingOut}
             className="rounded-xl h-9 w-9 flex-shrink-0 hover:text-red-500 hover:bg-red-50/50"
-            style={{ borderColor: THEME.hairline, color: THEME.muted }}
+            style={{ borderColor: "rgba(255,255,255,0.2)", color: "#ffffff" }}
             aria-label="Logout"
             title="Logout"
           >
