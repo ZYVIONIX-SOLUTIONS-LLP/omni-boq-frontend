@@ -50,6 +50,7 @@ function makeStore<T extends BaseEntity>(basePath: string): EntityStore<T> {
         limit: params.limit,
         search: params.search,
         includeInactive: params.includeInactive,
+          scope: (params as any).scope,
         ...(params.filter as Record<string, unknown> | undefined),
       });
       return apiGet<{ items: T[]; meta: PageMeta }>(`${basePath}${query}`);
