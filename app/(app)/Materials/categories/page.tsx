@@ -1,5 +1,5 @@
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 "use client";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Category taxonomy — master/detail: categories on the left, the selected
 // category's SPECIFICATIONS on the right. A spec is either a "Value" field
