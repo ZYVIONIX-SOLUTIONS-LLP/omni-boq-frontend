@@ -12,8 +12,14 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Trash2,
+  Trash2, MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Swal from "sweetalert2";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getUser } from "@/app/lib/auth-storage";
@@ -593,37 +599,30 @@ export default function ProductLibraryPage() {
                       {p.mrp != null ? inr(p.mrp) : "—"}
                     </TableCell>
                     <TableCell className="pr-5 py-2.5">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setViewing(p.id)}
-                          className="h-8 w-8 rounded-none text-slate-500 hover:text-purple-700 hover:bg-purple-50"
-                          aria-label={`View ${p.name || p.modelCode}`}
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => router.push(`/Materials/new?id=${p.id}`)}
-                          className="h-8 w-8 rounded-none text-slate-500 hover:text-purple-700 hover:bg-purple-50"
-                          aria-label={`Edit ${p.name || p.modelCode}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        {!isGlobal && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleting(p)}
-                            className="h-8 w-8 rounded-none text-slate-500 hover:text-red-600 hover:bg-red-50"
-                            aria-label={`Delete ${p.name || p.modelCode}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 rounded-none hover:bg-purple-100/50">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4 text-slate-500" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-none border-purple-200">
+                            <DropdownMenuItem onClick={() => setViewing(p.id)} className="cursor-pointer">
+                              <Eye className="mr-2 h-4 w-4" />
+                              <span>View</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/Materials/new?id=${p.id}`)} className="cursor-pointer">
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                            {!isGlobal && (
+                              <DropdownMenuItem onClick={() => setDeleting(p)} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
