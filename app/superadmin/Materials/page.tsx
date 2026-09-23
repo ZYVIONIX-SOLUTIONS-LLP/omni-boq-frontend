@@ -490,7 +490,7 @@ export default function ProductLibraryPage() {
                 return (
                   <TableRow key={p.id} className="hover:bg-muted/30">
                     <TableCell className="pl-5">
-                      <input type=\"checkbox\" disabled={!getUser()?.roles.includes(\"SUPERADMIN\") && !p.tenantId} checked={selectedIds.has(p.id)}
+                      <input type="checkbox" disabled={!getUser()?.roles.includes("SUPERADMIN") && !p.tenantId} checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
                         aria-label={`Select ${p.name || p.modelCode}`}
                         className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-30"
@@ -558,7 +558,7 @@ export default function ProductLibraryPage() {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        {(getUser()?.roles.includes(\"SUPERADMIN\") || !!p.tenantId) && (<Button variant=\"ghost\" size=\"icon\" onClick={() => setDeleting(p)} className=\"h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500\" aria-label={`Delete ${p.name || p.modelCode}`}><Trash2 className=\"h-3.5 w-3.5\" /></Button>)}
+                        {(getUser()?.roles.includes("SUPERADMIN") || !!p.tenantId) && (<Button variant="ghost" size="icon" onClick={() => setDeleting(p)} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-red-500" aria-label={`Delete ${p.name || p.modelCode}`}><Trash2 className="h-3.5 w-3.5" /></Button>)}
                       </div>
                     </TableCell>
                   </TableRow>

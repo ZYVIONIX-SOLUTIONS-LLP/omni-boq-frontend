@@ -577,7 +577,7 @@ export default function ProductLibraryPage() {
                 return (
                   <TableRow key={p.id} className="hover:bg-purple-50/60 transition-colors border-b border-purple-100/90 bg-white/40 backdrop-blur-xs">
                     <TableCell className="pl-5 border-r border-purple-100/80 py-2.5">
-                      <input type=\"checkbox\" disabled={!getUser()?.roles.includes(\"SUPERADMIN\") && p.isGlobal} checked={selectedIds.has(p.id)}
+                      <input type="checkbox" disabled={!getUser()?.roles.includes("SUPERADMIN") && p.isGlobal} checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
                         disabled={isGlobal && !getUser()?.roles.includes("SUPERADMIN")}
                         aria-label={`Select ${p.name || p.modelCode}`}
