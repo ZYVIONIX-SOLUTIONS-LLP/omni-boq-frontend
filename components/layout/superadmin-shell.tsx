@@ -142,30 +142,10 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
         {/* Top Header */}
         <header className="h-[80px] flex items-center justify-between px-8 shrink-0 relative z-10">
            <div>
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Welcome {displayName} !</h1>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{activeItem.label}</h1>
            </div>
            
            <div className="flex items-center gap-4">
-              {/* Search Bar */}
-              <div className="relative">
-                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                 <input 
-                   type="text" 
-                   placeholder="Search" 
-                   className="pl-9 pr-4 py-2 rounded-full border-none bg-white shadow-sm text-sm w-[280px] focus:outline-none focus:ring-2 focus:ring-slate-200"
-                 />
-              </div>
-
-              {/* Theme Toggle placeholder */}
-              <div className="bg-[#2A465B] rounded-full p-1 flex items-center gap-2 shadow-sm ml-2">
-                 <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#2A465B]">
-                    <Sun className="w-3.5 h-3.5" />
-                 </div>
-                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[#89A5B7]">
-                    <Moon className="w-3.5 h-3.5" />
-                 </div>
-              </div>
-
               {/* Notification */}
               <button className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-500 hover:text-slate-700 ml-2">
                  <Bell className="w-4 h-4" />
