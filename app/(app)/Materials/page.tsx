@@ -283,6 +283,7 @@ export default function ProductLibraryPage() {
   const [viewing, setViewing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ProductListRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [isSpecModalOpen, setIsSpecModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
@@ -449,39 +450,16 @@ export default function ProductLibraryPage() {
             </SelectContent>
           </Select>
 
-          {selectedCategoryData && selectedCategoryData.series.length > 0 && (
-            <Select value={draftSeries} onValueChange={(val) => { if (val) setDraftSeries(val) }}>
-              <SelectTrigger className="w-[160px] h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
-                <SelectValue placeholder="Series" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Series</SelectItem>
-                {selectedCategoryData.series.map((s: string) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {selectedCategoryData && selectedCategoryData.attributes.map((attr: any) => (
-            <Select key={attr.id} value={draftAttributes[attr.id] || "all"} onValueChange={(val) => { if (val) setDraftAttributes(p => ({...p, [attr.id]: val})) }}>
-              <SelectTrigger className="w-[140px] h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
-                <SelectValue placeholder={attr.name} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any {attr.name}</SelectItem>
-                {attr.values.map((v: string) => (
-                  <SelectItem key={v} value={v}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ))}
-
-          <Button onClick={applyFilters} className="h-10 rounded-none bg-purple-700 hover:bg-purple-800 text-white shadow-xs">
+          {selectedCategoryData && (selectedCategoryData.series.length > 0 || selectedCategoryData.attributes.length > 0) && (
+              <Button onClick={() => setIsSpecModalOpen(true)} variant="outline" className="h-10 rounded-none border-purple-200/80 bg-white/80 shadow-xs text-purple-800 font-semibold">
+                Filter by Specs
+              </Button>
+            )}
+            <Button onClick={applyFilters} className="h-8 rounded-10 bg-purple-700 hover:bg-purple-800 text-white shadow-xs">
             Filter
           </Button>
           {(draftCategoryId !== "all" || draftSeries !== "all" || Object.keys(draftAttributes).length > 0) && (
-            <Button variant="outline" onClick={clearFilters} className="h-10 rounded-none border-purple-200/80 text-purple-700 bg-purple-50 hover:bg-purple-100 shadow-xs">
+            <Button variant="outline" onClick={clearFilters} className="h-8 rounded-10 border-purple-200/80 text-purple-700 bg-purple-50 hover:bg-purple-100 shadow-xs">
               Clear
             </Button>
           )}
@@ -595,11 +573,11 @@ export default function ProductLibraryPage() {
                         <p className="text-sm font-semibold max-w-[220px] truncate text-slate-800" title={p.manufacturer?.name ?? p.manufacturerName ?? "—"}>
                           {p.manufacturer?.name ?? p.manufacturerName ?? "—"}
                         </p>
-                        {isGlobal && (
+                        {/* {isGlobal && (
                           <span className="text-[10px] uppercase font-bold text-slate-600 bg-purple-100/80 px-1.5 py-0.5 rounded-none border border-purple-200/80">
                             Global
                           </span>
-                        )}
+                        )} */}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm border-r border-purple-100/80 py-2.5 text-slate-700">{p.series ?? "—"}</TableCell>
@@ -732,7 +710,63 @@ export default function ProductLibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk delete confirmation */}
+      
+      {/* Spec Filter Modal */}
+      <Dialog open={isSpecModalOpen} onOpenChange={setIsSpecModalOpen}>
+        <DialogContent className="max-w-md rounded-none border-purple-200 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Filter by Specifications</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            {selectedCategoryData && selectedCategoryData.series.length > 0 && (
+            <Select value={draftSeries} onValueChange={(val) => { if (val) setDraftSeries(val) }}>
+              <SelectTrigger className="w-full h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+                <SelectValue placeholder="Series" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Series</SelectItem>
+                {selectedCategoryData.series.map((s: string) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {selectedCategoryData && selectedCategoryData.attributes.map((attr: any) => (
+            <Select key={attr.id} value={draftAttributes[attr.id] || "all"} onValueChange={(val) => { if (val) setDraftAttributes(p => ({...p, [attr.id]: val})) }}>
+              <SelectTrigger className="w-full h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+                <SelectValue placeholder={attr.name} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any {attr.name}</SelectItem>
+                {attr.values.map((v: string) => (
+                  <SelectItem key={v} value={v}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ))}
+
+          
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-none border-purple-200"
+              onClick={() => setIsSpecModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-none bg-purple-700 hover:bg-purple-800 text-white"
+              onClick={() => { applyFilters(); setIsSpecModalOpen(false); }}
+            >
+              Apply Filters
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+{/* Bulk delete confirmation */}
       <Dialog open={bulkDeleteOpen} onOpenChange={(open) => !open && setBulkDeleteOpen(false)}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
