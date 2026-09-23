@@ -534,11 +534,9 @@ export default function ProductLibraryPage() {
                     </TableCell>
                     <TableCell className="pr-5">
                       <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 rounded-none hover:bg-purple-100/50">
+                          <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-none hover:bg-purple-100/50 text-slate-500 transition-colors">
                               <span className="sr-only">Open menu</span>
-                              <MoreVertical className="h-4 w-4 text-slate-500" />
-                            </Button>
+                              <MoreVertical className="h-4 w-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-none border-purple-200">
                             <DropdownMenuItem onClick={() => setViewing(p.id)} className="cursor-pointer">
