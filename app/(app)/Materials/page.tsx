@@ -497,14 +497,14 @@ export default function ProductLibraryPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-10 w-10 shadow-xs"
+            className="rounded-8 border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-8 w-10 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
             onClick={() => router.push("/Materials/new")}
-            className="gap-2 rounded-none h-10 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
+            className="gap-2 rounded-8 h-8 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
           >
             <Plus className="h-4 w-4" />
             Add Product

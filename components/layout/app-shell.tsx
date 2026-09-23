@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {  ArrowLeft, LogOut, PanelLeftClose, PanelLeftOpen , Layers } from "lucide-react";
+import {  ArrowLeft, LogOut, PanelLeftClose, PanelLeftOpen , Layers, Factory } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,7 @@ const WORKSPACE_NAV_ITEMS = [
   { label: "Materials", href: "/Materials", icon: <MaterialsIcon /> },
   { label: "Activities", href: "/Activities", icon: <ActivitiesIcon /> },
   { label: "Categories", href: "/Materials/categories", icon: <Layers size={16} /> },
+  { label: "Manufacturers", href: "/Materials/manufacturers", icon: <Factory size={16} /> },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
