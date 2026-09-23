@@ -1,5 +1,4 @@
 "use client";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Category taxonomy — master/detail: categories on the left, the selected
 // category's SPECIFICATIONS on the right. A spec is either a "Value" field
@@ -46,7 +45,7 @@ export default function CategoriesPage() {
   const [specs, setSpecs] = useState<AttributeDef[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [search, setSearch] = useState("");
-  const [scope, setScope] = useState<"local" | "global">("local");
+  const scope = "local";
   const [productCounts, setProductCounts] = useState<Map<string, number>>(new Map());
   const [specCounts, setSpecCounts] = useState<Map<string, number>>(new Map());
 
@@ -80,7 +79,7 @@ export default function CategoriesPage() {
   const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const result = await categoriesApi.list({ search: search || undefined, limit: 500, scope } as any);
+    const result = await categoriesApi.list({ search: search || undefined, limit: 500, scope: "local" } as any);
     setCategories(result.items);
     setProductCounts(await countProductsBy("categoryId"));
     const allSpecs = (await attributeDefsApi.all()).filter((a) => a.isActive);
@@ -90,7 +89,7 @@ export default function CategoriesPage() {
     setSelectedId((prev) =>
       result.items.some((c) => c.id === prev) ? prev : result.items[0]?.id ?? ""
     );
-  }, [search, scope]);
+  }, [search]);
 
   useEffect(() => {
     const timer = setTimeout(load, search ? 300 : 0);
@@ -220,20 +219,6 @@ export default function CategoriesPage() {
           <p className="text-muted-foreground">Manage your custom catalog categories</p>
         </div>
       </div>
-      
-      <Tabs value={scope} onValueChange={(val) => setScope(val as any)} className="w-full">
-        <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center mb-4">
-          <TabsList className="bg-white/50 border border-slate-200 p-1">
-            <TabsTrigger value="local" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900">
-              My Categories
-            </TabsTrigger>
-            <TabsTrigger value="global" className="data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900">
-              Global Categories
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        
-        <TabsContent value={scope} className="m-0 space-y-5">
       
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
@@ -696,8 +681,6 @@ export default function CategoriesPage() {
           }}
         />
       )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
