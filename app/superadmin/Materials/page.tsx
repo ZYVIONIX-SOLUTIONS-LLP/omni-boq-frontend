@@ -496,8 +496,8 @@ export default function ProductLibraryPage() {
                         className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-30"
                       />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <p className="text-sm font-semibold">{p.name || p.modelCode || "—"}</p>
+                    <TableCell className="min-w-[300px] max-w-[500px] whitespace-normal break-words">
+                      <p className="text-sm font-semibold leading-snug">{p.name || p.modelCode || "—"}</p>
                       {p.name && p.modelCode && (
                         <p className="text-xs text-muted-foreground">{p.modelCode}</p>
                       )}

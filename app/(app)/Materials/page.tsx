@@ -584,8 +584,8 @@ export default function ProductLibraryPage() {
                         className="h-3.5 w-3.5 rounded-none border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-30"
                       />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap border-r border-purple-100/80 py-2.5">
-                      <p className="text-sm font-semibold text-slate-900">{p.name || p.modelCode || "—"}</p>
+                    <TableCell className="min-w-[300px] max-w-[500px] whitespace-normal break-words border-r border-purple-100/80 py-2.5">
+                      <p className="text-sm font-semibold text-slate-900 leading-snug">{p.name || p.modelCode || "—"}</p>
                       {p.name && p.modelCode && (
                         <p className="text-xs text-slate-500">{p.modelCode}</p>
                       )}
