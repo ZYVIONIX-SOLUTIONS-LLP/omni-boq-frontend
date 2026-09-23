@@ -462,7 +462,6 @@ export default function ProductLibraryPage() {
               <TableHead className="font-bold text-xs">Series</TableHead>
               <TableHead className="font-bold text-xs">Category</TableHead>
               <TableHead className="font-bold text-xs text-right">MRP</TableHead>
-              <TableHead className="font-bold text-xs">Status</TableHead>
               <TableHead className="font-bold text-xs text-center pr-5">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -526,17 +525,6 @@ export default function ProductLibraryPage() {
                     </TableCell>
                     <TableCell className="text-sm text-right font-semibold whitespace-nowrap">
                       {p.mrp != null ? inr(p.mrp) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          p.status === "ACTIVE"
-                            ? "bg-emerald-100 text-emerald-700 border-0 rounded-full text-[10px]"
-                            : "bg-slate-200 text-slate-600 border-0 rounded-full text-[10px]"
-                        }
-                      >
-                        {p.status}
-                      </Badge>
                     </TableCell>
                     <TableCell className="pr-5">
                       <div className="flex items-center justify-center gap-1">

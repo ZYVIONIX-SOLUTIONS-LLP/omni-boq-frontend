@@ -527,7 +527,6 @@ export default function ProductLibraryPage() {
               <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Series</TableHead>
               <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Category</TableHead>
               <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 text-right py-3.5">MRP</TableHead>
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Status</TableHead>
               <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide text-center pr-5 py-3.5">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -592,17 +591,6 @@ export default function ProductLibraryPage() {
                     </TableCell>
                     <TableCell className="text-sm text-right font-semibold whitespace-nowrap border-r border-purple-100/80 py-2.5 text-slate-900">
                       {p.mrp != null ? inr(p.mrp) : "—"}
-                    </TableCell>
-                    <TableCell className="border-r border-purple-100/80 py-2.5">
-                      <Badge
-                        className={
-                          p.status === "ACTIVE"
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-none text-[10px] shadow-2xs"
-                            : "bg-slate-200 text-slate-600 border border-slate-300 rounded-none text-[10px] shadow-2xs"
-                        }
-                      >
-                        {p.status}
-                      </Badge>
                     </TableCell>
                     <TableCell className="pr-5 py-2.5">
                       <div className="flex items-center justify-center gap-1">
