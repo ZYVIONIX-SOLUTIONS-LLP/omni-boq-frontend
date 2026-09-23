@@ -1,3 +1,4 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 "use client";
 
 // Category taxonomy — master/detail: categories on the left, the selected
