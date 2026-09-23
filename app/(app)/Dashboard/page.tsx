@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { FileText, Clock, CheckCircle2, FileSpreadsheet, Users, Info } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { listQuotations, Quotation } from "@/app/lib/api/quotations";
-import { listUsers } from "@/app/lib/api/users";
+import { listUsers } from "@/app/lib/api/auth";
 
 function inr(value: number | null | undefined): string {
   if (value === null || value === undefined) return "?0";
