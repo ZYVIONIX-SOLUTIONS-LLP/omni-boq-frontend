@@ -352,7 +352,11 @@ export default function ProductLibraryPage() {
     setSelectedIds((prev) => {
       if (allSelected) return new Set();
       const next = new Set(prev);
-      items.forEach((p) => next.add(p.id));
+      items.forEach((p) => {
+          const isGlobal = !p.tenantId;
+          const isSuperAdmin = getUser()?.roles.includes("SUPERADMIN");
+          if (!isGlobal || isSuperAdmin) next.add(p.id);
+        });
       return next;
     });
   };
@@ -573,11 +577,9 @@ export default function ProductLibraryPage() {
                 return (
                   <TableRow key={p.id} className="hover:bg-purple-50/60 transition-colors border-b border-purple-100/90 bg-white/40 backdrop-blur-xs">
                     <TableCell className="pl-5 border-r border-purple-100/80 py-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(p.id)}
+                      <input type=\"checkbox\" disabled={!getUser()?.roles.includes(\"SUPERADMIN\") && p.isGlobal} checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
-                        disabled={isGlobal}
+                        disabled={isGlobal && !getUser()?.roles.includes("SUPERADMIN")}
                         aria-label={`Select ${p.name || p.modelCode}`}
                         className="h-3.5 w-3.5 rounded-none border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-30"
                       />

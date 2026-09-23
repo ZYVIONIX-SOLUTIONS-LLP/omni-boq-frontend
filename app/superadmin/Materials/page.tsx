@@ -305,7 +305,11 @@ export default function ProductLibraryPage() {
     setSelectedIds((prev) => {
       if (allSelected) return new Set();
       const next = new Set(prev);
-      items.forEach((p) => next.add(p.id));
+      items.forEach((p) => {
+          const isGlobal = !p.tenantId;
+          const isSuperAdmin = getUser()?.roles.includes("SUPERADMIN");
+          if (!isGlobal || isSuperAdmin) next.add(p.id);
+        });
       return next;
     });
   };
