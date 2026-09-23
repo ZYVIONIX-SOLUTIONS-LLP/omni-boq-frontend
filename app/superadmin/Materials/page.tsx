@@ -12,7 +12,7 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Trash2, MoreHorizontal, FileSpreadsheet,
+  Trash2, MoreVertical, FileSpreadsheet,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -537,7 +537,7 @@ export default function ProductLibraryPage() {
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0 rounded-none hover:bg-purple-100/50">
                               <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4 text-slate-500" />
+                              <MoreVertical className="h-4 w-4 text-slate-500" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-none border-purple-200">
