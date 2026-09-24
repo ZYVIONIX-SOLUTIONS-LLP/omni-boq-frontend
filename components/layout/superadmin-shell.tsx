@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getUser, AuthUser, logout } from "@/app/lib/auth-storage";
+import { getUser, AuthUser, clearAuth } from "@/app/lib/auth-storage";
 import { LogOut, LayoutDashboard, Package, Briefcase, FileText, Activity, Users, ShieldCheck, Settings, Search, Bell, Moon, Sun } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -37,7 +37,7 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     setLoggingOut(true);
-    await logout();
+    clearAuth();
     router.replace("/SuperAdminLogin");
   };
 
