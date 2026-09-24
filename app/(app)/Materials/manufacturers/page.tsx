@@ -108,7 +108,7 @@ export default function ManufacturersPage() {
   };
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="px-7 py-6 space-y-5 font-sans bg-slate-50/50 min-h-[calc(100vh-70px)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -116,20 +116,20 @@ export default function ManufacturersPage() {
             placeholder="Search manufacturers"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-sm bg-white border-border focus-visible:ring-[#163848]/30"
           />
         </div>
         <Button
           onClick={() => openForm(null)}
-          className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white"
+          className="gap-2 rounded-sm h-10 px-4 font-semibold shadow-md shadow-black/10 bg-[#163848] hover:bg-[#163848]/90 text-white"
         >
           <Plus className="h-4 w-4" /> Add Manufacturer
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-sm px-4 py-3">{error}</p>}
 
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-md shadow-sm border-border overflow-hidden bg-white p-0">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -156,7 +156,7 @@ export default function ManufacturersPage() {
                 <TableRow key={m.id} className="hover:bg-muted/30">
                   <TableCell className="pl-5">
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#163848]/10 text-[#163848]">
                         <Building2 className="h-4 w-4" />
                       </span>
                       <span className="text-sm font-semibold">{m.name}</span>
@@ -169,7 +169,7 @@ export default function ManufacturersPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openForm(m)}
-                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-[#163848]"
                         aria-label={`Edit ${m.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -194,7 +194,7 @@ export default function ManufacturersPage() {
 
       {/* Add / edit manufacturer */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
               {editing ? "Edit Manufacturer" : "Add Manufacturer"}
@@ -205,16 +205,16 @@ export default function ManufacturersPage() {
               placeholder="Name *"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              className="rounded-xl border-border"
+              className="rounded-sm border-border"
             />
             {formError && <p className="text-xs text-red-500">{formError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setFormOpen(false)}>
+            <Button variant="outline" className="rounded-sm" onClick={() => setFormOpen(false)}>
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-primary text-white"
+              className="rounded-sm bg-[#163848] hover:bg-[#163848]/90 text-white"
               onClick={submitForm}
               disabled={saving || !formName.trim()}
             >
@@ -228,7 +228,7 @@ export default function ManufacturersPage() {
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Manufacturer</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -239,10 +239,10 @@ export default function ManufacturersPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setDeleting(null)}>
+            <Button variant="outline" className="rounded-sm" onClick={() => setDeleting(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" className="rounded-xl" onClick={confirmDelete}>
+            <Button variant="destructive" className="rounded-sm" onClick={confirmDelete}>
               Delete
             </Button>
           </DialogFooter>

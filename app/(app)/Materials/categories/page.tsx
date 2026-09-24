@@ -212,11 +212,11 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="px-7 py-6 space-y-5 font-sans bg-slate-50/50 min-h-[calc(100vh-70px)]">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Categories & Specifications</h1>
-          <p className="text-muted-foreground">Manage your custom catalog categories</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 font-sans">Categories & Specifications</h1>
+          <p className="text-sm text-muted-foreground font-sans">Manage your custom catalog categories</p>
         </div>
       </div>
       
@@ -227,20 +227,20 @@ export default function CategoriesPage() {
             placeholder="Search categories"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-sm bg-white border-border focus-visible:ring-[#163848]/30"
           />
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold border-border bg-white"
+            className="gap-2 rounded-sm h-10 px-4 font-semibold border-border bg-white"
           >
             <Upload className="h-4 w-4" /> Import Excel
           </Button>
           <Button
             onClick={() => openCatForm(null)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white"
+            className="gap-2 rounded-sm h-10 px-4 font-semibold shadow-md shadow-black/10 bg-[#163848] hover:bg-[#163848]/90 text-white"
           >
             <Plus className="h-4 w-4" /> Add Category
           </Button>
@@ -249,7 +249,7 @@ export default function CategoriesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(300px,2fr)_3fr] gap-5 items-start">
         {/* Categories */}
-        <Card className="rounded-2xl shadow-sm border-border bg-white p-2">
+        <Card className="rounded-md shadow-sm border-slate-200 bg-white p-0 overflow-hidden">
           {categories.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-10">No categories</p>
           ) : (
@@ -264,15 +264,15 @@ export default function CategoriesPage() {
                     onClick={() => setSelectedId(c.id)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedId(c.id)}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-all",
-                      c.id === selectedId ? "bg-primary/10" : "hover:bg-muted/50"
+                      "flex w-full cursor-pointer items-center gap-2.5 rounded-none px-4 py-3 border-b border-slate-100 last:border-b-0 text-left transition-all",
+                      c.id === selectedId ? "bg-slate-100 border-l-4 border-l-[#163848]" : "hover:bg-slate-50 border-l-4 border-l-transparent"
                     )}
                   >
                     <span
                       className={cn(
                         "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
                         c.id === selectedId
-                          ? "bg-primary text-white"
+                          ? "bg-[#163848] hover:bg-[#163848]/90 text-white"
                           : "bg-muted text-muted-foreground"
                       )}
                     >
@@ -282,7 +282,7 @@ export default function CategoriesPage() {
                       <span
                         className={cn(
                           "block text-sm font-semibold truncate",
-                          c.id === selectedId && "text-primary"
+                          c.id === selectedId && "text-[#163848]"
                         )}
                       >
                         {c.name}
@@ -301,7 +301,7 @@ export default function CategoriesPage() {
                           e.stopPropagation();
                           openCatForm(c);
                         }}
-                        className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary"
+                        className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#163848]"
                         aria-label={`Edit ${c.name}`}
                       >
                         <Pencil className="h-3 w-3" />
@@ -327,7 +327,7 @@ export default function CategoriesPage() {
         </Card>
 
         {/* Specifications of the selected category */}
-        <Card className="rounded-2xl shadow-sm border-border bg-white p-5 space-y-4">
+        <Card className="rounded-md shadow-sm border-slate-200 bg-white p-6 space-y-4">
           {selected ? (
             <>
               <div>
@@ -349,7 +349,7 @@ export default function CategoriesPage() {
                 {specs.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2"
+                    className="flex items-center gap-2.5 rounded-sm bg-muted/30 px-3 py-2"
                   >
                     <span className="text-muted-foreground">
                       {s.type === "BOOLEAN" ? (
@@ -380,7 +380,7 @@ export default function CategoriesPage() {
                       className={
                         s.type === "BOOLEAN"
                           ? "bg-amber-100 text-amber-700 border-0 rounded-full text-[10px] font-semibold"
-                          : "bg-primary/10 text-primary border-0 rounded-full text-[10px] font-semibold"
+                          : "bg-[#163848]/10 text-[#163848] border-0 rounded-full text-[10px] font-semibold"
                       }
                     >
                       {SPEC_TYPE_LABELS[s.type]}
@@ -389,7 +389,7 @@ export default function CategoriesPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openSpecEdit(s)}
-                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary shrink-0"
+                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#163848] shrink-0"
                       aria-label={`Edit ${s.name}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -408,7 +408,7 @@ export default function CategoriesPage() {
               </div>
 
               {/* Add spec */}
-              <div className="rounded-xl border border-dashed border-border p-3 space-y-2">
+              <div className="rounded-sm border border-dashed border-border p-3 space-y-2">
                 <p className="text-xs font-bold">Add Specification</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
@@ -416,17 +416,17 @@ export default function CategoriesPage() {
                     value={newSpecName}
                     onChange={(e) => setNewSpecName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addSpec()}
-                    className="rounded-xl border-border h-9 flex-1 min-w-[180px]"
+                    className="rounded-sm border-border h-9 flex-1 min-w-[180px]"
                   />
                   <Select
                     value={newSpecType}
                     items={SPEC_TYPE_LABELS}
                     onValueChange={(v) => v && setNewSpecType(v as AttributeType)}
                   >
-                    <SelectTrigger className="rounded-xl border-border h-9 w-[130px]">
+                    <SelectTrigger className="rounded-sm border-border h-9 w-[130px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border">
+                    <SelectContent className="rounded-sm border-border">
                       <SelectItem value="TEXT">Value</SelectItem>
                       <SelectItem value="NUMBER">Number</SelectItem>
                       <SelectItem value="SELECT">Choice list</SelectItem>
@@ -439,7 +439,7 @@ export default function CategoriesPage() {
                       value={newSpecUnit}
                       onChange={(e) => setNewSpecUnit(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addSpec()}
-                      className="rounded-xl border-border h-9 w-20"
+                      className="rounded-sm border-border h-9 w-20"
                     />
                   )}
                   {newSpecType === "SELECT" && (
@@ -448,7 +448,7 @@ export default function CategoriesPage() {
                       value={newSpecOptions}
                       onChange={(e) => setNewSpecOptions(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addSpec()}
-                      className="rounded-xl border-border h-9 flex-1 min-w-[180px]"
+                      className="rounded-sm border-border h-9 flex-1 min-w-[180px]"
                     />
                   )}
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
@@ -464,7 +464,7 @@ export default function CategoriesPage() {
                     size="icon"
                     onClick={addSpec}
                     disabled={!newSpecName.trim()}
-                    className="h-9 w-9 rounded-lg bg-primary text-white shrink-0"
+                    className="h-9 w-9 rounded-lg bg-[#163848] hover:bg-[#163848]/90 text-white shrink-0"
                     aria-label="Add specification"
                   >
                     <Plus className="h-4 w-4" />
@@ -483,7 +483,7 @@ export default function CategoriesPage() {
 
       {/* Category add/edit */}
       <Dialog open={catFormOpen} onOpenChange={setCatFormOpen}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
               {editingCat ? "Edit Category" : "Add Category"}
@@ -494,22 +494,22 @@ export default function CategoriesPage() {
               placeholder="Category name *"
               value={catName}
               onChange={(e) => setCatName(e.target.value)}
-              className="rounded-xl border-border"
+              className="rounded-sm border-border"
             />
             <Input
               placeholder="Default HSN code"
               value={catHsn}
               onChange={(e) => setCatHsn(e.target.value)}
-              className="rounded-xl border-border"
+              className="rounded-sm border-border"
             />
             {catError && <p className="text-xs text-red-500">{catError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setCatFormOpen(false)}>
+            <Button variant="outline" className="rounded-sm" onClick={() => setCatFormOpen(false)}>
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-primary text-white"
+              className="rounded-sm bg-[#163848] hover:bg-[#163848]/90 text-white"
               onClick={submitCat}
               disabled={!catName.trim()}
             >
@@ -529,7 +529,7 @@ export default function CategoriesPage() {
           }
         }}
       >
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Category</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -541,7 +541,7 @@ export default function CategoriesPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-sm"
               onClick={() => {
                 setDeletingCat(null);
                 setDeleteCatError("");
@@ -551,7 +551,7 @@ export default function CategoriesPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl"
+              className="rounded-sm"
               onClick={async () => {
                 if (!deletingCat) return;
                 setDeleteCatError("");
@@ -572,7 +572,7 @@ export default function CategoriesPage() {
 
       {/* Edit spec */}
       <Dialog open={Boolean(editingSpec)} onOpenChange={(open) => !open && setEditingSpec(null)}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Edit Specification</DialogTitle>
           </DialogHeader>
@@ -581,17 +581,17 @@ export default function CategoriesPage() {
               placeholder="Name"
               value={specFormName}
               onChange={(e) => setSpecFormName(e.target.value)}
-              className="rounded-xl border-border"
+              className="rounded-sm border-border"
             />
             <Select
               value={specFormType}
               items={SPEC_TYPE_LABELS}
               onValueChange={(v) => v && setSpecFormType(v as AttributeType)}
             >
-              <SelectTrigger className="rounded-xl border-border h-9 w-full">
+              <SelectTrigger className="rounded-sm border-border h-9 w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-border">
+              <SelectContent className="rounded-sm border-border">
                 <SelectItem value="TEXT">Value</SelectItem>
                 <SelectItem value="NUMBER">Number</SelectItem>
                 <SelectItem value="SELECT">Choice list</SelectItem>
@@ -603,7 +603,7 @@ export default function CategoriesPage() {
                 placeholder="Unit"
                 value={specFormUnit}
                 onChange={(e) => setSpecFormUnit(e.target.value)}
-                className="rounded-xl border-border"
+                className="rounded-sm border-border"
               />
             )}
             {specFormType === "SELECT" && (
@@ -611,7 +611,7 @@ export default function CategoriesPage() {
                 placeholder="Options (semicolon-separated, e.g. 1 Way; 2 Way; Intermediate)"
                 value={specFormOptions}
                 onChange={(e) => setSpecFormOptions(e.target.value)}
-                className="rounded-xl border-border"
+                className="rounded-sm border-border"
               />
             )}
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
@@ -626,11 +626,11 @@ export default function CategoriesPage() {
             {specFormError && <p className="text-xs text-red-500">{specFormError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setEditingSpec(null)}>
+            <Button variant="outline" className="rounded-sm" onClick={() => setEditingSpec(null)}>
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-primary text-white"
+              className="rounded-sm bg-[#163848] hover:bg-[#163848]/90 text-white"
               onClick={submitSpecEdit}
               disabled={!specFormName.trim()}
             >
@@ -642,7 +642,7 @@ export default function CategoriesPage() {
 
       {/* Delete spec */}
       <Dialog open={Boolean(deletingSpec)} onOpenChange={(open) => !open && setDeletingSpec(null)}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Specification</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -651,12 +651,12 @@ export default function CategoriesPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setDeletingSpec(null)}>
+            <Button variant="outline" className="rounded-sm" onClick={() => setDeletingSpec(null)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl"
+              className="rounded-sm"
               onClick={async () => {
                 if (deletingSpec) await attributeDefsApi.remove(deletingSpec.id);
                 setDeletingSpec(null);
