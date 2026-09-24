@@ -206,10 +206,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-sm font-bold truncate" className="text-white">
+                <p className="text-sm font-bold truncate text-white">
                   Omni
                 </p>
-                <p className="text-[10px] font-semibold truncate" className="text-[#D4B86A]">
+                <p className="text-[10px] font-semibold truncate text-[#D4B86A]">
                   Electrics
                 </p>
               </div>
@@ -220,8 +220,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             variant="ghost"
             size="icon"
             onClick={toggleCollapsed}
-            className="h-7 w-7 rounded-lg flex-shrink-0"
-            className="text-slate-300"
+            className="h-7 w-7 rounded-lg flex-shrink-0 text-slate-300"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >

@@ -360,7 +360,6 @@ export default function ProductLibraryPage() {
       if (allSelected) return new Set();
       const next = new Set(prev);
       items.forEach((p) => {
-          const isGlobal = !p.tenantId;
           const isSuperAdmin = getUser()?.roles.includes("SUPERADMIN");
           if (!isGlobal || isSuperAdmin) next.add(p.id);
         });
@@ -551,13 +550,11 @@ export default function ProductLibraryPage() {
               </TableRow>
             ) : (
               items.map((p) => {
-                const isGlobal = !p.tenantId;
                 return (
                   <TableRow key={p.id} className="hover:bg-slate-50 transition-colors border-b border-slate-200 bg-white/40 backdrop-blur-xs">
                     <TableCell className="pl-5 border-r border-slate-200 py-2.5">
-                      <input type="checkbox" disabled={!getUser()?.roles.includes("SUPERADMIN") && p.isGlobal} checked={selectedIds.has(p.id)}
+                      <input type="checkbox" checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
-                        disabled={isGlobal && !getUser()?.roles.includes("SUPERADMIN")}
                         aria-label={`Select ${p.name || p.modelCode}`}
                         className="h-3.5 w-3.5 rounded-none border-slate-300 text-[#163848] focus:ring-slate-500 cursor-pointer disabled:opacity-30"
                       />
