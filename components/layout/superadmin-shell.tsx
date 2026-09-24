@@ -204,8 +204,8 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
       <img
-  src="/logo.png"
-  alt="Omni Logo"
+  src="/zyvionix.png"
+  alt="Zyvionix Logo"
   className="w-full h-full object-contain rounded-full"
 />
             </div>
@@ -325,7 +325,7 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
             onClick={handleLogout}
             disabled={loggingOut}
             className="rounded-xl h-9 w-9 flex-shrink-0 hover:text-red-500 hover:bg-red-50/50"
-            style={{ borderColor: "rgba(255,255,255,0.2)", color: "#ffffff" }}
+            style={{ borderColor: "rgba(255,255,255,0.2)", color: "#ff0000" }}
             aria-label="Logout"
             title="Logout"
           >

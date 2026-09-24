@@ -147,7 +147,7 @@ export default function AdminsPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+              className="h-7 w-7 rounded-sm text-muted-foreground hover:text-red-500"
               onClick={() => p.data && setDeleting(p.data)}
               aria-label="Delete admin"
             >
@@ -161,7 +161,7 @@ export default function AdminsPage() {
   );
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="px-7 py-6 space-y-5 font-sans bg-slate-50/60 min-h-screen">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -169,7 +169,7 @@ export default function AdminsPage() {
             placeholder="Search admins"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-md bg-white border-border focus-visible:ring-[#163848]/30"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function AdminsPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-xl border-border h-10 w-10 bg-white"
+            className="rounded-md border-border h-10 w-10 bg-white"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
@@ -185,12 +185,12 @@ export default function AdminsPage() {
           <Link href="/superadmin/Admins/pending">
             <Button
               variant="outline"
-              className="gap-2 rounded-xl h-10 px-4 font-semibold border-border bg-white relative"
+              className="gap-2 rounded-md h-10 px-4 font-semibold border-border bg-white relative"
             >
               <Clock className="h-4 w-4" />
               Pending Requests
               {pendingCount > 0 && (
-                <span className="ml-1 rounded-full bg-amber-500 text-white text-[11px] font-bold px-1.5 py-0.5 leading-none">
+                <span className="ml-1 rounded-none bg-amber-500 text-white text-[11px] font-bold px-1.5 py-0.5 leading-none">
                   {pendingCount}
                 </span>
               )}
@@ -198,7 +198,7 @@ export default function AdminsPage() {
           </Link>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 rounded-xl h-10 px-4 font-semibold shadow-md shadow-primary/25 bg-primary text-white hover:bg-primary/95 transition-all animate-all"
+            className="gap-2 rounded-md h-10 px-4 font-semibold shadow-md shadow-[#163848]/25 bg-[#163848] text-white hover:bg-[#163848]/95 transition-all animate-all"
           >
             <Plus className="h-4 w-4" />
             Create Admin
@@ -206,9 +206,9 @@ export default function AdminsPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-md px-4 py-3 border border-red-100">{error}</p>}
 
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-md shadow-sm border-border overflow-hidden bg-white p-0">
         {loading ? (
           <p className="text-center py-14 text-sm text-muted-foreground">Loading admin directory...</p>
         ) : (
@@ -230,10 +230,10 @@ export default function AdminsPage() {
 
       {/* Register User Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md rounded-2xl bg-white">
+        <DialogContent className="max-w-md rounded-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-primary" />
+              <UserPlus className="h-5 w-5 text-[#163848]" />
               Register Admin Account
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -248,7 +248,7 @@ export default function AdminsPage() {
                 <Input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                  className="rounded-md border-border bg-slate-50 focus-visible:ring-[#163848]/20 h-9.5 text-xs font-semibold"
                   placeholder="John"
                   required
                 />
@@ -258,7 +258,7 @@ export default function AdminsPage() {
                 <Input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                  className="rounded-md border-border bg-slate-50 focus-visible:ring-[#163848]/20 h-9.5 text-xs font-semibold"
                   placeholder="Doe"
                   required
                 />
@@ -272,7 +272,7 @@ export default function AdminsPage() {
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                className="rounded-md border-border bg-slate-50 focus-visible:ring-[#163848]/20 h-9.5 text-xs font-semibold"
                 placeholder="company-admin"
                 required
               />
@@ -284,7 +284,7 @@ export default function AdminsPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="rounded-xl border-border bg-slate-50 focus-visible:ring-primary/20 h-9.5 text-xs font-semibold"
+                className="rounded-md border-border bg-slate-50 focus-visible:ring-[#163848]/20 h-9.5 text-xs font-semibold"
                 placeholder="••••••••"
                 required
               />
@@ -294,7 +294,7 @@ export default function AdminsPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-xl h-9.5"
+                className="rounded-md h-9.5"
                 onClick={() => setCreateOpen(false)}
                 disabled={createBusy}
               >
@@ -303,7 +303,7 @@ export default function AdminsPage() {
               <Button
                 type="submit"
                 disabled={createBusy}
-                className="rounded-xl h-9.5 bg-primary text-white hover:bg-primary/95 shadow-md shadow-primary/25 px-5 font-semibold"
+                className="rounded-md h-9.5 bg-[#163848] text-white hover:bg-[#163848]/95 shadow-md shadow-[#163848]/25 px-5 font-semibold"
               >
                 {createBusy ? "Registering..." : "Create Admin"}
               </Button>
@@ -314,7 +314,7 @@ export default function AdminsPage() {
 
       {/* Delete User Confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Account</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -324,7 +324,7 @@ export default function AdminsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-md"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -332,7 +332,7 @@ export default function AdminsPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-md bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDelete}
               disabled={deleteBusy}
             >

@@ -122,7 +122,7 @@ export default function PendingAdminsPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-emerald-600"
+                className="h-7 w-7 rounded-sm text-muted-foreground hover:text-emerald-600"
                 onClick={() => p.data && setApproving(p.data)}
                 aria-label="Approve request"
               >
@@ -131,7 +131,7 @@ export default function PendingAdminsPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-red-500"
+                className="h-7 w-7 rounded-sm text-muted-foreground hover:text-red-500"
                 onClick={() => p.data && setRejecting(p.data)}
                 aria-label="Reject request"
               >
@@ -146,10 +146,10 @@ export default function PendingAdminsPage() {
   );
 
   return (
-    <div className="px-7 py-6 space-y-5">
+    <div className="px-7 py-6 space-y-5 font-sans bg-slate-50/60 min-h-screen">
       <div className="flex items-center gap-3">
         <Link href="/superadmin/Admins">
-          <Button variant="ghost" size="icon" className="rounded-xl" aria-label="Back to Admins">
+          <Button variant="ghost" size="icon" className="rounded-md" aria-label="Back to Admins">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
@@ -166,23 +166,23 @@ export default function PendingAdminsPage() {
             placeholder="Search pending requests"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl bg-white border-border focus-visible:ring-primary/30"
+            className="pl-9 rounded-md bg-white border-border focus-visible:ring-[#163848]/30"
           />
         </div>
         <Button
           variant="outline"
           size="icon"
           onClick={load}
-          className="rounded-xl border-border h-10 w-10 bg-white"
+          className="rounded-md border-border h-10 w-10 bg-white"
           aria-label="Refresh"
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-md px-4 py-3 border border-red-100">{error}</p>}
 
-      <Card className="rounded-2xl shadow-sm border-border overflow-hidden bg-white p-0">
+      <Card className="rounded-md shadow-sm border-border overflow-hidden bg-white p-0">
         {loading ? (
           <p className="text-center py-14 text-sm text-muted-foreground">Loading pending requests...</p>
         ) : users.length === 0 ? (
@@ -206,7 +206,7 @@ export default function PendingAdminsPage() {
 
       {/* Approve confirmation */}
       <Dialog open={Boolean(approving)} onOpenChange={(open) => !open && setApproving(null)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Approve Account</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -217,14 +217,14 @@ export default function PendingAdminsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-md"
               onClick={() => setApproving(null)}
               disabled={approveBusy}
             >
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={handleApprove}
               disabled={approveBusy}
             >
@@ -236,7 +236,7 @@ export default function PendingAdminsPage() {
 
       {/* Reject confirmation */}
       <Dialog open={Boolean(rejecting)} onOpenChange={(open) => !open && setRejecting(null)}>
-        <DialogContent className="max-w-sm rounded-2xl bg-white">
+        <DialogContent className="max-w-sm rounded-md bg-white">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Reject Account</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -248,7 +248,7 @@ export default function PendingAdminsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-md"
               onClick={() => setRejecting(null)}
               disabled={rejectBusy}
             >
@@ -256,7 +256,7 @@ export default function PendingAdminsPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl"
+              className="rounded-md"
               onClick={handleReject}
               disabled={rejectBusy}
             >
