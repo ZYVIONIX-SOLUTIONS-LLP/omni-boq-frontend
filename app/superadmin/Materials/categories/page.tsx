@@ -7,7 +7,8 @@
 // 1MD). These specs appear automatically in the Add Product wizard.
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckSquare, FolderTree, Pencil, Plus, Search, Trash2, Type, Upload } from "lucide-react";
+import { CheckSquare, FolderTree, Pencil, Plus, Search, Trash2, Type, Upload, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 import ImportCategoriesDialog from "@/components/materials/import-categories-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -181,7 +182,56 @@ export default function CategoriesPage() {
     setSpecFormError("");
   };
 
+
+  const handleDownloadExcel = async () => {
+    try {
+      const allCategories = await categoriesApi.all();
+      const allSpecs = await attributeDefsApi.all();
+      
+      const rows: any[] = [];
+      
+      for (const cat of allCategories) {
+        const catSpecs = allSpecs.filter(s => s.categoryId === cat.id && s.isActive).sort((a,b) => a.sortOrder - b.sortOrder);
+        
+        if (catSpecs.length === 0) {
+          rows.push({
+            "Category Name": cat.name,
+            "HSN Code": cat.hsnCode || "",
+            "Default GST %": cat.defaultGstRate || "",
+            "Specification Name": "",
+            "Specification Type": "",
+            "Unit": "",
+            "Options": "",
+            "Required": ""
+          });
+        } else {
+          catSpecs.forEach((spec, i) => {
+            rows.push({
+              "Category Name": i === 0 ? cat.name : "",
+              "HSN Code": i === 0 ? (cat.hsnCode || "") : "",
+              "Default GST %": i === 0 ? (cat.defaultGstRate || "") : "",
+              "Specification Name": spec.name,
+              "Specification Type": spec.type,
+              "Unit": spec.unit || "",
+              "Options": spec.options ? spec.options.join(";") : "",
+              "Required": spec.required ? "true" : "false"
+            });
+          });
+        }
+      }
+      
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Categories");
+      XLSX.writeFile(wb, "Global_Categories_Export.xlsx");
+      
+    } catch (err) {
+      console.error("Failed to download excel", err);
+    }
+  };
+
   const submitSpecEdit = async () => {
+
     if (!editingSpec || !specFormName.trim()) return;
     if (specFormType === "SELECT" && !specFormOptions.trim()) {
       setSpecFormError("Add at least one option (semicolon-separated)");
@@ -223,7 +273,8 @@ export default function CategoriesPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button
+          <Button variant="outline" onClick={handleDownloadExcel} className="gap-2 rounded-xl h-10 px-4 font-semibold border-border bg-white"><Download className="h-4 w-4" /> Download Excel</Button>
+            <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
             className="gap-2 rounded-xl h-10 px-4 font-semibold border-border bg-white"
