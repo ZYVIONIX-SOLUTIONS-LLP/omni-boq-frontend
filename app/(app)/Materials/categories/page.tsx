@@ -79,7 +79,7 @@ export default function CategoriesPage() {
   const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const result = await categoriesApi.list({ search: search || undefined, limit: 500, scope: "local" } as any);
+    const result = await categoriesApi.list({ search: search || undefined, limit: 500,  } as any);
     setCategories(result.items);
     setProductCounts(await countProductsBy("categoryId"));
     const allSpecs = (await attributeDefsApi.all()).filter((a) => a.isActive);

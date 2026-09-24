@@ -50,7 +50,7 @@ export default function ManufacturersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await manufacturersApi.list({ search: search || undefined, limit: 500, scope: "local" } as any);
+      const result = await manufacturersApi.list({ search: search || undefined, limit: 500,  } as any);
       const [productCounts] = await Promise.all([
         countProductsBy("manufacturerId"),
       ]);

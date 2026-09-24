@@ -236,7 +236,7 @@ export default function ProductLibraryPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [scope, setScope] = useState<"local" | "global">("local");
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -310,7 +310,7 @@ export default function ProductLibraryPage() {
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
-        scope,
+        
         categoryId: activeCategoryId === "all" ? undefined : activeCategoryId,
         seriesId: activeSeries === "all" ? undefined : activeSeries,
         attributes: Object.keys(activeAttributes).length > 0 ? JSON.stringify(activeAttributes) : undefined,
@@ -324,7 +324,7 @@ export default function ProductLibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, scope, activeCategoryId, activeSeries, activeAttributes]);
+  }, [page, debouncedSearch,  activeCategoryId, activeSeries, activeAttributes]);
 
   useEffect(() => {
     load();
@@ -423,12 +423,7 @@ export default function ProductLibraryPage() {
   return (
     <div className="p-6 space-y-5 font-sans bg-slate-50/60 min-h-screen ">
       <div className="flex items-center justify-between">
-        <Tabs value={scope} onValueChange={(val) => { setScope(val as any); setPage(1); }}>
-          <TabsList className="bg-white/80 backdrop-blur-md border border-slate-200 p-1 rounded-none shadow-xs">
-            <TabsTrigger value="local" className="px-6 rounded-none data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900  font-semibold transition-all">My Materials</TabsTrigger>
-            <TabsTrigger value="global" className="px-6 rounded-none data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900  font-semibold transition-all">Global Materials</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        
       </div>
       
       {/* Toolbar */}

@@ -43,7 +43,7 @@ function inr(value: number | null | undefined): string {
 export default function ActivitiesPage() {
   const router = useRouter();
   const [items, setItems] = useState<Activity[]>([]);
-  const [scope, setScope] = useState<"local" | "global">("local");
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -270,12 +270,7 @@ export default function ActivitiesPage() {
   return (
     <div className="p-6 space-y-5 font-sans bg-slate-50/60 min-h-screen ">
       <div className="flex items-center justify-between">
-        <Tabs value={scope} onValueChange={(val) => setScope(val as any)}>
-          <TabsList className="bg-white/80 backdrop-blur-md border border-slate-200 p-1 rounded-none shadow-xs">
-            <TabsTrigger value="local" className="px-6 rounded-none data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900  font-semibold transition-all">My Activities</TabsTrigger>
-            <TabsTrigger value="global" className="px-6 rounded-none data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900  font-semibold transition-all">Global Activities</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

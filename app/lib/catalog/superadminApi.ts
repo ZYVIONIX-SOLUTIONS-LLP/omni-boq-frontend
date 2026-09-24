@@ -50,6 +50,7 @@ function makeStore<T extends BaseEntity>(basePath: string): EntityStore<T> {
         limit: params.limit,
         search: params.search,
         includeInactive: params.includeInactive,
+          scope: (params as any).scope,
         ...(params.filter as Record<string, unknown> | undefined),
       });
       return apiGet<{ items: T[]; meta: PageMeta }>(`${basePath}${query}`);
@@ -75,10 +76,10 @@ function makeStore<T extends BaseEntity>(basePath: string): EntityStore<T> {
 
 // ── Hierarchy stores ─────────────────────────────────────────────────────────
 
-export const manufacturersApi = makeStore<Manufacturer>("/catalog/manufacturers");
-export const categoriesApi = makeStore<CatalogCategory>("/catalog/categories");
-export const subCategoriesApi = makeStore<SubCategory>("/catalog/sub-categories");
-export const attributeDefsApi = makeStore<AttributeDef>("/catalog/attribute-defs");
+export const manufacturersApi = makeStore<Manufacturer>("/superadmin/catalog/manufacturers");
+export const categoriesApi = makeStore<CatalogCategory>("/superadmin/catalog/categories");
+export const subCategoriesApi = makeStore<SubCategory>("/superadmin/catalog/sub-categories");
+export const attributeDefsApi = makeStore<AttributeDef>("/superadmin/catalog/attribute-defs");
 
 // ── Products & variants ──────────────────────────────────────────────────────
 
