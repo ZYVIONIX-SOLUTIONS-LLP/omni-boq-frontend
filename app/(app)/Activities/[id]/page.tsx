@@ -272,7 +272,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
     return (
       <div className="flex h-[calc(100vh-0rem)] items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <Loader2 className="h-8 w-8 text-[#163848] animate-spin" />
           <p className="text-sm font-semibold text-muted-foreground">Loading activity...</p>
         </div>
       </div>
@@ -288,7 +288,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => router.push("/Activities")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-primary transition-colors"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-[#163848] transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
           </button>
@@ -309,7 +309,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="gap-2 rounded-xl h-9 px-4 font-semibold bg-primary text-white hover:bg-primary/95 transition-all shadow-md shadow-primary/10 disabled:opacity-50"
+            className="gap-2 rounded-sm h-9 px-4 font-semibold bg-[#163848] hover:bg-[#163848]/90 text-white hover:bg-[#163848] hover:bg-[#163848]/90/95 transition-all shadow-md shadow-primary/10 disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Activity
@@ -319,11 +319,11 @@ export default function ActivityEditorPage({ params }: PageProps) {
 
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
         <div className="flex-1 min-w-0 h-full overflow-y-auto bg-slate-50/40 p-4 space-y-4">
-          <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
+          <div className="rounded-sm border border-border bg-white overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-primary/5 border-b border-border">
+                  <tr className="bg-[#163848] hover:bg-[#163848]/90/5 border-b border-border">
                     <th className={thClass}>Category</th>
                     <th className={thClass}>SubCategory</th>
                     <th className={thClass}>Description / Specs</th>
@@ -389,7 +389,7 @@ export default function ActivityEditorPage({ params }: PageProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEditRequirement(row)}
-                            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary"
+                            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#163848]"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -410,8 +410,8 @@ export default function ActivityEditorPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
-            <div className="px-3 py-2 border-b border-border bg-primary/5">
+          <div className="rounded-sm border border-border bg-white overflow-hidden shadow-sm">
+            <div className="px-3 py-2 border-b border-border bg-[#163848] hover:bg-[#163848]/90/5">
               <p className="text-[11px] font-bold text-foreground">Charges</p>
               <p className="text-[10px] text-muted-foreground">Labour, delivery, testing — flat cost.</p>
             </div>

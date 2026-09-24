@@ -53,7 +53,7 @@ const toNum = (s: string): number | null =>
   s.trim() !== "" && !Number.isNaN(Number(s)) ? Number(s) : null;
 
 const selectClass =
-  "flex h-10 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-10 w-full rounded-sm border border-slate-200 bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 // ── Small building blocks ────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div ref={sectionRef} className="scroll-mt-32 border-b border-border/60 pb-8 last:border-b-0 last:pb-0">
+    <div ref={sectionRef} className="scroll-mt-32 border-b border-slate-200/60 pb-8 last:border-b-0 last:pb-0">
       <div className="mb-4">
         <h3 className="text-base font-bold tracking-tight text-foreground">{title}</h3>
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
@@ -349,7 +349,7 @@ function ProductFormInner() {
     return (
       <div className="px-7 py-10 text-center space-y-4">
         <p className="text-sm text-red-600">{loadError}</p>
-        <Button variant="outline" className="rounded-xl" onClick={() => router.push("/Materials")}>
+        <Button variant="outline" className="rounded-sm" onClick={() => router.push("/Materials")}>
           Back to Product Library
         </Button>
       </div>
@@ -382,7 +382,7 @@ function ProductFormInner() {
     <Button
       onClick={handleSave}
       disabled={saving}
-      className="rounded-xl gap-2 font-semibold bg-primary text-white shadow-md shadow-primary/25"
+      className="rounded-sm gap-2 font-semibold bg-[#163848] hover:bg-[#163848]/90 text-white shadow-md shadow-sm"
     >
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
       {saving ? "Saving..." : editId ? "Save Changes" : "Save Product"}
@@ -391,7 +391,7 @@ function ProductFormInner() {
 
   return (
     <div className="px-7 py-6">
-      <div className="sticky top-0 z-10 -mx-7 mb-4 border-b border-border bg-[#f8f7ff]/95 px-7 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 -mx-7 mb-4 border-b border-slate-200 bg-[#f8f7ff]/95 px-7 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">{editId ? "Edit Product" : "Add Product"}</h2>
@@ -402,7 +402,7 @@ function ProductFormInner() {
           <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
-              className="rounded-xl gap-2"
+              className="rounded-sm gap-2"
               onClick={() => router.push("/Materials")}
             >
               <X className="h-4 w-4" /> Cancel
@@ -417,7 +417,7 @@ function ProductFormInner() {
               key={s.id}
               type="button"
               onClick={() => scrollToSection(s.id)}
-              className="whitespace-nowrap rounded-lg px-3 py-1 text-[12px] font-semibold text-muted-foreground transition-all hover:bg-white hover:text-primary"
+              className="whitespace-nowrap rounded-lg px-3 py-1 text-[12px] font-semibold text-muted-foreground transition-all hover:bg-white hover:text-[#163848]"
             >
               {s.label}
             </button>
@@ -426,13 +426,13 @@ function ProductFormInner() {
       </div>
 
       {saveError && (
-        <p className="mb-4 text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{saveError}</p>
+        <p className="mb-4 text-sm text-red-600 bg-red-50 rounded-sm px-4 py-3">{saveError}</p>
       )}
 
       <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ── Left: Main Form Fields ── */}
         <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-          <Card className="rounded-2xl border border-border p-6 md:p-8 space-y-8 bg-card shadow-sm">
+          <Card className="rounded-md border border-slate-200 p-6 md:p-8 space-y-8 bg-card shadow-sm">
             {/* ── Classification ── */}
             <Section
               sectionRef={sectionRefs.classification}
@@ -486,7 +486,7 @@ function ProductFormInner() {
                     value={series}
                     onChange={(e) => setSeries(e.target.value)}
                     placeholder="e.g. Livia, Myrius..."
-                    className="rounded-xl border-border h-10"
+                    className="rounded-sm border-slate-200 h-10"
                   />
                 </Field>
               </div>
@@ -500,7 +500,7 @@ function ProductFormInner() {
                     value={modelCode}
                     onChange={(e) => setModelCode(e.target.value)}
                     placeholder="e.g. SW-10A-1W"
-                    className="rounded-xl border-border h-10"
+                    className="rounded-sm border-slate-200 h-10"
                   />
                 </Field>
                 <Field label="Color">
@@ -508,7 +508,7 @@ function ProductFormInner() {
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
                     placeholder="Optional — e.g. White"
-                    className="rounded-xl border-border h-10"
+                    className="rounded-sm border-slate-200 h-10"
                   />
                 </Field>
                 <Field label="Unit of Measure">
@@ -516,7 +516,7 @@ function ProductFormInner() {
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
                     placeholder="Nos, Meter, Roll, Box..."
-                    className="rounded-xl border-border h-10"
+                    className="rounded-sm border-slate-200 h-10"
                   />
                 </Field>
                 <Field label="HSN Code">
@@ -524,7 +524,7 @@ function ProductFormInner() {
                     value={selectedCategory?.hsnCode || ""}
                     readOnly
                     disabled
-                    className="rounded-xl border-border h-10 bg-muted cursor-not-allowed text-muted-foreground"
+                    className="rounded-sm border-slate-200 h-10 bg-muted cursor-not-allowed text-muted-foreground"
                   />
                 </Field>
               </div>
@@ -556,7 +556,7 @@ function ProductFormInner() {
                                   [def.id]: e.target.checked ? "true" : "false",
                                 }))
                               }
-                              className="h-4 w-4 rounded border-border"
+                              className="h-4 w-4 rounded border-slate-200"
                             />
                             <span className="text-sm text-muted-foreground">
                               {specValues[def.id] === "true" ? "Yes" : "No"}
@@ -584,7 +584,7 @@ function ProductFormInner() {
                             onChange={(e) =>
                               setSpecValues((prev) => ({ ...prev, [def.id]: e.target.value }))
                             }
-                            className="rounded-xl border-border h-10"
+                            className="rounded-sm border-slate-200 h-10"
                           />
                         )}
                       </Field>
@@ -592,7 +592,7 @@ function ProductFormInner() {
                   </div>
                 )}
 
-                <div className="rounded-xl border border-dashed border-border p-3 space-y-2">
+                <div className="rounded-sm border border-dashed border-slate-200 p-3 space-y-2">
                   <p className="text-xs font-bold">Additional Specifications</p>
                   {customSpecs.map((row) => (
                     <div key={row.key} className="flex items-center gap-2">
@@ -604,7 +604,7 @@ function ProductFormInner() {
                             prev.map((r) => (r.key === row.key ? { ...r, name: e.target.value } : r))
                           )
                         }
-                        className="rounded-xl border-border h-9 w-48"
+                        className="rounded-sm border-slate-200 h-9 w-48"
                       />
                       <Input
                         placeholder="Value (e.g. Matt White)"
@@ -614,7 +614,7 @@ function ProductFormInner() {
                             prev.map((r) => (r.key === row.key ? { ...r, value: e.target.value } : r))
                           )
                         }
-                        className="rounded-xl border-border h-9 flex-1"
+                        className="rounded-sm border-slate-200 h-9 flex-1"
                       />
                       <Button
                         variant="ghost"
@@ -630,7 +630,7 @@ function ProductFormInner() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-xl gap-1.5"
+                    className="rounded-sm gap-1.5"
                     onClick={() =>
                       setCustomSpecs((prev) => [...prev, { key: `c${++customSpecSeq}`, name: "", value: "" }])
                     }
@@ -654,7 +654,7 @@ function ProductFormInner() {
                     value={mrp}
                     onChange={(e) => setMrp(e.target.value)}
                     placeholder="e.g. 500"
-                    className="rounded-xl border-border h-10"
+                    className="rounded-sm border-slate-200 h-10"
                   />
                 </Field>
                 <Field label="Discount Percent (%)">
@@ -663,7 +663,7 @@ function ProductFormInner() {
                     value={discountPercent}
                     onChange={(e) => setDiscountPercent(e.target.value)}
                     placeholder="e.g. 10"
-                    className="rounded-xl border-border h-10"
+                    className="rounded-sm border-slate-200 h-10"
                   />
                 </Field>
               </div>
@@ -674,8 +674,8 @@ function ProductFormInner() {
         {/* ── Right: Live Review & Save Sticky Sidebar ── */}
         <div className="lg:col-span-4 xl:col-span-3">
           <div className="sticky top-28" ref={sectionRefs.review}>
-            <Card className="rounded-2xl border border-border p-6 bg-card shadow-sm space-y-4">
-              <h3 className="text-sm font-bold border-b border-border pb-2">Product Summary</h3>
+            <Card className="rounded-md border border-slate-200 p-6 bg-card shadow-sm space-y-4">
+              <h3 className="text-sm font-bold border-b border-slate-200 pb-2">Product Summary</h3>
               <div className="space-y-3">
                 <div>
                   <p className="text-base font-bold leading-tight">{computedName || "—"}</p>
@@ -687,7 +687,7 @@ function ProductFormInner() {
                       .join(" › ") || "Fill in classification"}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-2 pt-1 border-t border-border/60">
+                <div className="grid grid-cols-2 gap-x-2 gap-y-2 pt-1 border-t border-slate-200/60">
                   <p className="text-xs">
                     <span className="text-muted-foreground">Unit: </span>
                     <span className="font-semibold">{unit || "—"}</span>
@@ -712,7 +712,7 @@ function ProductFormInner() {
                   </p>
                 </div>
                 {specRows.length > 0 && (
-                  <div className="pt-2 border-t border-border/60">
+                  <div className="pt-2 border-t border-slate-200/60">
                     <p className="text-xs font-bold mb-1.5">Specifications</p>
                     <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
                       {specRows.map((row, i) => (
@@ -725,7 +725,7 @@ function ProductFormInner() {
                   </div>
                 )}
               </div>
-              <div className="pt-3 border-t border-border w-full flex flex-col gap-2">
+              <div className="pt-3 border-t border-slate-200 w-full flex flex-col gap-2">
                 {saveButton}
               </div>
             </Card>

@@ -133,7 +133,7 @@ export default function ActivityCreateDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-md rounded-2xl bg-white">
+      <DialogContent className="max-w-md rounded-md bg-white">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">New Activity</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -148,7 +148,7 @@ export default function ActivityCreateDialog({
                 onValueChange={(val) => val && handleWiringTypeChange(val)}
                 disabled={types.length === 0}
               >
-                <SelectTrigger className="rounded-xl border-border h-10 bg-white">
+                <SelectTrigger className="rounded-sm border-border h-10 bg-white">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-border">
@@ -164,7 +164,7 @@ export default function ActivityCreateDialog({
                 onValueChange={(val) => val && setCategory(val)}
                 disabled={!currentType || currentType.categories.length === 0}
               >
-                <SelectTrigger className="rounded-xl border-border h-10 bg-white">
+                <SelectTrigger className="rounded-sm border-border h-10 bg-white">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-border">
@@ -182,7 +182,7 @@ export default function ActivityCreateDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. One Light controlled by 6A switch"
-              className="rounded-xl border-border h-10 bg-white"
+              className="rounded-sm border-border h-10 bg-white"
             />
           </Field>
           {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
@@ -190,14 +190,14 @@ export default function ActivityCreateDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            className="rounded-xl"
+            className="rounded-sm"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
             Cancel
           </Button>
           <Button
-            className="rounded-xl bg-primary text-white hover:bg-primary/95"
+            className="rounded-sm bg-[#163848] hover:bg-[#163848]/90 text-white hover:bg-[#163848] hover:bg-[#163848]/90/95"
             onClick={submit}
             disabled={saving || !wiringType}
           >

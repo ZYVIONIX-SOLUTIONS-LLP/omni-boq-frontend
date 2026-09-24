@@ -107,7 +107,7 @@ function ProductDetailDialog({
 
   return (
     <Dialog open={Boolean(productId)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-3xl max-h-[85vh] overflow-y-auto rounded-md">
         {product && (
           <>
             <DialogHeader>
@@ -189,7 +189,7 @@ function ProductDetailDialog({
                       <img
                         src={product.images.primary.dataUrl}
                         alt={product.modelCode || "Product Image"}
-                        className="h-20 w-20 rounded-xl object-cover border border-border"
+                        className="h-20 w-20 rounded-sm object-cover border border-slate-200"
                       />
                     )}
                     {(
@@ -421,12 +421,12 @@ export default function ProductLibraryPage() {
   };
 
   return (
-    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
+    <div className="p-6 space-y-5 font-sans bg-slate-50/60 min-h-screen ">
       <div className="flex items-center justify-between">
         <Tabs value={scope} onValueChange={(val) => { setScope(val as any); setPage(1); }}>
-          <TabsList className="bg-white/80 backdrop-blur-md border border-purple-200/80 p-1 rounded-none shadow-xs">
-            <TabsTrigger value="local" className="px-6 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold transition-all">My Materials</TabsTrigger>
-            <TabsTrigger value="global" className="px-6 rounded-none data-[state=active]:bg-purple-700 data-[state=active]:text-white font-semibold transition-all">Global Materials</TabsTrigger>
+          <TabsList className="bg-white/80 backdrop-blur-md border border-slate-200 p-1 rounded-none shadow-xs">
+            <TabsTrigger value="local" className="px-6 rounded-none data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900  font-semibold transition-all">My Materials</TabsTrigger>
+            <TabsTrigger value="global" className="px-6 rounded-none data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900  font-semibold transition-all">Global Materials</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -439,13 +439,13 @@ export default function ProductLibraryPage() {
             placeholder="Search product, SKU, barcode, series"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
+            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-slate-200 focus-visible:ring-slate-500 shadow-xs text-sm"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full mt-2 lg:mt-0 lg:w-auto">
           <Select value={draftCategoryId} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="w-[180px] h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+            <SelectTrigger className="w-[180px] h-10 bg-white/80 rounded-none border-slate-200 shadow-xs">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -457,15 +457,15 @@ export default function ProductLibraryPage() {
           </Select>
 
           {selectedCategoryData && (selectedCategoryData.series.length > 0 || selectedCategoryData.attributes.length > 0) && (
-              <Button onClick={() => setIsSpecModalOpen(true)} variant="outline" className="h-10 rounded-none border-purple-200/80 bg-white/80 shadow-xs text-purple-800 font-semibold">
+              <Button onClick={() => setIsSpecModalOpen(true)} variant="outline" className="h-10 rounded-none border-slate-200 bg-white/80 shadow-xs text-slate-800 font-semibold">
                 Filter by Specs
               </Button>
             )}
-            <Button onClick={applyFilters} className="h-8 rounded-10 bg-purple-700 hover:bg-purple-800 text-white shadow-xs">
+            <Button onClick={applyFilters} className="h-8 rounded-10 bg-slate-700 hover:bg-slate-800 text-white shadow-xs">
             Filter
           </Button>
           {(draftCategoryId !== "all" || draftSeries !== "all" || Object.keys(draftAttributes).length > 0) && (
-            <Button variant="outline" onClick={clearFilters} className="h-8 rounded-10 border-purple-200/80 text-purple-700 bg-purple-50 hover:bg-purple-100 shadow-xs">
+            <Button variant="outline" onClick={clearFilters} className="h-8 rounded-10 border-slate-200 text-slate-900 bg-slate-50 hover:bg-slate-100 shadow-xs">
               Clear
             </Button>
           )}
@@ -497,14 +497,14 @@ export default function ProductLibraryPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-8 border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-8 w-10 shadow-xs"
+            className="rounded-8 border-slate-200 bg-white/80 backdrop-blur-xs hover:bg-slate-50 text-slate-700 h-8 w-10 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
             onClick={() => router.push("/Materials/new")}
-            className="gap-2 rounded-8 h-8 px-4 font-semibold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all"
+            className="gap-2 rounded-8 h-8 px-4 font-semibold shadow-md bg-slate-700 text-white hover:bg-slate-800 transition-all"
           >
             <Plus className="h-4 w-4" />
             Add Product
@@ -512,28 +512,28 @@ export default function ProductLibraryPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-sm px-4 py-3">{error}</p>}
 
       {/* Table */}
-      <Card className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
+      <Card className="rounded-none border border-slate-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
         <Table>
-          <TableHeader className="bg-purple-100/60 backdrop-blur-md border-b border-purple-200/90">
+          <TableHeader className="bg-slate-100/60 backdrop-blur-md border-b border-slate-200/90">
             <TableRow className="hover:bg-transparent">
-              {!(scope === "global" && !getUser()?.roles.includes("SUPERADMIN")) && (<TableHead className="w-10 pl-5 border-r border-purple-200/80">
+              {!(scope === "global" && !getUser()?.roles.includes("SUPERADMIN")) && (<TableHead className="w-10 pl-5 border-r border-slate-200">
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={toggleSelectAll}
                   aria-label="Select all products"
-                  className="h-3.5 w-3.5 rounded-none border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                  className="h-3.5 w-3.5 rounded-none border-slate-300 text-[#163848] focus:ring-slate-500 cursor-pointer"
                 />
               </TableHead>)}
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Product</TableHead>
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Manufacturer</TableHead>
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Series</TableHead>
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 py-3.5">Category</TableHead>
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide border-r border-purple-200/80 text-right py-3.5">MRP</TableHead>
-              <TableHead className="font-bold text-xs text-purple-950 uppercase tracking-wide text-center pr-5 py-3.5">Actions</TableHead>
+              <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Product</TableHead>
+              <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Manufacturer</TableHead>
+              <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Series</TableHead>
+              <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Category</TableHead>
+              <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 text-right py-3.5">MRP</TableHead>
+              <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide text-center pr-5 py-3.5">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -558,53 +558,53 @@ export default function ProductLibraryPage() {
               items.map((p) => {
                 const isGlobal = !p.tenantId;
                 return (
-                  <TableRow key={p.id} className="hover:bg-purple-50/60 transition-colors border-b border-purple-100/90 bg-white/40 backdrop-blur-xs">
-                    {!(scope === "global" && !getUser()?.roles.includes("SUPERADMIN")) && (<TableCell className="pl-5 border-r border-purple-100/80 py-2.5">
+                  <TableRow key={p.id} className="hover:bg-slate-50 transition-colors border-b border-slate-200 bg-white/40 backdrop-blur-xs">
+                    {!(scope === "global" && !getUser()?.roles.includes("SUPERADMIN")) && (<TableCell className="pl-5 border-r border-slate-200 py-2.5">
                       <input type="checkbox" disabled={!getUser()?.roles.includes("SUPERADMIN") && p.isGlobal} checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
                         disabled={isGlobal && !getUser()?.roles.includes("SUPERADMIN")}
                         aria-label={`Select ${p.name || p.modelCode}`}
-                        className="h-3.5 w-3.5 rounded-none border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer disabled:opacity-30"
+                        className="h-3.5 w-3.5 rounded-none border-slate-300 text-[#163848] focus:ring-slate-500 cursor-pointer disabled:opacity-30"
                       />
                     </TableCell>)}
-                    <TableCell className="min-w-[300px] max-w-[500px] whitespace-normal break-words border-r border-purple-100/80 py-2.5">
+                    <TableCell className="min-w-[300px] max-w-[500px] whitespace-normal break-words border-r border-slate-200 py-2.5">
                       <p className="text-sm font-semibold text-slate-900 leading-snug">{p.name || p.modelCode || "—"}</p>
                       {p.name && p.modelCode && (
                         <p className="text-xs text-slate-500">{p.modelCode}</p>
                       )}
                     </TableCell>
-                    <TableCell className="border-r border-purple-100/80 py-2.5">
+                    <TableCell className="border-r border-slate-200 py-2.5">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold max-w-[220px] truncate text-slate-800" title={p.manufacturer?.name ?? p.manufacturerName ?? "—"}>
                           {p.manufacturer?.name ?? p.manufacturerName ?? "—"}
                         </p>
                         {/* {isGlobal && (
-                          <span className="text-[10px] uppercase font-bold text-slate-600 bg-purple-100/80 px-1.5 py-0.5 rounded-none border border-purple-200/80">
+                          <span className="text-[10px] uppercase font-bold text-slate-600 bg-slate-100/80 px-1.5 py-0.5 rounded-none border border-slate-200">
                             Global
                           </span>
                         )} */}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm border-r border-purple-100/80 py-2.5 text-slate-700">{p.series ?? "—"}</TableCell>
-                    <TableCell className="border-r border-purple-100/80 py-2.5">
+                    <TableCell className="text-sm border-r border-slate-200 py-2.5 text-slate-700">{p.series ?? "—"}</TableCell>
+                    <TableCell className="border-r border-slate-200 py-2.5">
                       {p.category?.name ?? p.categoryName ? (
-                        <Badge className="bg-purple-100/80 text-purple-700 border border-purple-200/80 font-semibold rounded-none px-2.5 py-0.5 whitespace-nowrap shadow-2xs">
+                        <Badge className="bg-slate-100/80 text-slate-900 border border-slate-200 font-semibold rounded-none px-2.5 py-0.5 whitespace-nowrap shadow-2xs">
                           {p.category?.name ?? p.categoryName}
                         </Badge>
                       ) : (
                         "—"
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-right font-semibold whitespace-nowrap border-r border-purple-100/80 py-2.5 text-slate-900">
+                    <TableCell className="text-sm text-right font-semibold whitespace-nowrap border-r border-slate-200 py-2.5 text-slate-900">
                       {p.mrp != null ? inr(p.mrp) : "—"}
                     </TableCell>
                     <TableCell className="pr-5 py-2.5">
                       <DropdownMenu>
-                          <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-none hover:bg-purple-100/50 text-slate-500 transition-colors">
+                          <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-none hover:bg-slate-100/50 text-slate-500 transition-colors">
                               <span className="sr-only">Open menu</span>
                               <MoreVertical className="h-4 w-4" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-none border-purple-200">
+                          <DropdownMenuContent align="end" className="rounded-none border-slate-200">
                             <DropdownMenuItem onClick={() => setViewing(p.id)} className="cursor-pointer">
                               <Eye className="mr-2 h-4 w-4" />
                               <span>View</span>
@@ -641,7 +641,7 @@ export default function ProductLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs text-xs font-semibold shadow-xs"
+              className="rounded-none border-slate-200 bg-white/80 backdrop-blur-xs text-xs font-semibold shadow-xs"
               disabled={!meta.hasPreviousPage || loading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -653,7 +653,7 @@ export default function ProductLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs text-xs font-semibold shadow-xs"
+              className="rounded-none border-slate-200 bg-white/80 backdrop-blur-xs text-xs font-semibold shadow-xs"
               disabled={!meta.hasNextPage || loading}
               onClick={() => setPage((p) => p + 1)}
             >
@@ -667,7 +667,7 @@ export default function ProductLibraryPage() {
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-none border-purple-200 shadow-xl">
+        <DialogContent className="max-w-sm rounded-none border-slate-200 shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Delete Product</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -677,7 +677,7 @@ export default function ProductLibraryPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-none border-purple-200"
+              className="rounded-none border-slate-200"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -698,14 +698,14 @@ export default function ProductLibraryPage() {
       
       {/* Spec Filter Modal */}
       <Dialog open={isSpecModalOpen} onOpenChange={setIsSpecModalOpen}>
-        <DialogContent className="max-w-md rounded-none border-purple-200 shadow-xl">
+        <DialogContent className="max-w-md rounded-none border-slate-200 shadow-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Filter by Specifications</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4 py-4">
             {selectedCategoryData && selectedCategoryData.series.length > 0 && (
             <Select value={draftSeries} onValueChange={(val) => { if (val) setDraftSeries(val) }}>
-              <SelectTrigger className="w-full h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+              <SelectTrigger className="w-full h-10 bg-white/80 rounded-none border-slate-200 shadow-xs">
                 <SelectValue placeholder="Series" />
               </SelectTrigger>
               <SelectContent>
@@ -719,7 +719,7 @@ export default function ProductLibraryPage() {
 
           {selectedCategoryData && selectedCategoryData.attributes.map((attr: any) => (
             <Select key={attr.id} value={draftAttributes[attr.id] || "all"} onValueChange={(val) => { if (val) setDraftAttributes(p => ({...p, [attr.id]: val})) }}>
-              <SelectTrigger className="w-full h-10 bg-white/80 rounded-none border-purple-200/80 shadow-xs">
+              <SelectTrigger className="w-full h-10 bg-white/80 rounded-none border-slate-200 shadow-xs">
                 <SelectValue placeholder={attr.name} />
               </SelectTrigger>
               <SelectContent>
@@ -736,13 +736,13 @@ export default function ProductLibraryPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-none border-purple-200"
+              className="rounded-none border-slate-200"
               onClick={() => setIsSpecModalOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              className="rounded-none bg-purple-700 hover:bg-purple-800 text-white"
+              className="rounded-none bg-slate-700 hover:bg-slate-800 text-white"
               onClick={() => { applyFilters(); setIsSpecModalOpen(false); }}
             >
               Apply Filters
@@ -753,7 +753,7 @@ export default function ProductLibraryPage() {
       
 {/* Bulk delete confirmation */}
       <Dialog open={bulkDeleteOpen} onOpenChange={(open) => !open && setBulkDeleteOpen(false)}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
               Delete {selectedIds.size} Product{selectedIds.size === 1 ? "" : "s"}
@@ -766,7 +766,7 @@ export default function ProductLibraryPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-xl"
+              className="rounded-sm"
               onClick={() => setBulkDeleteOpen(false)}
               disabled={bulkDeleteBusy}
             >
@@ -774,7 +774,7 @@ export default function ProductLibraryPage() {
             </Button>
             <Button
               variant="destructive"
-              className="rounded-xl"
+              className="rounded-sm"
               onClick={confirmBulkDelete}
               disabled={bulkDeleteBusy}
             >
