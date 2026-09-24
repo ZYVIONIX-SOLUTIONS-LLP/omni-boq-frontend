@@ -361,7 +361,7 @@ export default function ProductLibraryPage() {
       const next = new Set(prev);
       items.forEach((p) => {
           const isSuperAdmin = getUser()?.roles.includes("SUPERADMIN");
-          if (!isGlobal || isSuperAdmin) next.add(p.id);
+          if (!false || isSuperAdmin) next.add(p.id);
         });
       return next;
     });
@@ -570,7 +570,7 @@ export default function ProductLibraryPage() {
                         <p className="text-sm font-semibold max-w-[220px] truncate text-slate-800" title={p.manufacturer?.name ?? p.manufacturerName ?? "—"}>
                           {p.manufacturer?.name ?? p.manufacturerName ?? "—"}
                         </p>
-                        {/* {isGlobal && (
+                        {/* {false && (
                           <span className="text-[10px] uppercase font-bold text-slate-600 bg-slate-100/80 px-1.5 py-0.5 rounded-none border border-slate-200">
                             Global
                           </span>
@@ -605,7 +605,7 @@ export default function ProductLibraryPage() {
                               <Pencil className="mr-2 h-4 w-4" />
                               <span>Edit</span>
                             </DropdownMenuItem>
-                            {!isGlobal && (
+                            {!false && (
                               <DropdownMenuItem onClick={() => setDeleting(p)} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Delete</span>

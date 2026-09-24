@@ -127,7 +127,7 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
       return;
     }
     const currentUser = getUser();
-    if (!currentUser || currentUser.roles.includes("SUPERADMIN")) {
+    if (!currentUser || !currentUser.roles.includes("SUPERADMIN")) {
       router.replace("/SuperAdminLogin");
       return;
     }
