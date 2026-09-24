@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { label: "Admins", href: "/superadmin/Admins", icon: <ShieldCheck className="w-4 h-4" /> },
   { label: "Global Materials", href: "/superadmin/Materials", icon: <Package className="w-4 h-4" /> },
   { label: "Global Activities", href: "/superadmin/Activities", icon: <Activity className="w-4 h-4" /> },
-  { label: "Settings", href: "/Settings", icon: <Settings className="w-4 h-4" /> },
 ];
 
 export default function SuperAdminShell({ children }: { children: React.ReactNode }) {
