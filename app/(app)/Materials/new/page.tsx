@@ -270,7 +270,7 @@ function ProductFormInner() {
 
   // ── Validation ──
   const validate = (): { section: SectionId; message: string } | null => {
-    if (!manufacturerId) return { section: "classification", message: "Manufacturer is required" };
+    // if (!manufacturerId) return { section: "classification", message: "Manufacturer is required" };
     if (!categoryId) return { section: "classification", message: "Category is required" };
     return null;
   };
@@ -467,7 +467,7 @@ function ProductFormInner() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Manufacturer" required>
+                <Field label="Manufacturer">
                   <select
                     className={selectClass}
                     value={manufacturerId}
