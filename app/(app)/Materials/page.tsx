@@ -514,7 +514,7 @@ export default function ProductLibraryPage() {
         <Table>
           <TableHeader className="bg-slate-100/60 backdrop-blur-md border-b border-slate-200/90">
             <TableRow className="hover:bg-transparent">
-              {!(scope === "global" && !getUser()?.roles.includes("SUPERADMIN")) && (<TableHead className="w-10 pl-5 border-r border-slate-200">
+              <TableHead className="w-10 pl-5 border-r border-slate-200">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -522,7 +522,7 @@ export default function ProductLibraryPage() {
                   aria-label="Select all products"
                   className="h-3.5 w-3.5 rounded-none border-slate-300 text-[#163848] focus:ring-slate-500 cursor-pointer"
                 />
-              </TableHead>)}
+              </TableHead>
               <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Product</TableHead>
               <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Manufacturer</TableHead>
               <TableHead className="font-bold text-xs text-slate-950 uppercase tracking-wide border-r border-slate-200 py-3.5">Series</TableHead>
@@ -554,14 +554,14 @@ export default function ProductLibraryPage() {
                 const isGlobal = !p.tenantId;
                 return (
                   <TableRow key={p.id} className="hover:bg-slate-50 transition-colors border-b border-slate-200 bg-white/40 backdrop-blur-xs">
-                    {!(scope === "global" && !getUser()?.roles.includes("SUPERADMIN")) && (<TableCell className="pl-5 border-r border-slate-200 py-2.5">
+                    <TableCell className="pl-5 border-r border-slate-200 py-2.5">
                       <input type="checkbox" disabled={!getUser()?.roles.includes("SUPERADMIN") && p.isGlobal} checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelect(p.id)}
                         disabled={isGlobal && !getUser()?.roles.includes("SUPERADMIN")}
                         aria-label={`Select ${p.name || p.modelCode}`}
                         className="h-3.5 w-3.5 rounded-none border-slate-300 text-[#163848] focus:ring-slate-500 cursor-pointer disabled:opacity-30"
                       />
-                    </TableCell>)}
+                    </TableCell>
                     <TableCell className="min-w-[300px] max-w-[500px] whitespace-normal break-words border-r border-slate-200 py-2.5">
                       <p className="text-sm font-semibold text-slate-900 leading-snug">{p.name || p.modelCode || "—"}</p>
                       {p.name && p.modelCode && (

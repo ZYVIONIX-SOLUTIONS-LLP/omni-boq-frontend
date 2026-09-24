@@ -65,14 +65,14 @@ export default function ActivitiesPage() {
     setLoading(true);
     setError("");
     try {
-      const result = await listActivities({ limit: 500, scope });
+      const result = await listActivities({ limit: 500 });
       setItems(result.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load activities");
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -371,7 +371,7 @@ export default function ActivitiesPage() {
               headerHeight={38}
               animateRows
               suppressCellFocus
-              rowSelection={scope === "global" ? undefined : { mode: "multiRow", headerCheckbox: true, enableClickSelection: false }}
+              rowSelection={{ mode: "multiRow", headerCheckbox: true, enableClickSelection: false }}
               isRowSelectable={(rowNode) => rowNode.data ? !!rowNode.data.tenantId : false}
               onSelectionChanged={onSelectionChanged}
               onRowDoubleClicked={(e) => e.data && openActivity(e.data.id)}
