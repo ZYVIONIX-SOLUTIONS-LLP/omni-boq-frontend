@@ -965,24 +965,24 @@ export default function QuotationEditorPage({ params }: PageProps) {
     }
   });
 
-  const thClass = "px-2 py-3 text-left text-[11px] font-bold text-purple-950 uppercase tracking-wide border-r border-b border-purple-200/90 last:border-r-0 whitespace-nowrap bg-purple-100/95 backdrop-blur-md sticky top-0 z-20 shadow-2xs";
-  const tdClass = "px-2 py-1.5 align-top border-r border-b border-purple-100/90 last:border-r-0 bg-white/40 backdrop-blur-xs";
+  const thClass = "px-2 py-3 text-left text-[11px] font-bold text-[#163848] uppercase tracking-wide border-r border-b border-slate-200/90 last:border-r-0 whitespace-nowrap bg-[#163848]/10/95 backdrop-blur-md sticky top-0 z-20 shadow-2xs";
+  const tdClass = "px-2 py-1.5 align-top border-r border-b border-slate-300/90 last:border-r-0 bg-white/40 backdrop-blur-xs";
 
   return (
-    <div className="flex flex-col bg-slate-50/60 min-h-screen w-full relative print:overflow-visible print:h-auto bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
+    <div className="flex flex-col bg-slate-50/60 min-h-screen w-full relative print:overflow-visible print:h-auto font-sans">
       <div className="flex flex-col h-full w-full print:hidden">
         {/* Header (Row 1) */}
-      <div className="sticky top-0 h-[52px] flex shrink-0 items-center justify-between border-b border-purple-200/80 bg-white/95 backdrop-blur-md px-4 py-2 shadow-[0_4px_20px_0_rgba(124,58,237,0.06)] z-40">
+      <div className="sticky top-0 h-[52px] flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 py-2 shadow-[0_4px_20px_0_rgba(124,58,237,0.06)] z-40">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push("/Quotations")}
-            className="flex items-center gap-1.5 rounded-none px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-purple-50 hover:text-purple-700 transition-colors"
+            className="flex items-center gap-1.5 rounded-none px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-slate-50 hover:text-[#163848] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
           <div className="h-5 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <FolderKanban className="h-4 w-4 text-purple-700" />
+            <FolderKanban className="h-4 w-4 text-[#163848]" />
             <h2 className="text-sm font-bold text-foreground">
               {quotation?.code} — <span className="text-muted-foreground font-medium">{quotation?.project?.name}</span>
             </h2>
@@ -1006,11 +1006,11 @@ export default function QuotationEditorPage({ params }: PageProps) {
               <SelectTrigger className={`w-[130px] h-9 text-xs font-bold rounded-none border shadow-2xs disabled:opacity-50 ${
                 currentStatus === "FINAL" ? "bg-emerald-50 text-emerald-700 border-emerald-300" :
                 currentStatus === "DRAFT" ? "bg-slate-100 text-slate-700 border-slate-300" :
-                "bg-purple-50 text-purple-700 border-purple-200"
+                "bg-slate-50 text-[#163848] border-slate-200"
               }`}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-purple-200">
+              <SelectContent className="rounded-none border-slate-200">
                 <SelectItem value="DRAFT">DRAFT</SelectItem>
                 <SelectItem value="FINAL">FINAL (Lock Staff)</SelectItem>
                 <SelectItem value="SENT">SENT</SelectItem>
@@ -1023,10 +1023,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
           
           <div className="flex gap-2">
             <Select disabled={isReadOnlyQuotation} value={pricingMode} onValueChange={(val: any) => setPricingMode(val)}>
-              <SelectTrigger className="w-[190px] h-9 text-xs font-semibold bg-purple-50/80 backdrop-blur-xs text-purple-700 border-purple-200 rounded-none print:hidden shadow-xs disabled:opacity-50">
+              <SelectTrigger className="w-[190px] h-9 text-xs font-semibold bg-slate-50/80 backdrop-blur-xs text-[#163848] border-slate-200 rounded-none print:hidden shadow-xs disabled:opacity-50">
                 <SelectValue placeholder="Pricing Mode" />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-purple-200">
+              <SelectContent className="rounded-none border-slate-200">
                 <SelectItem value="combined">Material + Labour (Combined)</SelectItem>
                 <SelectItem value="separate">Material & Labour (Separate)</SelectItem>
               </SelectContent>
@@ -1036,7 +1036,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
               variant="outline"
               disabled={isReadOnlyQuotation}
               onClick={() => window.print()}
-              className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-purple-50 text-slate-700 shadow-xs print:hidden disabled:opacity-50"
+              className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs print:hidden disabled:opacity-50"
             >
               <Printer className="h-4 w-4" /> Export PDF
             </Button>
@@ -1063,7 +1063,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
             onClick={() => setBrandPreferencesOpen(true)}
             disabled={isReadOnlyQuotation}
             variant="outline"
-            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 hover:bg-blue-50 hover:text-blue-600 shadow-xs print:hidden disabled:opacity-50"
+            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-slate-200 hover:bg-blue-50 hover:text-blue-600 shadow-xs print:hidden disabled:opacity-50"
           >
             <Settings className="h-4 w-4" /> Brand Setup
           </Button>
@@ -1071,10 +1071,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
           <Button
             onClick={toggleFullscreen}
             variant="outline"
-            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-purple-200 text-purple-700 hover:bg-purple-50 shadow-xs print:hidden"
+            className="gap-2 h-9 px-3 rounded-none text-xs font-semibold border-slate-200 text-[#163848] hover:bg-slate-50 shadow-xs print:hidden"
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
           >
-            {isFullscreen ? <Minimize2 className="h-4 w-4 text-purple-600" /> : <Maximize2 className="h-4 w-4 text-purple-600" />}
+            {isFullscreen ? <Minimize2 className="h-4 w-4 text-[#163848]" /> : <Maximize2 className="h-4 w-4 text-[#163848]" />}
             <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
           </Button>
 
@@ -1082,7 +1082,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
             <Button
               onClick={handleSave}
               disabled={saving || isReadOnlyQuotation}
-              className="gap-2 h-9 px-4 rounded-none font-semibold bg-purple-700 text-white hover:bg-purple-800 transition-all shadow-md disabled:opacity-50 print:hidden"
+              className="gap-2 h-9 px-4 rounded-none font-semibold bg-[#163848] text-white hover:bg-[#163848] transition-all shadow-md disabled:opacity-50 print:hidden"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Quotation
@@ -1138,7 +1138,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
         <div className={`flex-1 ${isFullscreen ? 'max-w-none px-4' : 'max-w-[1400px]'} mx-auto w-full flex flex-col gap-4 print:gap-0 transition-all duration-300`}>
           
           {/* Activity Selection UI & Controls (Row 2) */}
-          <div className="sticky top-[52px] z-30 flex flex-col xl:flex-row items-center justify-between gap-4 bg-white/95 backdrop-blur-xl px-4 py-2.5 rounded-none border-b border-purple-200/80 shadow-xs print:hidden">
+          <div className="sticky top-[52px] z-30 flex flex-col xl:flex-row items-center justify-between gap-4 bg-white/95 backdrop-blur-xl px-4 py-2.5 rounded-none border-b border-slate-200/80 shadow-xs print:hidden">
             <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-slate-700 whitespace-nowrap">Activity Type:</span>
@@ -1151,10 +1151,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     setSelectedCategory(t?.categories[0]?.name || "");
                   }}
                 >
-                  <SelectTrigger className="w-[200px] h-9 text-sm font-semibold bg-white border-purple-200/80 rounded-none shadow-xs disabled:opacity-50">
+                  <SelectTrigger className="w-[200px] h-9 text-sm font-semibold bg-white border-slate-200/80 rounded-none shadow-xs disabled:opacity-50">
                     <SelectValue placeholder="Select Type..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-purple-200">
+                  <SelectContent className="rounded-none border-slate-200">
                     {activityTypes.map(t => (
                       <SelectItem key={t.id} value={t.name} className="font-semibold cursor-pointer">
                         {t.name}
@@ -1175,10 +1175,10 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       setSidebarOpen(true);
                     }}
                   >
-                    <SelectTrigger className="w-[220px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-purple-200/80 rounded-none disabled:opacity-50">
+                    <SelectTrigger className="w-[220px] h-9 text-sm font-semibold text-slate-700 bg-slate-50 border-slate-200/80 rounded-none disabled:opacity-50">
                       <SelectValue placeholder="Select Category..." />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border-purple-200">
+                    <SelectContent className="rounded-none border-slate-200">
                       {activityTypes.find(x => x.name === selectedType)?.categories.map(cat => (
                         <SelectItem key={cat.id} value={cat.name} className="font-semibold cursor-pointer">
                           {cat.name}
@@ -1265,15 +1265,15 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 <Plus className="h-4 w-4" /> Add Custom Item
               </Button>
               <DropdownMenu>
-                <DropdownMenuTrigger disabled={isReadOnlyQuotation} className="h-9 px-3 text-xs gap-1.5 border border-purple-300 text-purple-700 hover:bg-purple-50 rounded-none shadow-xs whitespace-nowrap font-semibold inline-flex items-center outline-none cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
+                <DropdownMenuTrigger disabled={isReadOnlyQuotation} className="h-9 px-3 text-xs gap-1.5 border border-slate-300 text-[#163848] hover:bg-slate-50 rounded-none shadow-xs whitespace-nowrap font-semibold inline-flex items-center outline-none cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
                   <Type className="h-4 w-4" /> Add Heading
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 text-xs font-semibold">
                   <DropdownMenuItem onClick={addHeadingRow} className="cursor-pointer text-slate-700">
-                    <Type className="h-4 w-4 mr-2 text-purple-600" /> Blank Section Heading
+                    <Type className="h-4 w-4 mr-2 text-[#163848]" /> Blank Section Heading
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setHeadingPresetsOpen(true)} className="cursor-pointer text-purple-700 font-bold bg-purple-50/50 focus:bg-purple-100">
-                    <BookOpen className="h-4 w-4 mr-2 text-purple-700" /> Preset Heading Templates...
+                  <DropdownMenuItem onClick={() => setHeadingPresetsOpen(true)} className="cursor-pointer text-[#163848] font-bold bg-slate-50/50 focus:bg-[#163848]/10">
+                    <BookOpen className="h-4 w-4 mr-2 text-[#163848]" /> Preset Heading Templates...
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1281,11 +1281,11 @@ export default function QuotationEditorPage({ params }: PageProps) {
           </div>
 
           {/* Table Container */}
-          <div className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-md flex flex-col max-h-[calc(100vh-180px)] overflow-auto">
+          <div className="rounded-none border border-slate-300/80 bg-white/60 backdrop-blur-xl shadow-md flex flex-col max-h-[calc(100vh-180px)] overflow-auto">
             <div className="min-w-full">
               <table className="w-full text-xs border-collapse">
                 <thead className="sticky top-0 z-20">
-                  <tr className="border-b border-purple-200">
+                  <tr className="border-b border-slate-200">
                     <th className={`${thClass} w-[50px]`}><div className="flex items-center gap-1 justify-center"><ListOrdered className="h-3.5 w-3.5 text-slate-400" /> SL</div></th>
                     <th className={`${thClass} min-w-[360px]`}><div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-emerald-500" /> ITEM NAME / SPEC</div></th>
                     <th className={`${thClass} w-[110px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-blue-500" /> UNIT</div></th>
@@ -1298,7 +1298,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> % PROFIT</div></th>
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Percent className="h-3.5 w-3.5 text-red-500" /> % DISC</div></th>
                     <th className={`${thClass} w-[65px]`}><div className="flex items-center gap-1"><Receipt className="h-3.5 w-3.5 text-cyan-500" /> % TAX</div></th>
-                    <th className={`${thClass} w-[105px]`}><div className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-purple-500" /> TAX AMT</div></th>
+                    <th className={`${thClass} w-[105px]`}><div className="flex items-center gap-1"><FileText className="h-3.5 w-3.5 text-[#163848]" /> TAX AMT</div></th>
                     {pricingMode === "separate" ? (
                       <>
                         <th className={`${thClass} w-[115px]`}><div className="flex items-center gap-1"><Package className="h-3.5 w-3.5 text-emerald-600" /> FNL MAT RATE</div></th>
@@ -1319,7 +1319,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="py-12 text-center text-muted-foreground border-b border-purple-200 bg-white">
+                      <td colSpan={12} className="py-12 text-center text-muted-foreground border-b border-slate-200 bg-white">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <FolderKanban className="h-8 w-8 text-slate-300" />
                           <p>No items in quotation. Add a custom item or activity.</p>
@@ -1385,27 +1385,27 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       }
 
                       if (isHeading) {
-                        return (                          <tr key={it.id || idx} className="hover:bg-purple-100/50 transition-colors bg-purple-50/50">
-                            <td className="px-1.5 py-0.5 align-middle border-r border-b border-purple-200">
+                        return (                          <tr key={it.id || idx} className="hover:bg-[#163848]/10/50 transition-colors bg-slate-50/50">
+                            <td className="px-1.5 py-0.5 align-middle border-r border-b border-slate-200">
                               <Input
                                 value={it.snapshotData?.serialNumber ?? ""}
                                 disabled={isReadOnlyQuotation}
                                 onChange={(e) => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: e.target.value } })}
                                 placeholder={it.snapshotData?.serialNumber !== undefined ? "" : String(idx + 1)}
-                                className="h-6 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent disabled:opacity-70"
+                                className="h-6 text-xs font-bold text-center border-transparent hover:border-slate-200 focus:border-primary px-1 w-full bg-transparent disabled:opacity-70"
                               />
                             </td>
-                            <td className="px-1.5 py-0.5 align-middle border-r border-b border-purple-200">
+                            <td className="px-1.5 py-0.5 align-middle border-r border-b border-slate-200">
                               <RichTextEditor
                                 content={it.description || ""}
                                 readOnly={isReadOnlyQuotation}
                                 onChange={(html) => updateItem(idx, { description: html })}
-                                className="h-auto min-h-[24px] text-sm border-transparent hover:border-purple-200 focus:border-primary bg-transparent px-1 py-0.5 w-full text-slate-800 tracking-wide rounded-md outline-none focus:ring-1 focus:ring-purple-500"
+                                className="h-auto min-h-[24px] text-sm border-transparent hover:border-slate-200 focus:border-primary bg-transparent px-1 py-0.5 w-full text-slate-800 tracking-wide rounded-md outline-none focus:ring-1 focus:ring-[#163848]"
                                 placeholder="SECTION HEADING..."
                               />
                             </td>
-                            <td className="border-r border-b border-purple-200 bg-purple-50/30" colSpan={pricingMode === "separate" ? (profitShift !== 0 ? 13 : 12) : (profitShift !== 0 ? 10 : 9)} />
-                            <td className="px-1.5 py-0.5 text-center bg-purple-50/50 align-middle border-b border-purple-200">
+                            <td className="border-r border-b border-slate-200 bg-slate-50/30" colSpan={pricingMode === "separate" ? (profitShift !== 0 ? 13 : 12) : (profitShift !== 0 ? 10 : 9)} />
+                            <td className="px-1.5 py-0.5 text-center bg-slate-50/50 align-middle border-b border-slate-200">
                               <div className="flex items-center justify-center gap-1">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger disabled={isReadOnlyQuotation} className="inline-flex shrink-0 items-center justify-center h-6 w-6 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md outline-none disabled:opacity-50 disabled:pointer-events-none">
@@ -1415,7 +1415,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                     <DropdownMenuItem onClick={() => insertRowAbove(idx)} className="cursor-pointer text-emerald-600 focus:text-emerald-700 focus:bg-emerald-50">
                                       <Plus className="h-4 w-4 mr-2" /> Insert Item Above
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => insertHeadingAbove(idx)} className="cursor-pointer text-purple-600 focus:text-purple-700 focus:bg-purple-50">
+                                    <DropdownMenuItem onClick={() => insertHeadingAbove(idx)} className="cursor-pointer text-[#163848] focus:text-[#163848] focus:bg-slate-50">
                                       <Type className="h-4 w-4 mr-2" /> Insert Heading Above
                                     </DropdownMenuItem>
                                     {it.snapshotData?.serialNumber === "" ? (
@@ -1439,14 +1439,14 @@ export default function QuotationEditorPage({ params }: PageProps) {
                       }
 
                       return (
-                        <tr key={it.id || idx} className="hover:bg-purple-50/80 transition-colors">
+                        <tr key={it.id || idx} className="hover:bg-slate-50/80 transition-colors">
                           <td className={`${tdClass} align-middle`}>
                             <Input
                               value={it.snapshotData?.serialNumber ?? ""}
                               disabled={isReadOnlyQuotation}
                               onChange={(e) => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: e.target.value } })}
                               placeholder={it.snapshotData?.serialNumber !== undefined ? "" : String(idx + 1)}
-                              className="h-8 text-xs font-bold text-center border-transparent hover:border-purple-200 focus:border-primary px-1 w-full bg-transparent text-slate-500 disabled:opacity-70"
+                              className="h-8 text-xs font-bold text-center border-transparent hover:border-slate-200 focus:border-primary px-1 w-full bg-transparent text-slate-500 disabled:opacity-70"
                             />
                           </td>
                           <td className={tdClass}>
@@ -1454,13 +1454,13 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               content={it.description || ""}
                               readOnly={isReadOnlyQuotation}
                               onChange={(html) => updateItem(idx, { description: html })}
-                              className="w-full min-h-[34px] text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary focus:ring-1 focus:ring-purple-500 shadow-sm px-2 py-1.5 font-medium overflow-hidden leading-relaxed text-justify"
+                              className="w-full min-h-[34px] text-xs border border-slate-200 bg-white rounded-md hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-[#163848] shadow-sm px-2 py-1.5 font-medium overflow-hidden leading-relaxed text-justify"
                               placeholder="Item description..."
                             />
                             {/* Database Item Connection Badge */}
                             {isActivity ? (
                               <div className="mt-1 flex items-center justify-end gap-1.5 text-[11px] font-semibold">
-                                <span className="flex items-center gap-1 text-purple-700 bg-purple-50/90 border border-purple-200 px-1.5 py-0.5 rounded-none shadow-2xs mr-auto">
+                                <span className="flex items-center gap-1 text-[#163848] bg-slate-50/90 border border-slate-200 px-1.5 py-0.5 rounded-none shadow-2xs mr-auto">
                                   <Zap className="w-3 h-3 shrink-0" /> {isCustomActivity ? "Custom Activity" : "Linked Activity"}
                                 </span>
                                 <Button
@@ -1471,7 +1471,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                     setConfiguringIdx(idx);
                                     setConfigDialogOpen(true);
                                   }}
-                                  className="h-5 px-1.5 text-[10px] font-bold text-purple-700 border-purple-200 bg-purple-50 hover:bg-purple-100 rounded-none cursor-pointer shadow-2xs"
+                                  className="h-5 px-1.5 text-[10px] font-bold text-[#163848] border-slate-200 bg-slate-50 hover:bg-[#163848]/10 rounded-none cursor-pointer shadow-2xs"
                                 >
                                   <Settings className="w-3 h-3 mr-0.5" /> Config
                                 </Button>
@@ -1513,9 +1513,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                     setLinkingIdx(idx);
                                     setLinkDialogOpen(true);
                                   }}
-                                  className="h-5 px-2 text-[10px] font-bold text-purple-700 border-purple-200 bg-purple-50/50 hover:bg-purple-100 rounded-none shadow-2xs gap-1 cursor-pointer"
+                                  className="h-5 px-2 text-[10px] font-bold text-[#163848] border-slate-200 bg-slate-50/50 hover:bg-[#163848]/10 rounded-none shadow-2xs gap-1 cursor-pointer"
                                 >
-                                  <Link className="w-3 h-3 text-purple-600" /> Link Activity / Material
+                                  <Link className="w-3 h-3 text-[#163848]" /> Link Activity / Material
                                 </Button>
                               </div>
                             )}
@@ -1525,7 +1525,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               value={it.unit}
                               disabled={isReadOnlyQuotation}
                               onChange={(e) => updateItem(idx, { unit: e.target.value })}
-                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center disabled:opacity-70"
+                              className="h-8 text-xs border border-slate-200 bg-white rounded-md hover:border-slate-300 focus:border-primary shadow-sm px-1 text-center disabled:opacity-70"
                             />
                           </td>
                           <td className={tdClass}>
@@ -1533,7 +1533,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                               disabled={isReadOnlyQuotation}
                               value={it.quantity}
                               onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
-                              className="h-8 text-xs border border-purple-200 bg-white rounded-md hover:border-purple-300 focus:border-primary shadow-sm px-1 text-center disabled:opacity-70"
+                              className="h-8 text-xs border border-slate-200 bg-white rounded-md hover:border-slate-300 focus:border-primary shadow-sm px-1 text-center disabled:opacity-70"
                             />
                           </td>
                           {pricingMode === "separate" ? (
@@ -1552,7 +1552,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                   }}
                                   readOnly={isActivity || isReadOnlyQuotation}
                                   title={isActivity ? "Material Rate is computed from configured materials" : undefined}
-                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-slate-200 hover:border-slate-300 focus:border-primary shadow-sm"}`}
                                 />
                               </td>
                             </>
@@ -1570,7 +1570,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                 }}
                                 readOnly={isActivity || isReadOnlyQuotation}
                                 title={isActivity ? "Rate is computed from configured materials" : undefined}
-                                className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-slate-200 hover:border-slate-300 focus:border-primary shadow-sm"}`}
                               />
                             </td>
                           )}
@@ -1583,7 +1583,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                 disabled={isReadOnlyQuotation}
                                 value={it.profitPct}
                                 onChange={(e) => updateItem(idx, { profitPct: Number(e.target.value) || 0 })}
-                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm disabled:opacity-70"
+                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-slate-200 hover:border-slate-300 focus:border-primary shadow-sm disabled:opacity-70"
                               />
                             )}
                           </td>
@@ -1596,7 +1596,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                 disabled={isReadOnlyQuotation}
                                 value={it.discountPct}
                                 onChange={(e) => updateItem(idx, { discountPct: Number(e.target.value) || 0 })}
-                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm disabled:opacity-70"
+                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-slate-200 hover:border-slate-300 focus:border-primary shadow-sm disabled:opacity-70"
                               />
                             )}
                           </td>
@@ -1609,11 +1609,11 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                 disabled={isReadOnlyQuotation}
                                 value={it.taxRate}
                                 onChange={(e) => updateItem(idx, { taxRate: Number(e.target.value) || 0 })}
-                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm disabled:opacity-70"
+                                className="h-8 text-xs border rounded-md px-2 text-right bg-white border-slate-200 hover:border-slate-300 focus:border-primary shadow-sm disabled:opacity-70"
                               />
                             )}
                           </td>
-                          <td className={`${tdClass} text-right py-3 pr-4 text-purple-600 font-medium`}>
+                          <td className={`${tdClass} text-right py-3 pr-4 text-[#163848] font-medium`}>
                             {isActivity ? <span className="text-slate-400 font-bold flex justify-center">--</span> : taxAmt.toFixed(2)}
                           </td>
                           {pricingMode === "separate" ? (
@@ -1634,7 +1634,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                     });
                                   }}
                                   readOnly={isActivity || isReadOnlyQuotation}
-                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-purple-200 hover:border-purple-300 focus:border-primary shadow-sm"}`}
+                                  className={`h-8 text-xs border rounded-md px-2 text-right ${isActivity || isReadOnlyQuotation ? "bg-slate-50/50 border-transparent text-slate-500 cursor-not-allowed shadow-none" : "bg-white border-slate-200 hover:border-slate-300 focus:border-primary shadow-sm"}`}
                                 />
                               </td>
                               <td className={`${tdClass} text-right py-3 pr-4 font-medium text-emerald-700 bg-emerald-50/30`}>
@@ -1681,7 +1681,7 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                   <DropdownMenuItem onClick={() => insertRowAbove(idx)} className="cursor-pointer text-emerald-600 focus:text-emerald-700 focus:bg-emerald-50">
                                     <Plus className="h-4 w-4 mr-2" /> Insert Item Above
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => insertHeadingAbove(idx)} className="cursor-pointer text-purple-600 focus:text-purple-700 focus:bg-purple-50">
+                                  <DropdownMenuItem onClick={() => insertHeadingAbove(idx)} className="cursor-pointer text-[#163848] focus:text-[#163848] focus:bg-slate-50">
                                     <Type className="h-4 w-4 mr-2" /> Insert Heading Above
                                   </DropdownMenuItem>
                                   {activityRows[idx] && (
@@ -1689,8 +1689,8 @@ export default function QuotationEditorPage({ params }: PageProps) {
                                       <Settings className="h-4 w-4 mr-2" /> Configure Materials
                                     </DropdownMenuItem>
                                   )}
-                                  {/* <DropdownMenuItem onClick={() => { setLinkingIdx(idx); setLinkDialogOpen(true); }} className="cursor-pointer text-purple-700 font-bold bg-purple-50/60 focus:bg-purple-100">
-                                    <Link className="h-4 w-4 mr-2 text-purple-700" /> Link Activity / Material...
+                                  {/* <DropdownMenuItem onClick={() => { setLinkingIdx(idx); setLinkDialogOpen(true); }} className="cursor-pointer text-[#163848] font-bold bg-slate-50/60 focus:bg-[#163848]/10">
+                                    <Link className="h-4 w-4 mr-2 text-[#163848]" /> Link Activity / Material...
                                   </DropdownMenuItem> */}
                                   {it.snapshotData?.serialNumber === "" ? (
                                     <DropdownMenuItem onClick={() => updateItem(idx, { snapshotData: { ...it.snapshotData, serialNumber: undefined } })} className="cursor-pointer text-slate-600 focus:bg-slate-100">
@@ -1723,16 +1723,16 @@ export default function QuotationEditorPage({ params }: PageProps) {
                 const taxLabel = hasExplicitTax ? "Tax Amount:" : "GST @ 18%:";
 
                 return (
-                  <div className="bg-white/80 backdrop-blur-md border-t border-purple-200/90 p-4 flex flex-col items-end justify-center gap-1 rounded-none shadow-inner">
+                  <div className="bg-white/80 backdrop-blur-md border-t border-slate-200/90 p-4 flex flex-col items-end justify-center gap-1 rounded-none shadow-inner">
                     <div className="flex w-64 justify-between text-xs text-slate-600 font-medium">
                       <span>Sub Total:</span>
                       <span>₹ {computedSubTotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex w-64 justify-between text-xs text-slate-600 font-medium pb-2 border-b border-purple-200/80">
+                    <div className="flex w-64 justify-between text-xs text-slate-600 font-medium pb-2 border-b border-slate-200/80">
                       <span>{taxLabel}</span>
                       <span>₹ {computedTax.toFixed(2)}</span>
                     </div>
-                    <div className="flex w-64 justify-between text-sm text-purple-950 font-bold pt-1">
+                    <div className="flex w-64 justify-between text-sm text-[#163848] font-bold pt-1">
                       <span>Grand Total:</span>
                       <span>₹ {grandTotalAll.toFixed(2)}</span>
                     </div>
@@ -2040,9 +2040,9 @@ export default function QuotationEditorPage({ params }: PageProps) {
               />
             </div>
 
-            <div className="p-3 bg-purple-50/70 border border-purple-100 text-xs text-purple-900 rounded-none space-y-1">
+            <div className="p-3 bg-slate-50/70 border border-slate-300 text-xs text-[#163848] rounded-none space-y-1">
               <p className="font-bold">Original Quotation: {quotation?.code}</p>
-              <p className="text-[11px] text-purple-700 leading-relaxed">
+              <p className="text-[11px] text-[#163848] leading-relaxed">
                 The new revision will start in <span className="font-bold">DRAFT</span> status and carry over all line items, brand setups, and spreadsheet configurations.
               </p>
             </div>

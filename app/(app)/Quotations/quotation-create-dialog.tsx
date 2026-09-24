@@ -93,7 +93,7 @@ export default function QuotationCreateDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-md rounded-none border border-purple-200 bg-white shadow-2xl">
+      <DialogContent className="max-w-md rounded-none border border-slate-200 bg-white shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-slate-900">New Quotation</DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
@@ -106,7 +106,7 @@ export default function QuotationCreateDialog({
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="e.g. ABC Corp"
-              className="rounded-none border-purple-200 h-10 text-xs font-semibold focus-visible:ring-purple-500"
+              className="rounded-none border-slate-200 h-10 text-xs font-semibold focus-visible:ring-[#163848]"
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
@@ -114,7 +114,7 @@ export default function QuotationCreateDialog({
               <Input
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
-                className="rounded-none border-purple-200 h-10 text-xs font-semibold focus-visible:ring-purple-500"
+                className="rounded-none border-slate-200 h-10 text-xs font-semibold focus-visible:ring-[#163848]"
               />
             </Field>
             <Field label="Project Name" required>
@@ -122,7 +122,7 @@ export default function QuotationCreateDialog({
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g. Retail Store Wiring"
-                className="rounded-none border-purple-200 h-10 text-xs font-semibold focus-visible:ring-purple-500"
+                className="rounded-none border-slate-200 h-10 text-xs font-semibold focus-visible:ring-[#163848]"
               />
             </Field>
           </div>
@@ -130,7 +130,7 @@ export default function QuotationCreateDialog({
             <Input
               value={clientAddress}
               onChange={(e) => setClientAddress(e.target.value)}
-              className="rounded-none border-purple-200 h-10 text-xs font-semibold focus-visible:ring-purple-500"
+              className="rounded-none border-slate-200 h-10 text-xs font-semibold focus-visible:ring-[#163848]"
             />
           </Field>
           {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
@@ -147,14 +147,14 @@ export default function QuotationCreateDialog({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              className="rounded-none border-purple-300 text-purple-700 hover:bg-purple-50 font-semibold text-xs"
+              className="rounded-none border-slate-300 text-[#163848] hover:bg-slate-50 font-semibold text-xs"
               onClick={() => submit("manual")}
               disabled={saving}
             >
               {saving ? "Creating..." : "Manual Entry"}
             </Button>
             {/* <Button
-              className="rounded-none bg-purple-700 hover:bg-purple-800 text-white shadow-md transition-all font-semibold text-xs"
+              className="rounded-none bg-[#163848] hover:bg-[#163848] text-white shadow-md transition-all font-semibold text-xs"
               onClick={() => submit("ai")}
               disabled={saving}
             >

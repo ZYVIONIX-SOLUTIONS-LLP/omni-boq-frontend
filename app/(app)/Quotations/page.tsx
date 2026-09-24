@@ -60,7 +60,7 @@ const STATUS_STYLES: Record<QuotationStatus, string> = {
   DRAFT: "bg-slate-200 text-slate-700 border-slate-300",
   FINAL: "bg-emerald-100 text-emerald-800 border-emerald-300 font-bold",
   SENT: "bg-sky-100 text-sky-700 border-sky-300",
-  ACCEPTED: "bg-purple-100 text-purple-700 border-purple-300",
+  ACCEPTED: "bg-[#163848]/10 text-[#163848] border-slate-300",
   REJECTED: "bg-red-100 text-red-700 border-red-300",
   EXPIRED: "bg-amber-100 text-amber-700 border-amber-300",
 };
@@ -307,7 +307,7 @@ export default function QuotationsPage() {
         cellClass: "font-semibold",
         cellRenderer: (p: ICellRendererParams<Quotation>) => (
           <button
-            className="font-bold text-purple-700 hover:text-purple-900 hover:underline text-left flex items-center gap-1.5"
+            className="font-bold text-[#163848] hover:text-[#112a36] hover:underline text-left flex items-center gap-1.5"
             onClick={() => p.data && openQuotation(p.data.id)}
           >
             {p.data?.parentQuotationId && <GitBranch className="w-3.5 h-3.5 text-amber-600" />}
@@ -361,7 +361,7 @@ export default function QuotationsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 rounded-none text-slate-400 hover:text-purple-700 hover:bg-purple-50"
+                    className="h-7 w-7 rounded-none text-slate-400 hover:text-[#163848] hover:bg-slate-50"
                     aria-label="More options"
                   >
                     <MoreVertical className="h-3.5 w-3.5" />
@@ -399,7 +399,7 @@ export default function QuotationsPage() {
   );
 
   return (
-    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.12),rgba(255,255,255,0))]">
+    <div className=\"p-6 space-y-5 bg-slate-50/60 min-h-screen font-sans bg-slate-50/60 min-h-screen\">
       {/* Header Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
@@ -408,19 +408,19 @@ export default function QuotationsPage() {
             placeholder="Search code, client, project, revision..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-purple-200/80 focus-visible:ring-purple-500 shadow-xs text-sm"
+            className="pl-9 rounded-none bg-white/80 backdrop-blur-xs border-slate-200/80 focus-visible:ring-[#163848] shadow-xs text-sm"
           />
         </div>
 
         <div className="flex items-center gap-3">
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-purple-100/80 p-0.5 rounded-none border border-purple-200/80">
+          <div className="flex items-center bg-[#163848]/10/80 p-0.5 rounded-none border border-slate-200/80">
             <button
               onClick={() => setViewMode("directory")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-all ${
                 viewMode === "directory"
-                  ? "bg-purple-700 text-white shadow-xs"
-                  : "text-purple-900 hover:text-purple-950"
+                  ? "bg-[#163848] text-white shadow-xs"
+                  : "text-[#163848] hover:text-[#163848]"
               }`}
             >
               <FolderOpen className="w-3.5 h-3.5" />
@@ -430,8 +430,8 @@ export default function QuotationsPage() {
               onClick={() => setViewMode("list")}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold transition-all ${
                 viewMode === "list"
-                  ? "bg-purple-700 text-white shadow-xs"
-                  : "text-purple-900 hover:text-purple-950"
+                  ? "bg-[#163848] text-white shadow-xs"
+                  : "text-[#163848] hover:text-[#163848]"
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -443,7 +443,7 @@ export default function QuotationsPage() {
             variant="outline"
             size="icon"
             onClick={load}
-            className="rounded-none border-purple-200/80 bg-white/80 backdrop-blur-xs hover:bg-purple-50 text-slate-700 h-9 w-9 shadow-xs"
+            className="rounded-none border-slate-200/80 bg-white/80 backdrop-blur-xs hover:bg-slate-50 text-slate-700 h-9 w-9 shadow-xs"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
@@ -451,7 +451,7 @@ export default function QuotationsPage() {
 
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 rounded-none h-9 px-4 font-bold shadow-md bg-purple-700 text-white hover:bg-purple-800 transition-all text-xs"
+            className="gap-2 rounded-none h-9 px-4 font-bold shadow-md bg-[#163848] text-white hover:bg-[#163848] transition-all text-xs"
           >
             <Plus className="h-4 w-4" />
             New Quotation
@@ -470,11 +470,11 @@ export default function QuotationsPage() {
         /* ── DIRECTORY TREE VIEW ── */
         <div className="space-y-4">
           {loading ? (
-            <Card className="p-12 text-center text-sm text-slate-500 bg-white/80 border-purple-200">
+            <Card className="p-12 text-center text-sm text-slate-500 bg-white/80 border-slate-200">
               Loading Directory Structure...
             </Card>
           ) : filteredDirectoryGroups.length === 0 ? (
-            <Card className="p-12 text-center text-sm text-slate-500 bg-white/80 border-purple-200">
+            <Card className="p-12 text-center text-sm text-slate-500 bg-white/80 border-slate-200">
               No quotation directories found.
             </Card>
           ) : (
@@ -483,32 +483,32 @@ export default function QuotationsPage() {
               return (
                 <Card
                   key={group.folderKey}
-                  className="rounded-none border border-purple-200 bg-white/90 shadow-sm overflow-hidden"
+                  className="rounded-none border border-slate-200 bg-white/90 shadow-sm overflow-hidden"
                 >
                   {/* Directory Folder Header */}
                   <div
                     onClick={() => toggleFolder(group.folderKey)}
-                    className="flex items-center justify-between px-4 py-3 bg-purple-50/80 hover:bg-purple-100/70 border-b border-purple-200/80 cursor-pointer select-none transition-colors"
+                    className="flex items-center justify-between px-4 py-3 bg-slate-50/80 hover:bg-[#163848]/10/70 border-b border-slate-200/80 cursor-pointer select-none transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       {isCollapsed ? (
-                        <ChevronRight className="w-4 h-4 text-purple-700" />
+                        <ChevronRight className="w-4 h-4 text-[#163848]" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-purple-700" />
+                        <ChevronDown className="w-4 h-4 text-[#163848]" />
                       )}
-                      <FolderOpen className="w-5 h-5 text-purple-700 fill-purple-200" />
+                      <FolderOpen className="w-5 h-5 text-[#163848] fill-slate-200" />
                       <div>
                         <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                           Quatation: {group.projectName}
                         </h3>
                         <p className="text-xs font-semibold text-slate-500">
-                          Client: <span className="text-purple-900">{group.clientName}</span>
+                          Client: <span className="text-[#163848]">{group.clientName}</span>
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-purple-200/70 text-purple-900">
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-[#163848]/70 text-[#163848]">
                         {group.quotations.length}{" "}
                         {group.quotations.length === 1 ? "Quotation / Revision" : "Quotations / Revisions"}
                       </span>
@@ -535,14 +535,14 @@ export default function QuotationsPage() {
                               {isRevision ? (
                                 <GitBranch className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
                               ) : (
-                                <FileText className="w-4 h-4 text-purple-600 shrink-0 mt-0.5 sm:mt-0" />
+                                <FileText className="w-4 h-4 text-[#163848] shrink-0 mt-0.5 sm:mt-0" />
                               )}
 
                               <div className="space-y-0.5 min-w-0">
                                 <div className="flex items-center gap-2.5 flex-wrap">
                                   <button
                                     onClick={() => openQuotation(q.id)}
-                                    className="font-bold text-sm text-purple-800 hover:text-purple-950 hover:underline text-left"
+                                    className="font-bold text-sm text-[#163848] hover:text-[#163848] hover:underline text-left"
                                   >
                                     {q.code}
                                   </button>
@@ -569,7 +569,7 @@ export default function QuotationsPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openQuotation(q.id)}
-                                className="h-8 text-xs font-semibold border-purple-200 hover:bg-purple-50 text-purple-900 rounded-none"
+                                className="h-8 text-xs font-semibold border-slate-200 hover:bg-slate-50 text-[#163848] rounded-none"
                               >
                                 <Eye className="w-3.5 h-3.5 mr-1" />
                                 {isFinalLocked ? "View" : "Open / Edit"}
@@ -581,7 +581,7 @@ export default function QuotationsPage() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 rounded-none text-slate-400 hover:text-purple-700 hover:bg-purple-50"
+                                      className="h-8 w-8 rounded-none text-slate-400 hover:text-[#163848] hover:bg-slate-50"
                                       aria-label="More options"
                                     >
                                       <MoreVertical className="h-4 w-4" />
@@ -630,7 +630,7 @@ export default function QuotationsPage() {
         </div>
       ) : (
         /* ── ALL LIST VIEW (AG GRID) ── */
-        <Card className="rounded-none border border-purple-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
+        <Card className="rounded-none border border-slate-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
           {loading ? (
             <p className="text-center py-14 text-sm text-muted-foreground">Loading quotations...</p>
           ) : items.length === 0 ? (
@@ -727,7 +727,7 @@ export default function QuotationsPage() {
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm rounded-none border border-purple-200 bg-white shadow-2xl">
+        <DialogContent className="max-w-sm rounded-none border border-slate-200 bg-white shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900">Delete Quotation</DialogTitle>
             <DialogDescription className="text-sm text-slate-600">
@@ -738,7 +738,7 @@ export default function QuotationsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-none border-purple-200"
+              className="rounded-none border-slate-200"
               onClick={() => setDeleting(null)}
               disabled={deleteBusy}
             >
@@ -758,7 +758,7 @@ export default function QuotationsPage() {
 
       {/* Edit quotation */}
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-md rounded-none border border-purple-200 bg-white shadow-2xl">
+        <DialogContent className="max-w-md rounded-none border border-slate-200 bg-white shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900">Edit Quotation</DialogTitle>
             <DialogDescription className="text-sm text-slate-500">
@@ -772,7 +772,7 @@ export default function QuotationsPage() {
               <Input
                 value={editClientName}
                 onChange={(e) => setEditClientName(e.target.value)}
-                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
+                className="rounded-none border-slate-200 h-10 bg-white focus-visible:ring-[#163848] text-xs font-semibold"
               />
             </div>
             <div className="space-y-1.5">
@@ -780,7 +780,7 @@ export default function QuotationsPage() {
               <Input
                 value={editClientPhone}
                 onChange={(e) => setEditClientPhone(e.target.value)}
-                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
+                className="rounded-none border-slate-200 h-10 bg-white focus-visible:ring-[#163848] text-xs font-semibold"
               />
             </div>
             <div className="space-y-1.5">
@@ -788,7 +788,7 @@ export default function QuotationsPage() {
               <Input
                 value={editProjectName}
                 onChange={(e) => setEditProjectName(e.target.value)}
-                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
+                className="rounded-none border-slate-200 h-10 bg-white focus-visible:ring-[#163848] text-xs font-semibold"
               />
             </div>
             <div className="space-y-1.5">
@@ -796,7 +796,7 @@ export default function QuotationsPage() {
               <Input
                 value={editClientAddress}
                 onChange={(e) => setEditClientAddress(e.target.value)}
-                className="rounded-none border-purple-200 h-10 bg-white focus-visible:ring-purple-500 text-xs font-semibold"
+                className="rounded-none border-slate-200 h-10 bg-white focus-visible:ring-[#163848] text-xs font-semibold"
               />
             </div>
             {editError && <p className="text-xs text-red-500 font-medium">{editError}</p>}
@@ -804,14 +804,14 @@ export default function QuotationsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-none border-purple-200"
+              className="rounded-none border-slate-200"
               onClick={() => setEditing(null)}
               disabled={editBusy}
             >
               Cancel
             </Button>
             <Button
-              className="rounded-none bg-purple-700 text-white hover:bg-purple-800 shadow-md font-semibold"
+              className="rounded-none bg-[#163848] text-white hover:bg-[#163848] shadow-md font-semibold"
               onClick={confirmEdit}
               disabled={editBusy}
             >

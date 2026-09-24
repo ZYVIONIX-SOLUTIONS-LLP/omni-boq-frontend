@@ -106,7 +106,7 @@ export default function AIWorkspacePage({ params }: PageProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/Quotations")}
-            className="flex items-center justify-center h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="flex items-center justify-center h-8 w-8 rounded-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -121,10 +121,10 @@ export default function AIWorkspacePage({ params }: PageProps) {
           </div>
         </div>
         <div className="flex gap-2.5">
-          <Button variant="outline" className="rounded-xl h-9 text-xs font-semibold shadow-sm border-slate-200" onClick={() => router.push(`/Quotations/${id}`)}>
+          <Button variant="outline" className="rounded-md h-9 text-xs font-semibold shadow-sm border-slate-200" onClick={() => router.push(`/Quotations/${id}`)}>
             Open in Manual Editor
           </Button>
-          <Button className="rounded-xl h-9 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm transition-all">
+          <Button className="rounded-md h-9 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm transition-all">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Approve & Save
           </Button>
@@ -148,7 +148,7 @@ export default function AIWorkspacePage({ params }: PageProps) {
                 <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
                   <Bot className="h-4 w-4 text-indigo-600" />
                 </div>
-                <div className="bg-slate-100 rounded-2xl rounded-tl-none p-3.5 text-[13px] text-slate-700 leading-relaxed shadow-sm">
+                <div className="bg-slate-100 rounded-md rounded-tl-none p-3.5 text-[13px] text-slate-700 leading-relaxed shadow-sm">
                   Hi! I'm ready to build this quotation. What kind of work are we doing for <span className="font-semibold text-slate-900">{quotation?.customer?.name}</span>? You can paste rough notes or describe it naturally.
                 </div>
               </div>
@@ -160,7 +160,7 @@ export default function AIWorkspacePage({ params }: PageProps) {
             <div className="relative flex flex-col gap-2">
               <Textarea
                 placeholder="e.g., 10 light points, 2 fans, and 3 power points..."
-                className="min-h-[110px] resize-none rounded-xl border-slate-200 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-400 text-[13px] p-3 pb-12 shadow-sm transition-all"
+                className="min-h-[110px] resize-none rounded-md border-slate-200 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-400 text-[13px] p-3 pb-12 shadow-sm transition-all"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => {
@@ -173,7 +173,7 @@ export default function AIWorkspacePage({ params }: PageProps) {
               <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
                 <Button 
                   size="icon" 
-                  className="h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all"
+                  className="h-8 w-8 rounded-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all"
                   onClick={handleSendPrompt}
                   disabled={isProcessing || !prompt.trim()}
                 >
@@ -195,7 +195,7 @@ export default function AIWorkspacePage({ params }: PageProps) {
               <h3 className="text-[13px] font-semibold text-slate-700">Live Draft Preview</h3>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="h-8 text-[12px] rounded-lg gap-1.5 border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 shadow-sm transition-colors">
+              <Button variant="outline" size="sm" className="h-8 text-[12px] rounded-sm gap-1.5 border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 shadow-sm transition-colors">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Audit Quote
               </Button>
@@ -206,7 +206,7 @@ export default function AIWorkspacePage({ params }: PageProps) {
           <div className="flex-1 p-5 relative">
             {isProcessing ? (
               <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 animate-in fade-in duration-300">
-                <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center">
+                <div className="bg-white p-6 rounded-md shadow-xl border border-slate-100 flex flex-col items-center">
                   <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
                     <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
                   </div>
@@ -216,10 +216,10 @@ export default function AIWorkspacePage({ params }: PageProps) {
               </div>
             ) : null}
             
-            <Card className="h-full w-full rounded-xl border-border shadow-sm overflow-hidden bg-white flex flex-col">
+            <Card className="h-full w-full rounded-md border-border shadow-sm overflow-hidden bg-white flex flex-col">
               {rowData.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-slate-50/30">
-                  <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center mb-5 border border-slate-200 shadow-sm">
+                  <div className="h-16 w-16 rounded-md bg-white flex items-center justify-center mb-5 border border-slate-200 shadow-sm">
                     <Sparkles className="h-8 w-8 text-indigo-400" />
                   </div>
                   <h3 className="text-sm font-bold text-slate-700">No data generated yet</h3>
