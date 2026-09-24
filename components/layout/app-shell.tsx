@@ -95,10 +95,16 @@ const MAIN_NAV_ITEMS = [
   { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
   // { label: "Projects", href: "/Projects", icon: <ProjectsIcon /> },
   { label: "Staff", href: "/Staff", icon: <UsersIcon /> },
-  { label: "Settings", href: "/Settings", icon: <SettingsIcon /> },
+  { label: "Company", href: "/Company/information", icon: <SettingsIcon /> },
 ];
 
 // Contextual sub-menu items when inside Projects / Quotations workspace
+
+const COMPANY_NAV_ITEMS = [
+  { label: "Company Information", href: "/Company/information", icon: <SettingsIcon /> },
+  { label: "Documents", href: "/Company/documents", icon: <Layers size={16} /> },
+];
+
 const WORKSPACE_NAV_ITEMS = [
   { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
   { label: "Materials", href: "/Materials", icon: <MaterialsIcon /> },
@@ -114,6 +120,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Check if we are inside the Workspace context
   const isWorkspaceContext = /^\/(Quotations|Projects|Materials|Activities)($|\/)/.test(pathname);
+  const isCompanyContext = /^\/(Company)($|\/)/.test(pathname);
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checked, setChecked] = useState(false);
@@ -164,13 +171,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (isWorkspaceContext) {
       return WORKSPACE_NAV_ITEMS;
     }
+    if (isCompanyContext) {
+      return COMPANY_NAV_ITEMS;
+    }
 
     if (role === "ADMIN") {
       return MAIN_NAV_ITEMS;
     }
     // Staff sees Dashboard, Quotations & Projects
     return MAIN_NAV_ITEMS.filter((item) => item.label !== "Staff" && item.label !== "Settings");
-  }, [user, isWorkspaceContext]);
+  }, [user, isWorkspaceContext, isCompanyContext]);
 
   const displayName = user ? user.firstName || user.username : "";
   const initial = (displayName[0] ?? "U").toUpperCase();

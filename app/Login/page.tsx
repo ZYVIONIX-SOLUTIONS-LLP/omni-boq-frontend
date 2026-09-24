@@ -103,8 +103,9 @@ export default function Login() {
           <div className="w-9 h-9 rounded-md bg-[#E9A825] flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5 text-[#0A0E1A]" strokeWidth={2.5} />
           </div>
-          <span className="font-display text-white text-[17px] font-semibold tracking-tight">Console</span>
-        </div>
+     <span className="font-display text-white text-[17px] font-semibold tracking-tight">
+            Powered by Zyvionix <span className="text-[#E9A825]">Solutions</span>
+          </span>         </div>
 
         <div className="relative z-10">
           <p className="font-mono-label text-[11px] uppercase tracking-[0.18em] text-[#5B8DEF] mb-4">
@@ -163,8 +164,9 @@ export default function Login() {
             <div className="w-8 h-8 rounded-md bg-[#E9A825] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-[18px] h-[18px] text-[#0A0E1A]" strokeWidth={2.5} />
             </div>
-            <span className="font-display text-white text-[16px] font-semibold tracking-tight">Console</span>
-          </div>
+     <span className="font-display text-white text-[17px] font-semibold tracking-tight">
+            Powered by Zyvionix <span className="text-[#E9A825]">Solutions</span>
+          </span>           </div>
 
           <h1 className="font-display text-white text-[26px] font-semibold tracking-tight mb-1.5">
             {isSignUp ? "Create your admin account" : "Sign in to Console"}
