@@ -399,7 +399,7 @@ export default function QuotationsPage() {
   );
 
   return (
-    <div className=\"p-6 space-y-5 bg-slate-50/60 min-h-screen font-sans bg-slate-50/60 min-h-screen\">
+    <div className="p-6 space-y-5 bg-slate-50/60 min-h-screen font-sans bg-slate-50/60 min-h-screen">
       {/* Header Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
