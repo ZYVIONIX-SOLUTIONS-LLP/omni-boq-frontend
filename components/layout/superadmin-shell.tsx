@@ -7,13 +7,9 @@ import { getUser, AuthUser, clearAuth } from "@/app/lib/auth-storage";
 import { LogOut, LayoutDashboard, Package, Briefcase, FileText, Activity, Users, ShieldCheck, Settings, Search, Bell, Moon, Sun } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/superadmin/Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
-  { label: "Materials", href: "/superadmin/Materials", icon: <Package className="w-4 h-4" /> },
-  { label: "Projects", href: "/Projects", icon: <Briefcase className="w-4 h-4" /> },
-  { label: "Quotations", href: "/Quotations", icon: <FileText className="w-4 h-4" /> },
-  { label: "Activities", href: "/superadmin/Activities", icon: <Activity className="w-4 h-4" /> },
-  { label: "Staff", href: "/superadmin/Staff", icon: <Users className="w-4 h-4" /> },
   { label: "Admins", href: "/superadmin/Admins", icon: <ShieldCheck className="w-4 h-4" /> },
+  { label: "Global Materials", href: "/superadmin/Materials", icon: <Package className="w-4 h-4" /> },
+  { label: "Global Activities", href: "/superadmin/Activities", icon: <Activity className="w-4 h-4" /> },
   { label: "Settings", href: "/Settings", icon: <Settings className="w-4 h-4" /> },
 ];
 
