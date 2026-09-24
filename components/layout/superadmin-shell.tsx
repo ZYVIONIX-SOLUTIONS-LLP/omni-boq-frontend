@@ -165,6 +165,11 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
       return WORKSPACE_NAV_ITEMS;
     }
 
+    if (role === "SUPERADMIN") {
+      return [
+        { label: "Admins", href: "/superadmin/Admins", icon: <UsersIcon /> },
+      ];
+    }
     if (role === "ADMIN") {
       return MAIN_NAV_ITEMS;
     }
@@ -207,10 +212,10 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
             {!collapsed && (
               <div className="leading-tight min-w-0">
                 <p className="text-sm font-bold truncate text-white">
-                  Omni
+                  Zyvionix
                 </p>
                 <p className="text-[10px] font-semibold truncate text-[#D4B86A]">
-                  Electrics
+                  Solutions
                 </p>
               </div>
             )}
