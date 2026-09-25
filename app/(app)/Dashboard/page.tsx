@@ -56,7 +56,7 @@ export default function Dashboard() {
       isAdmin ? listUsers().catch(() => []) : Promise.resolve([])
     ]).then(([resQ, resU]) => {
       setQuotations(resQ.items || []);
-      const staff = (resU || []).filter(u => u.roles?.includes("STAFF") || u.roles?.includes("ADMIN") || u.roles?.includes("SUPERADMIN")).length;
+      const staff = (resU || []).filter(u => u.role === "STAFF" || u.role === "ADMIN" || u.role === "SUPERADMIN").length;
       setStaffCount(staff);
       setLoading(false);
     }).catch(err => {
