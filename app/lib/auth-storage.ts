@@ -8,7 +8,9 @@ export interface AuthUser {
     phone?: string | null;
     gst?: string | null;
     companyAddress?: string | null;
+    companyCustomFields?: Record<string, string> | null;
     roles: string[];
+    priorityLevel?: number | null;
 }
 
 const ACCESS_TOKEN_KEY = "accessToken";

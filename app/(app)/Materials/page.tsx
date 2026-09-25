@@ -12,7 +12,7 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Trash2, MoreVertical,
+  Trash2, MoreVertical, Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,6 +43,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import MaterialImportDialog from "@/components/materials/MaterialImportDialog";
 import {
   Table,
   TableBody,
@@ -235,6 +236,7 @@ export default function ProductLibraryPage() {
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   
   const [loading, setLoading] = useState(true);
@@ -497,6 +499,14 @@ export default function ProductLibraryPage() {
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="gap-2 rounded-8 h-8 px-4 font-semibold border-slate-200 bg-white/80 backdrop-blur-xs hover:bg-slate-50 text-slate-700 shadow-xs mr-2"
+            >
+              <Upload className="h-4 w-4" />
+              Import Excel
+            </Button>
+            <Button
             onClick={() => router.push("/Materials/new")}
             className="gap-2 rounded-8 h-8 px-4 font-semibold shadow-md bg-slate-700 text-white hover:bg-slate-800 transition-all"
           >
@@ -508,7 +518,8 @@ export default function ProductLibraryPage() {
 
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-sm px-4 py-3">{error}</p>}
 
-      {/* Table */}
+      <MaterialImportDialog isOpen={importOpen} onClose={() => setImportOpen(false)} onComplete={load} />
+        {/* Table */}
       <Card className="rounded-none border border-slate-300/80 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(124,58,237,0.12)] overflow-hidden p-0">
         <Table>
           <TableHeader className="bg-slate-100/60 backdrop-blur-md border-b border-slate-200/90">

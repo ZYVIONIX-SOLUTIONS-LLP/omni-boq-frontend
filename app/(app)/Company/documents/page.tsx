@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { Plus, Trash2, File, Image as ImageIcon, Loader2, RefreshCw, FileText } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -36,8 +37,8 @@ export default function CompanyDocumentsPage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const res = await fetch(${API_URL}/company-documents, {
-        headers: { Authorization: Bearer  }
+      const res = await fetch(`${API_URL}/company-documents`, {
+        headers: { Authorization: `Bearer ${getAccessToken()}` }
       });
       if (res.ok) {
         const data = await res.json();
@@ -72,9 +73,9 @@ export default function CompanyDocumentsPage() {
       formData.append("file", selectedFile);
       formData.append("name", customName);
 
-      const res = await fetch(${API_URL}/company-documents, {
+      const res = await fetch(`${API_URL}/company-documents`, {
         method: "POST",
-        headers: { Authorization: Bearer  },
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
         body: formData,
       });
       if (res.ok) {
@@ -82,6 +83,11 @@ export default function CompanyDocumentsPage() {
         setCustomName("");
         setSelectedFile(null);
         fetchDocuments();
+        alert("Document uploaded successfully");
+      } else {
+        const errData = await res.text();
+        alert("Upload failed: " + res.status + "\n" + errData);
+        console.error("Upload failed", res.status, errData);
       }
     } catch (err) {
       console.error(err);
@@ -93,9 +99,9 @@ export default function CompanyDocumentsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
     try {
-      await fetch(${API_URL}/company-documents/, {
+      await fetch(`${API_URL}/company-documents/${id}`, {
         method: "DELETE",
-        headers: { Authorization: Bearer  }
+        headers: { Authorization: `Bearer ${getAccessToken()}` }
       });
       fetchDocuments();
     } catch (err) {
@@ -147,7 +153,7 @@ export default function CompanyDocumentsPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="p-2 bg-slate-50 rounded-md shrink-0">
-                    {getFileIcon(doc.fileType)}
+                    {getFileIcon(doc.fileType || '')}
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold text-slate-900 truncate" title={doc.name}>{doc.name}</h3>
@@ -158,11 +164,14 @@ export default function CompanyDocumentsPage() {
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
-                <Button variant="outline" className="flex-1 text-xs h-8 rounded-md" asChild>
-                  <a href={doc.fileUrl.startsWith('http') ? doc.fileUrl : ${API_URL}} target="_blank" rel="noopener noreferrer">
-                    View
-                  </a>
-                </Button>
+                <a 
+                  href={doc.fileUrl ? (doc.fileUrl.startsWith('http') ? doc.fileUrl : `${API_URL}${doc.fileUrl}`) : '#'} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 text-xs h-8 rounded-md inline-flex items-center justify-center border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 transition-colors font-medium"
+                >
+                  View
+                </a>
                 <Button variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md shrink-0" onClick={() => handleDelete(doc.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>

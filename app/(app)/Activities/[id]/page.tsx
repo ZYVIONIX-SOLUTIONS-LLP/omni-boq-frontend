@@ -10,9 +10,11 @@ import {
   categoriesApi,
   subCategoriesApi,
   attributeDefsApi,
+  listProducts,
 } from "@/app/lib/catalog/api";
 import type { AttributeDef, CatalogCategory, SubCategory } from "@/app/lib/catalog/types";
 import { Input } from "@/components/ui/input";
+import SearchableCombo from "@/components/ui/searchable-combo";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -68,9 +70,35 @@ export default function ActivityEditorPage({ params }: PageProps) {
   const [reqQuantity, setReqQuantity] = useState(1);
   const [reqUnit, setReqUnit] = useState("NOS");
   const [reqDescription, setReqDescription] = useState("");
+    const [uniqueValuesMap, setUniqueValuesMap] = useState<Record<string, Set<string>>>({});
   const [editingRequirementKey, setEditingRequirementKey] = useState<string | null>(null);
 
-  const initData = useCallback(async () => {
+  
+    useEffect(() => {
+      if (!selectedCat) {
+        setUniqueValuesMap({});
+        return;
+      }
+      listProducts({ categoryId: selectedCat, limit: 1000 }).then(res => {
+        const map: Record<string, Set<string>> = {};
+        res.items.forEach(prod => {
+          if (prod.attributes) {
+            for (const [defId, val] of Object.entries(prod.attributes)) {
+              if (val === null || val === undefined || val === "") continue;
+              if (!map[defId]) map[defId] = new Set();
+              if (Array.isArray(val)) {
+                val.forEach(v => map[defId].add(String(v)));
+              } else {
+                map[defId].add(String(val));
+              }
+            }
+          }
+        });
+        setUniqueValuesMap(map);
+      }).catch(console.error);
+    }, [selectedCat]);
+
+    const initData = useCallback(async () => {
     setLoading(true);
     try {
       const [actData, catData, subCatData, defsData] = await Promise.all([
@@ -550,15 +578,22 @@ export default function ActivityEditorPage({ params }: PageProps) {
                         })}
                       </div>
                     ) : (
-                      <input
-                        key={def.id}
-                        type={def.type === "NUMBER" ? "number" : "text"}
-                        placeholder={def.name}
-                        value={(specFilters[def.id] as string) ?? ""}
-                        onChange={(e) => setSpecFilters(prev => ({ ...prev, [def.id]: e.target.value }))}
-                        className="h-8 rounded-lg bg-white border border-border text-[10px] px-1.5"
-                      />
-                    )
+                        <div key={def.id} className="relative">
+                          <input
+                            type={def.type === "NUMBER" ? "number" : "text"}
+                            list={`list-${def.id}`}
+                            placeholder={def.name}
+                            value={(specFilters[def.id] as string) ?? ""}
+                            onChange={(e) => setSpecFilters(prev => ({ ...prev, [def.id]: e.target.value }))}
+                            className="h-8 w-full rounded-lg bg-white border border-border text-[10px] px-1.5"
+                          />
+                          <datalist id={`list-${def.id}`}>
+                            {Array.from(uniqueValuesMap[def.id] || []).map(val => (
+                              <option key={val} value={val} />
+                            ))}
+                          </datalist>
+                        </div>
+                      )
                   )}
                  </div>
               </div>

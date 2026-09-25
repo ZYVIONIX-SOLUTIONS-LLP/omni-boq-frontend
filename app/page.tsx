@@ -76,7 +76,7 @@ export default function LandingPage() {
           </div>
           <span className="font-display text-white text-[17px] font-semibold tracking-tight">
             Powered by Zyvionix <span className="text-[#E9A825]">Solutions</span>
-          </span>
+          </span>  
         </div>
         <p className="hidden sm:block font-mono-label text-[11px] uppercase tracking-[0.18em] text-[#5B8DEF]">
           Electrical Estimation & BOQ Platform

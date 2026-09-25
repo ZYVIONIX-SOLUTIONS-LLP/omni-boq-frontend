@@ -5,6 +5,7 @@ import { FileText, Clock, CheckCircle2, FileSpreadsheet, Users, Info } from "luc
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { listQuotations, Quotation } from "@/app/lib/api/quotations";
 import { listUsers } from "@/app/lib/api/auth";
+import { getUser } from "@/app/lib/auth-storage";
 
 function inr(value: number | null | undefined): string {
   if (value === null || value === undefined) return "?0";
@@ -47,9 +48,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const user = getUser();
+    const isAdmin = user?.roles?.includes("ADMIN") || user?.roles?.includes("SUPERADMIN");
+    
     Promise.all([
-      listQuotations({ limit: 1000 }),
-      listUsers()
+      listQuotations({ limit: 1000 }).catch(() => ({ items: [] })),
+      isAdmin ? listUsers().catch(() => []) : Promise.resolve([])
     ]).then(([resQ, resU]) => {
       setQuotations(resQ.items || []);
       const staff = (resU || []).filter(u => u.roles?.includes("STAFF") || u.roles?.includes("ADMIN") || u.roles?.includes("SUPERADMIN")).length;

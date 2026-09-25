@@ -3,12 +3,14 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {  ArrowLeft, LogOut, PanelLeftClose, PanelLeftOpen , Layers, Factory } from "lucide-react";
+import {  ArrowLeft, LogOut, PanelLeftClose, PanelLeftOpen , Layers, Factory, Plus } from "lucide-react"; // force reload
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AuthUser, getUser, isLoggedIn } from "@/app/lib/auth-storage";
 import { logout } from "@/app/lib/api/auth";
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, Notification } from "@/app/lib/api/notifications";
 
 const SIDEBAR_WIDTH = 200;
 const SIDEBAR_WIDTH_COLLAPSED = 64;
@@ -94,11 +96,16 @@ const MAIN_NAV_ITEMS = [
   { label: "Dashboard", href: "/Dashboard", icon: <DashboardIcon /> },
   { label: "Quotations", href: "/Quotations", icon: <QuotationsIcon /> },
   // { label: "Projects", href: "/Projects", icon: <ProjectsIcon /> },
-  { label: "Staff", href: "/Staff", icon: <UsersIcon /> },
+  { label: "Staff", href: "/Staff/list", icon: <UsersIcon /> },
   { label: "Company", href: "/Company/information", icon: <SettingsIcon /> },
 ];
 
 // Contextual sub-menu items when inside Projects / Quotations workspace
+
+const STAFF_NAV_ITEMS = [
+  { label: "Staff List", href: "/Staff/list", icon: <UsersIcon /> },
+  { label: "Create New Staff", href: "/Staff/create", icon: <Plus size={16} /> },
+];
 
 const COMPANY_NAV_ITEMS = [
   { label: "Company Information", href: "/Company/information", icon: <SettingsIcon /> },
@@ -113,6 +120,98 @@ const WORKSPACE_NAV_ITEMS = [
   { label: "Manufacturers", href: "/Materials/manufacturers", icon: <Factory size={16} /> },
 ];
 
+function NotificationBell() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [open, setOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const handleRead = async (id: string) => {
+    try {
+      await markNotificationAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleReadAll = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger className="relative w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors outline-none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        {unreadCount > 0 && (
+          <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full" />
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto p-0 rounded-lg shadow-xl border-slate-200">
+        <div className="sticky top-0 bg-white border-b border-slate-100 p-3 flex items-center justify-between z-10">
+          <h4 className="font-bold text-sm text-slate-800">Notifications</h4>
+          {unreadCount > 0 && (
+            <button onClick={handleReadAll} className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 uppercase tracking-wide">
+              Mark all read
+            </button>
+          )}
+        </div>
+        {notifications.length === 0 ? (
+          <div className="p-6 text-center text-xs text-slate-400 font-medium">No notifications yet</div>
+        ) : (
+          <div className="flex flex-col">
+            {notifications.map((n) => (
+              <div
+                key={n.id}
+                onClick={() => {
+                  if (!n.isRead) handleRead(n.id);
+                }}
+                className={`p-3 border-b border-slate-100 last:border-0 cursor-pointer transition-colors ${
+                  n.isRead ? "bg-white opacity-60 hover:bg-slate-50" : "bg-blue-50/40 hover:bg-blue-50/80"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-2 mb-1">
+                  <h5 className={`text-xs font-bold ${n.isRead ? "text-slate-700" : "text-blue-900"}`}>{n.title}</h5>
+                  {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 mt-1" />}
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{n.message}</p>
+                <span className="text-[9px] text-slate-400 mt-1.5 block font-medium uppercase">
+                  {new Date(n.createdAt).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -121,6 +220,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Check if we are inside the Workspace context
   const isWorkspaceContext = /^\/(Quotations|Projects|Materials|Activities)($|\/)/.test(pathname);
   const isCompanyContext = /^\/(Company)($|\/)/.test(pathname);
+  const isStaffContext = /^\/(Staff)($|\/)/.test(pathname);
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checked, setChecked] = useState(false);
@@ -174,13 +274,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (isCompanyContext) {
       return COMPANY_NAV_ITEMS;
     }
+    if (isStaffContext) {
+      return STAFF_NAV_ITEMS;
+    }
 
     if (role === "ADMIN") {
       return MAIN_NAV_ITEMS;
     }
     // Staff sees Dashboard, Quotations & Projects
-    return MAIN_NAV_ITEMS.filter((item) => item.label !== "Staff" && item.label !== "Settings");
-  }, [user, isWorkspaceContext, isCompanyContext]);
+    return MAIN_NAV_ITEMS.filter((item) => item.label !== "Staff" && item.label !== "Company");
+  }, [user, isWorkspaceContext, isCompanyContext, isStaffContext]);
 
   const displayName = user ? user.firstName || user.username : "";
   const initial = (displayName[0] ?? "U").toUpperCase();
@@ -252,12 +355,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Section Heading Badge */}
+        {/* Section Heading Badge & Back Button */}
         {!collapsed && (
-          <div className="px-4 mb-2">
+          <div className="px-4 mb-2 flex items-center justify-between">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              {isWorkspaceContext ? "Workspace Menu" : "Main Navigation"}
+              {(isWorkspaceContext || isCompanyContext || isStaffContext) ? "Sub Menu" : "Main Navigation"}
             </p>
+          </div>
+        )}
+        
+        {/* Back to Main Menu Button */}
+        {(isWorkspaceContext || isCompanyContext || isStaffContext) && (
+          <div className="px-3 mb-4">
+            <Link
+              href="/Dashboard"
+              title={collapsed ? "Back to Main Menu" : undefined}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-all rounded-md"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Back to Main Menu</span>}
+            </Link>
           </div>
         )}
 
@@ -351,12 +468,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           }}
         >
           <h1 className="text-xl font-bold text-white tracking-tight">{pathname === "/Dashboard" ? "Dashboard" : visibleNavItems.find(i => pathname.startsWith(i.href))?.label || "Workspace"}</h1>
-          <button className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-          </button>
+          <NotificationBell />
         </header>
       )}
       <main

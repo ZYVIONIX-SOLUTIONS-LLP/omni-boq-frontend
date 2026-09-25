@@ -89,6 +89,10 @@ export default function QuotationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const user = getUser();
+  const isAdmin = user?.roles?.includes("ADMIN") || user?.roles?.includes("SUPERADMIN");
+  const isLevel1 = !isAdmin && user?.priorityLevel === 1;
+  const isLevel3 = !isAdmin && user?.priorityLevel === 3;
   const [viewMode, setViewMode] = useState<"directory" | "list">("directory");
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -377,10 +381,10 @@ export default function QuotationsPage() {
                   <Pencil className="h-3.5 w-3.5" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => p.data && openSaveAsRevision(p.data)}>
+                {(isAdmin || isLevel1) && <DropdownMenuItem onClick={() => p.data && openSaveAsRevision(p.data)}>
                   <Copy className="h-3.5 w-3.5 text-amber-600" />
                   Save As Revision
-                </DropdownMenuItem>
+                </DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -449,13 +453,15 @@ export default function QuotationsPage() {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <Button
-            onClick={() => setCreateOpen(true)}
-            className="gap-2 rounded-none h-9 px-4 font-bold shadow-md bg-[#163848] text-white hover:bg-[#163848] transition-all text-xs"
-          >
-            <Plus className="h-4 w-4" />
-            New Quotation
-          </Button>
+          {!isLevel3 && (
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="gap-2 rounded-none h-9 px-4 font-bold shadow-md bg-[#163848] text-white hover:bg-[#163848] transition-all text-xs"
+            >
+              <Plus className="h-4 w-4" />
+              New Quotation
+            </Button>
+            )}
         </div>
       </div>
 
@@ -599,10 +605,10 @@ export default function QuotationsPage() {
                                       Edit Details
                                     </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem onClick={() => openSaveAsRevision(q)}>
+                                  {(isAdmin || isLevel1) && <DropdownMenuItem onClick={() => openSaveAsRevision(q)}>
                                     <Copy className="h-3.5 w-3.5 text-amber-600" />
                                     Save As Revision (Negotiation)
-                                  </DropdownMenuItem>
+                                  </DropdownMenuItem>}
                                   {!isStaff && (
                                     <>
                                       <DropdownMenuSeparator />

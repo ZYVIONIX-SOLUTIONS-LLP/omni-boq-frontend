@@ -284,8 +284,14 @@ export function BrandPreferencesDialog({
                         <Input
                           type="number"
                           placeholder="0%"
+                          min="0"
+                          max="100"
                           value={pref.defaultProfitPct ?? ""}
-                          onChange={(e) => updatePreference(categoryId, "defaultProfitPct", e.target.value ? Number(e.target.value) : null)}
+                          onChange={(e) => {
+                            let val = e.target.value ? Number(e.target.value) : null;
+                            if (val !== null) val = Math.min(100, Math.max(0, val));
+                            updatePreference(categoryId, "defaultProfitPct", val);
+                          }}
                           className="h-9 bg-white text-xs text-center font-bold border-purple-200 rounded-none"
                         />
                       </div>
@@ -299,8 +305,14 @@ export function BrandPreferencesDialog({
                         <Input
                           type="number"
                           placeholder="0%"
+                          min="0"
+                          max="100"
                           value={pref.defaultDiscountPct ?? ""}
-                          onChange={(e) => updatePreference(categoryId, "defaultDiscountPct", e.target.value ? Number(e.target.value) : null)}
+                          onChange={(e) => {
+                            let val = e.target.value ? Number(e.target.value) : null;
+                            if (val !== null) val = Math.min(100, Math.max(0, val));
+                            updatePreference(categoryId, "defaultDiscountPct", val);
+                          }}
                           className="h-9 bg-white text-xs text-center font-bold border-purple-200 rounded-none"
                         />
                       </div>
@@ -311,13 +323,16 @@ export function BrandPreferencesDialog({
                           <Receipt className="w-3 h-3 text-cyan-600" />
                           Tax %
                         </label>
-                        <Input
-                          type="number"
-                          placeholder="18%"
+                        <select
                           value={pref.defaultTaxPct ?? ""}
                           onChange={(e) => updatePreference(categoryId, "defaultTaxPct", e.target.value ? Number(e.target.value) : null)}
-                          className="h-9 bg-white text-xs text-center font-bold border-purple-200 rounded-none"
-                        />
+                          className="h-9 bg-white text-xs text-center font-bold border border-purple-200 rounded-none w-full px-2"
+                        >
+                          <option value="">Tax %</option>
+                          {[0, 0.25, 3, 5, 12, 18, 28].map(tax => (
+                            <option key={tax} value={tax}>{tax}%</option>
+                          ))}
+                        </select>
                       </div>
                       <Button
                         variant="ghost"

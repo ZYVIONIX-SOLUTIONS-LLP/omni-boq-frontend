@@ -96,6 +96,8 @@ export interface UpdateProfilePayload {
     phone?: string;
     gst?: string;
     companyAddress?: string;
+    email?: string;
+    companyCustomFields?: Record<string, string>;
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
