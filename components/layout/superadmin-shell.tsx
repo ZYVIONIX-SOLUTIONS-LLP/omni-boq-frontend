@@ -309,10 +309,10 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
             </Avatar>
             {!collapsed && (
               <div className="leading-tight min-w-0">
-                <p className="text-[11px] leading-none mb-0.5" className="text-slate-300">
+                <p className="text-[11px] leading-none mb-0.5 text-slate-300">
                   Welcome back,
                 </p>
-                <p className="text-sm font-bold leading-none truncate" className="text-white">
+                <p className="text-sm font-bold leading-none truncate text-white">
                   {displayName}!
                 </p>
               </div>
